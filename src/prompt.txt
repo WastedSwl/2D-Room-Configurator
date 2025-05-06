@@ -1,0 +1,2370 @@
+Структура проекта:
+- App.js
++ components
+  + Configurator
+    - Configurator.jsx
+    - constants.js
+    - ElementRenderer.jsx
+    + modes
+      - ElementEditPanel.jsx
+      + helpers
+        - collisionUtils.js
+        - moduleInitialization.js
+      - InternalWallEditPanel.jsx
+      - ModularMode.jsx
+      - ModuleEditPanel.jsx
+      - ModuleRenderer.jsx
+      + rendering
+        - renderInteractiveSegments.jsx
+        - renderInternalWalls.jsx
+        - renderModuleElements.jsx
+        - renderWallLines.jsx
+      - WallEditPanel.jsx
+- index.css
+- index.js
+- reportWebVitals.js
+
+Содержимое некоторых файлов:
+
+==== App.js ====
+import React from 'react';
+import Configurator from './components/Configurator/Configurator';
+import './index.css'; // Ensure Tailwind CSS is imported
+
+function App() {
+  return (
+    <div className="App">
+      <Configurator />
+    </div>
+  );
+}
+
+export default App; 
+
+==== components\Configurator\Configurator.jsx ====
+// src/components/Configurator/Configurator.jsx
+import React, { useState } from 'react';
+import { MODES, DEFAULT_MODE } from './constants';
+// Import mode components
+import ModularMode from './modes/ModularMode'; // Import ModularMode
+// import FramelessMode from './modes/FramelessMode';
+// import FramedMode from './modes/FramedMode';
+
+const Configurator = () => {
+  const [mode, setMode] = useState(DEFAULT_MODE);
+  const [projectData, setProjectData] = useState(null); // State to hold project design
+
+  const handleModeChange = (newMode) => {
+    if (projectData) {
+      const confirmChange = window.confirm(
+        'Changing the mode will reset your current project. Are you sure you want to continue?',
+      );
+      if (!confirmChange) {
+        return;
+      }
+    }
+    setMode(newMode);
+    setProjectData(null);
+  };
+
+  const handleResetProject = () => {
+     const confirmReset = window.confirm(
+        'Are you sure you want to reset the project?',
+     );
+     if (confirmReset) {
+        setProjectData(null);
+        // Reset specific mode state via a passed function if needed later
+     }
+  }
+
+  const renderModeComponent = () => {
+    // Pass projectData and a setter function to the active mode component
+    const commonProps = { projectData, setProjectData };
+
+    switch (mode) {
+      case MODES.MODULAR:
+        // Render ModularMode instead of placeholder
+        return <ModularMode {...commonProps} />;
+      case MODES.FRAMELESS:
+        // return <FramelessMode {...commonProps} />;
+        return <div className="p-4 text-center text-gray-500">Безкаркасный режим (в разработке)</div>;
+      case MODES.FRAMED:
+        // return <FramedMode {...commonProps} />;
+        return <div className="p-4 text-center text-gray-500">Каркасный режим (в разработке)</div>;
+      default:
+        return <div className="p-4 text-center text-gray-500">Выберите режим</div>;
+    }
+  };
+
+  // Calculate total area and cost (placeholder)
+  const calculateTotals = () => {
+    let area = 0;
+    let cost = 0;
+    // Calculation logic will depend on projectData structure for each mode
+    if (projectData?.type === 'modular' && projectData?.modules) {
+        projectData.modules.forEach(module => {
+            area += (module.width / 1000) * (module.depth / 1000); // Convert mm to m
+            // Add cost calculation later based on module size, elements etc.
+            cost += 50000; // Placeholder cost per module
+        });
+    }
+    // Add calculations for other modes later
+
+    return { area: area.toFixed(2), cost: cost.toLocaleString('uk-UA') }; // Format cost
+  };
+
+  const totals = calculateTotals();
+
+  return (
+    // Use white background for the main container
+    <div className="flex flex-col h-screen bg-white text-gray-800">
+      {/* Header/Toolbar - Use red accent */}
+      <div className="bg-white p-3 shadow-md flex justify-between items-center border-b border-gray-200">
+        {/* Logo/Title area */}
+        <div className="flex items-center gap-3">
+             {/* Placeholder for Logo */}
+             <div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white font-bold">
+                 M
+             </div>
+             <h1 className="text-xl font-semibold text-gray-700">Конфигуратор Модулей</h1>
+        </div>
+
+        {/* Mode Selection and Actions */}
+        <div className="flex items-center gap-4">
+           {/* Mode Selector - styled */}
+           <select
+             value={mode}
+             onChange={(e) => handleModeChange(e.target.value)}
+             className="p-2 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            >
+                <option value={MODES.MODULAR}>Модульный</option>
+                <option value={MODES.FRAMELESS}>Безкаркасный</option>
+                <option value={MODES.FRAMED}>Каркасный</option>
+           </select>
+           {/* Reset Button - red */}
+           <button
+             onClick={handleResetProject}
+             className="p-2 px-4 border border-transparent rounded bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 ease-in-out"
+            >
+                Сброс
+            </button>
+           {/* Add other buttons later (Export, etc.) with similar styling */}
+           {/* Example: Export Button */}
+           <button className="p-2 px-4 border border-gray-300 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-150 ease-in-out">
+                Экспорт
+            </button>
+        </div>
+      </div>
+
+      {/* Main Content Area - Light gray background for contrast */}
+      <div className="flex-grow bg-gray-100 relative overflow-hidden">
+        {renderModeComponent()}
+      </div>
+
+      {/* Footer/Status Bar - White background */}
+      <div className="bg-white p-2 text-sm border-t border-gray-200 flex justify-between px-4">
+        <span>Режим: <span className="font-medium">{mode.charAt(0).toUpperCase() + mode.slice(1)}</span></span>
+        {/* Display Area and Cost */}
+        <span className="font-medium">
+            Площадь: {totals.area} м² | Стоимость: {totals.cost} грн
+        </span>
+      </div>
+    </div>
+  );
+};
+
+export default Configurator; 
+
+==== components\Configurator\constants.js ====
+// src/components/Configurator/constants.js
+export const MODES = {
+  MODULAR: 'modular',
+  FRAMELESS: 'frameless',
+  FRAMED: 'framed',
+};
+
+export const DEFAULT_MODE = MODES.MODULAR;
+
+export const DEFAULT_MODULAR_WIDTH = 6000; // mm
+export const DEFAULT_MODULAR_DEPTH = 2400; // mm
+export const DEFAULT_PANEL_WIDTH = 1150; // mm
+export const DOOR_WIDTH_MM = 900;
+export const DOUBLE_DOOR_WIDTH_MM = 1800;
+export const DEFAULT_WINDOW_WIDTH_MM = 1200;
+
+export const RENDER_SCALE = 0.1;
+export const EXTERNAL_WALL_THICKNESS_MM = 150;
+export const EXTERNAL_WALL_THICKNESS_PX = EXTERNAL_WALL_THICKNESS_MM * RENDER_SCALE;
+export const DOOR_LEAF_THICKNESS_MM = 40;
+export const DOOR_LEAF_THICKNESS_PX = DOOR_LEAF_THICKNESS_MM * RENDER_SCALE;
+
+export const DOOR_HANDLE_SIZE_PX = 6; // Adjusted from original project for relative size
+export const DOOR_HANDLE_OFFSET_FROM_EDGE_PX = 10; // Offset of handle from the swinging edge of the door leaf
+export const HINGE_OFFSET_FACTOR = 0.5; // How far into wall thickness hinge is. 0.5 = center. (Used by caller of ElementRenderer)
+
+export const GRID_PANEL_WIDTH_PX = DEFAULT_PANEL_WIDTH * RENDER_SCALE;
+export const ACCESSORY_SIZE_PX = 20; // Base size for accessory icons in px before dynamic scaling
+
+// Constants for ModularMode specific calculations
+export const WALL_THICKNESS_MM_MODULAR = 150; // Specific to modular mode walls if different from external
+export const WALL_THICKNESS_PX_MODULAR = WALL_THICKNESS_MM_MODULAR * RENDER_SCALE;
+export const COLLISION_BUFFER_PX_MODULAR = 2 * RENDER_SCALE;
+
+==== components\Configurator\ElementRenderer.jsx ====
+// src/components/Configurator/modes/rendering/renderModuleElements.jsx
+import React from 'react';
+import { FaRadiationAlt, FaSink, FaPlug, FaLightbulb } from 'react-icons/fa';
+import { ElementRenderer } from './modes/rendering/renderModuleElements';
+import {
+    RENDER_SCALE,
+    DEFAULT_WINDOW_WIDTH_MM,
+    DOUBLE_DOOR_WIDTH_MM,
+    DOOR_WIDTH_MM,
+    ACCESSORY_SIZE_PX,
+    EXTERNAL_WALL_THICKNESS_PX
+} from './constants';
+
+export const RenderModuleElements = ({
+    side,
+    numPanels,
+    totalLengthPx,
+    isHorizontal,
+    moduleElements,
+    moduleWidthPx,
+    moduleDepthPx,
+    moduleId,
+    moduleWidthMm,
+    moduleDepthMm,
+    dynamicStrokeScale, // For scaling accessory icons
+    handleElementClick,
+    getHingePos,
+    ACCESSORY_TYPES,
+    selectedElement
+}) => {
+    if (!moduleElements || moduleElements.length === 0) return null;
+
+    const panelLengthPx = totalLengthPx / numPanels;
+    if (!isFinite(panelLengthPx) || panelLengthPx <= 0) return null;
+
+    const renderAccessory = (element, IconComponent) => {
+        const segmentStartPx = element.segmentIndex * panelLengthPx;
+        const segmentCenterCoord = segmentStartPx + panelLengthPx / 2;
+        let x_center, y_center;
+        
+        const iconBaseSize = ACCESSORY_SIZE_PX;
+        const iconRenderSize = Math.max(iconBaseSize * 0.6, Math.min(iconBaseSize * 1.8, iconBaseSize / dynamicStrokeScale));
+
+        if (isHorizontal) {
+            x_center = segmentCenterCoord;
+            y_center = (side === 'top' ? EXTERNAL_WALL_THICKNESS_PX / 2 : moduleDepthPx - EXTERNAL_WALL_THICKNESS_PX / 2);
+        } else {
+            y_center = segmentCenterCoord;
+            x_center = (side === 'left' ? EXTERNAL_WALL_THICKNESS_PX / 2 : moduleWidthPx - EXTERNAL_WALL_THICKNESS_PX / 2);
+        }
+
+        if (!isFinite(x_center + y_center)) return null;
+        
+        const foreignObjectX = x_center - iconRenderSize / 2;
+        const foreignObjectY = y_center - iconRenderSize / 2;
+
+        return (
+            <g key={element.id}
+               data-module-id={moduleId} data-element-id={element.id}
+               data-interactive="true" className="cursor-pointer element-group"
+               onClick={handleElementClick}
+               transform={`translate(${foreignObjectX}, ${foreignObjectY})`} // Position the <g> containing foreignObject
+            >
+                <foreignObject width={iconRenderSize} height={iconRenderSize} overflow="visible">
+                    <div className={`w-full h-full flex items-center justify-center text-gray-500 ${(selectedElement?.elementId === element.id) ? 'text-blue-500' : ''}`}
+                         style={{ fontSize: `${iconRenderSize * 0.75}px` }}>
+                         <IconComponent />
+                    </div>
+                </foreignObject>
+            </g>
+        );
+    };
+
+    return moduleElements.map(element => {
+        const isSecondHalfOfDouble = moduleElements.some(otherEl =>
+            otherEl.type?.includes('podwójne') && otherEl.segmentIndex === element.segmentIndex - 1
+        );
+        if (isSecondHalfOfDouble) return null;
+
+        const isSelected = selectedElement?.elementId === element.id && selectedElement?.moduleId === moduleId;
+
+        if (ACCESSORY_TYPES.includes(element.type)) {
+            if (element.type === 'Grzejnik') return renderAccessory(element, FaRadiationAlt);
+            if (element.type === 'Umywalka') return renderAccessory(element, FaSink);
+            if (element.type === 'Gniazdko') return renderAccessory(element, FaPlug);
+            if (element.type === 'Lampa') return renderAccessory(element, FaLightbulb);
+            return null;
+        }
+
+        let elementPositionForRenderer;
+        let elementRotationForRenderer;
+        let specificWidthMm = element.width; // Use specific width from element data if present
+
+        if (isHorizontal) {
+            elementRotationForRenderer = (side === 'top' ? 0 : 180);
+        } else {
+            elementRotationForRenderer = (side === 'left' ? -90 : 90);
+        }
+
+        if (element.type.includes('Drzwi')) {
+            elementPositionForRenderer = getHingePos(element, side, moduleWidthPx, moduleDepthPx, EXTERNAL_WALL_THICKNESS_PX, moduleWidthMm, moduleDepthMm);
+            if (!specificWidthMm) {
+                specificWidthMm = element.type.includes('podwójne') ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM;
+            }
+        } else if (element.type.includes('Okno')) {
+            const windowBaseWidthMm = element.width || DEFAULT_WINDOW_WIDTH_MM; // Use element.width first
+            specificWidthMm = windowBaseWidthMm; // Store for elementForRenderer
+            const windowVisualWidthPx = Math.min(windowBaseWidthMm * RENDER_SCALE, panelLengthPx);
+            const segmentStartPx = element.segmentIndex * panelLengthPx;
+            const offsetInSegment = Math.max(0, (panelLengthPx - windowVisualWidthPx) / 2);
+            const windowCenterOnWallLine = segmentStartPx + offsetInSegment + windowVisualWidthPx / 2;
+
+            if (isHorizontal) {
+                elementPositionForRenderer = {
+                    x: windowCenterOnWallLine,
+                    y: (side === 'top' ? EXTERNAL_WALL_THICKNESS_PX / 2 : moduleDepthPx - EXTERNAL_WALL_THICKNESS_PX / 2)
+                };
+            } else {
+                elementPositionForRenderer = {
+                    x: (side === 'left' ? EXTERNAL_WALL_THICKNESS_PX / 2 : moduleWidthPx - EXTERNAL_WALL_THICKNESS_PX / 2),
+                    y: windowCenterOnWallLine
+                };
+            }
+        } else {
+            console.warn("RenderModuleElements: Unsupported element type for ElementRenderer pipeline:", element.type);
+            return null;
+        }
+
+        if (!elementPositionForRenderer || !isFinite(elementPositionForRenderer.x) || !isFinite(elementPositionForRenderer.y)) {
+            console.warn("RenderModuleElements: Invalid position calculated for element:", element, elementPositionForRenderer);
+            return null;
+        }
+        
+        const elementForRenderer = {
+            ...element, // Pass all original element props (id, type, isOpen, openingSide, etc.)
+            position: elementPositionForRenderer,
+            rotation: elementRotationForRenderer,
+            width: specificWidthMm, // Ensure width in mm is consistently passed
+            moduleId: moduleId,
+             // dimensions: { widthMm: specificWidthMm } // Alternative if ElementRenderer prefers dimensions object
+        };
+
+        return (
+            <ElementRenderer
+                key={element.id + (element.isOpen ? '-o' : '-c')} // Re-key on open state change to ensure re-render
+                element={elementForRenderer}
+                wallThicknessPx={EXTERNAL_WALL_THICKNESS_PX} // Context for window drawing or future door frames
+                isSelected={isSelected}
+                onClick={handleElementClick}
+            />
+        );
+
+    }).filter(Boolean);
+};
+
+==== components\Configurator\modes\ElementEditPanel.jsx ====
+// src/components/Configurator/modes/ElementEditPanel.jsx
+import React, { useState, useEffect } from 'react';
+import {
+    FaTimes, FaTrashAlt, FaSyncAlt, FaDoorOpen, FaDoorClosed,
+    FaArrowUp, FaArrowDown, FaExpandArrowsAlt // Иконка для объединения
+} from 'react-icons/fa';
+
+// --- НОВЫЙ HELPER: Найти соседнюю дверь ---
+// Возвращает ID соседней двери, если она есть, иначе null
+const findAdjacentDoor = (modules, currentModuleId, currentElementId, currentSide, currentSegmentIndex) => {
+    if (!modules || !currentModuleId || !currentSide || currentSegmentIndex === undefined) {
+        return null;
+    }
+    const module = modules.find(m => m.id === currentModuleId);
+    if (!module || !module.walls || !module.walls[currentSide]?.elements) {
+        return null;
+    }
+
+    const elementsOnSide = module.walls[currentSide].elements;
+
+    // Ищем дверь в предыдущем сегменте
+    const leftNeighbor = elementsOnSide.find(el =>
+        el.id !== currentElementId && // Не сам элемент
+        el.type?.includes('Drzwi') && // Это дверь
+        el.segmentIndex === currentSegmentIndex - 1
+    );
+    if (leftNeighbor) return leftNeighbor.id;
+
+    // Ищем дверь в следующем сегменте
+    const rightNeighbor = elementsOnSide.find(el =>
+        el.id !== currentElementId && // Не сам элемент
+        el.type?.includes('Drzwi') && // Это дверь
+        el.segmentIndex === currentSegmentIndex + 1
+    );
+    if (rightNeighbor) return rightNeighbor.id;
+
+    return null; // Соседей-дверей не найдено
+};
+
+
+// --- ОСНОВНОЙ КОМПОНЕНТ ---
+// Добавляем props: modules, onCombineDoors
+const ElementEditPanel = ({
+    elementInfo, currentElementData, modules, // Добавлен modules
+    position, onClose, onUpdate, onDelete,
+    onCombineDoors // Добавлен обработчик объединения
+}) => {
+
+    // --- Состояние для хранения ID соседней двери ---
+    const [adjacentDoorId, setAdjacentDoorId] = useState(null);
+
+    // --- Эффект для поиска соседа при изменении данных ---
+    useEffect(() => {
+        if (elementInfo && currentElementData && currentElementData.type?.includes('Drzwi') && modules) {
+            const neighborId = findAdjacentDoor(
+                modules,
+                elementInfo.moduleId,
+                elementInfo.elementId,
+                currentElementData.side,
+                currentElementData.segmentIndex
+            );
+            setAdjacentDoorId(neighborId);
+        } else {
+            setAdjacentDoorId(null); // Сбросить, если не дверь или нет данных
+        }
+        // Зависимости: информация об элементе, его данные и список модулей
+    }, [elementInfo, currentElementData, modules]);
+
+    // Обновляет свойство элемента
+    const handleUpdateInternal = (updates) => {
+        if (!elementInfo) return;
+        onUpdate(elementInfo.moduleId, elementInfo.elementId, updates);
+    };
+
+    // Переключает Открыто/Закрыто
+    const handleToggleOpen = () => { /* ... без изменений ... */ handleUpdateInternal({ isOpen: !(currentElementData?.isOpen ?? true) }); };
+    // Переключает Лево/Право
+    const handleToggleOpeningSide = () => { /* ... без изменений ... */ const currentSide = currentElementData?.openingSide || 'right'; const newSide = currentSide === 'left' ? 'right' : 'left'; handleUpdateInternal({ openingSide: newSide }); };
+    // Переключает Внутрь/Наружу
+    const handleToggleOpeningDirection = () => { /* ... без изменений ... */ const currentDirection = currentElementData?.openingDirection || 'inward'; const newDirection = currentDirection === 'inward' ? 'outward' : 'inward'; handleUpdateInternal({ openingDirection: newDirection }); };
+    // Изменение ширины
+    const handleWidthChange = (event) => { /* ... без изменений ... */ const newWidth = parseInt(event.target.value, 10); if (!isNaN(newWidth) && newWidth > 0) { handleUpdateInternal({ width: newWidth }); } };
+
+    // --- НОВЫЙ ОБРАБОТЧИК: Вызов объединения ---
+    const handleCombineClick = () => {
+        if (adjacentDoorId && onCombineDoors) {
+            // Вызываем переданный обработчик, передавая ID текущей и соседней двери
+            onCombineDoors(elementInfo.moduleId, elementInfo.elementId, adjacentDoorId);
+            onClose(); // Закрываем панель после объединения
+        }
+    };
+
+    // Рендеринг
+    if (!elementInfo || !currentElementData || !position) return null;
+
+    const isDoor = currentElementData?.type?.includes('Drzwi');
+    const isDoubleDoor = currentElementData?.type?.includes('podwójne'); // Проверяем, является ли УЖЕ двойной
+    const isWindow = currentElementData?.type?.includes('Okno');
+
+    const currentOpeningSide = currentElementData?.openingSide || 'right';
+    const currentOpeningDirection = currentElementData?.openingDirection || 'inward';
+
+    return (
+        <div
+            className="absolute bg-gray-800 text-white rounded-md shadow-xl p-3 z-50 text-sm flex flex-col gap-3"
+            style={{ left: `${position.x}px`, top: `${position.y}px`, minWidth: '190px' }}
+            onClick={(e) => e.stopPropagation()}
+        >
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-gray-600 pb-2 mb-1">
+                <span className="font-semibold text-xs truncate">Элемент: {currentElementData?.type}</span>
+                <button onClick={onClose} className="text-gray-400 hover:text-white text-lg leading-none"> <FaTimes /> </button>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2">
+                {/* Actions for Doors (Single or Double) */}
+                {isDoor && (
+                    <>
+                        {/* --- Кнопка объединения (только для одиночных дверей, если есть сосед) --- */}
+                        {!isDoubleDoor && adjacentDoorId && onCombineDoors && (
+                            <button
+                                onClick={handleCombineClick}
+                                className="flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded bg-purple-600 hover:bg-purple-700 transition-colors duration-150"
+                                title="Объединить с соседней дверью"
+                            >
+                                <FaExpandArrowsAlt className="w-3 h-3" />
+                                <span>Объединить</span>
+                            </button>
+                        )}
+                        {/* Остальные кнопки для дверей */}
+                        <button onClick={handleToggleOpeningSide} /* ... */ className={`flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-blue-500`} title={`Переключить на ${currentOpeningSide === 'left' ? 'правое' : 'левое'} открытие`}> <FaSyncAlt className="w-3 h-3"/> <span>{`Сторона: ${currentOpeningSide === 'left' ? 'Лево' : 'Право'}`}</span> </button>
+                        <button onClick={handleToggleOpeningDirection} /* ... */ className={`flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-teal-500`} title={`Переключить на открытие ${currentOpeningDirection === 'inward' ? 'от себя' : 'на себя'}`}> {currentOpeningDirection === 'inward' ? <FaArrowDown className="w-3 h-3"/> : <FaArrowUp className="w-3 h-3"/>} <span>{`Направление: ${currentOpeningDirection === 'inward' ? 'На себя' : 'От себя'}`}</span> </button>
+                        <button onClick={handleToggleOpen} /* ... */ className={`flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded ${currentElementData?.isOpen ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-700 hover:bg-green-500'}`} title={currentElementData?.isOpen ? "Закрыть дверь" : "Открыть дверь"}> {currentElementData?.isOpen ? <FaDoorClosed className="w-3 h-3"/> : <FaDoorOpen className="w-3 h-3"/>} <span>{currentElementData?.isOpen ? 'Закрыть' : 'Открыть'}</span> </button>
+                    </>
+                )}
+
+                 {/* Опции для ОКОН */}
+                {isWindow && ( /* ... без изменений ... */ <div className="space-y-1 mt-2 border-t border-gray-600 pt-2"> <label htmlFor="elementWidth" className="text-sm font-medium text-gray-400 block">Ширина (мм):</label> <input type="number" id="elementWidth" defaultValue={currentElementData?.width ?? 1000} onChange={handleWidthChange} className="w-full px-2 py-1 border border-gray-600 rounded text-sm bg-gray-700 text-white focus:outline-none focus:border-blue-500"/> </div> )}
+
+                {/* --- Add other element-specific actions here --- */}
+
+                {/* Кнопка Удалить (отделена) */}
+                <div className="border-t border-gray-600 pt-2 mt-2">
+                    <button onClick={() => { if (window.confirm(`Удалить ${currentElementData?.type}?`)) { onDelete(); } }} /* ... */ className="w-full flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded bg-red-700 hover:bg-red-800 transition-colors duration-150" title="Удалить элемент"> <FaTrashAlt className="w-3 h-3"/> <span>Удалить</span> </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ElementEditPanel;
+
+==== components\Configurator\modes\helpers\collisionUtils.js ====
+// src/components/Configurator/modes/helpers/collisionUtils.js
+
+const checkRectOverlapInternal = (rect1, rect2, COLLISION_BUFFER_PX) => {
+    if (!rect1 || !rect2) return false;
+    return (
+        rect1.x < rect2.x + rect2.width + COLLISION_BUFFER_PX &&
+        rect1.x + rect1.width + COLLISION_BUFFER_PX > rect2.x &&
+        rect1.y < rect2.y + rect2.height + COLLISION_BUFFER_PX &&
+        rect1.y + rect1.height + COLLISION_BUFFER_PX > rect2.y
+    );
+};
+
+export const checkDoorCollision = (
+    module,
+    elementIdToCheck,
+    updates,
+    getHingePosCallback,
+    constants
+) => {
+    const {
+        RENDER_SCALE,
+        WALL_THICKNESS_PX, // Should be EXTERNAL_WALL_THICKNESS_PX
+        DOOR_LEAF_THICKNESS_PX,
+        DOUBLE_DOOR_WIDTH_MM,
+        DOOR_WIDTH_MM,
+        COLLISION_BUFFER_PX,
+        DEFAULT_MODULAR_WIDTH,
+        DEFAULT_MODULAR_DEPTH
+    } = constants;
+
+    if (!module || !module.walls || !elementIdToCheck) return { collision: false };
+
+    let elementToCheck = null;
+    let sideToCheck = null;
+
+    for (const s in module.walls) {
+        if (module.walls[s]?.elements) {
+            const found = module.walls[s].elements.find(el => el.id === elementIdToCheck);
+            if (found) {
+                elementToCheck = { ...found, ...updates };
+                sideToCheck = s;
+                break;
+            }
+        }
+    }
+
+    if (!elementToCheck || !elementToCheck.type?.includes('Drzwi')) return { collision: false };
+
+    const moduleWidthMm = module.width || DEFAULT_MODULAR_WIDTH;
+    const moduleDepthMm = module.depth || DEFAULT_MODULAR_DEPTH;
+    const moduleWidthPx = moduleWidthMm * RENDER_SCALE;
+    const moduleDepthPx = moduleDepthMm * RENDER_SCALE;
+
+    const proposedIsOpen = elementToCheck.isOpen;
+    // const proposedOpeningSide = elementToCheck.openingSide || 'right'; // Not directly used in AABB if hinge is absolute
+    // const proposedOpeningDirection = elementToCheck.openingDirection || 'inward'; // Not directly used in AABB
+    
+    const getOpenDoorAABB = (element, side, currentModule) => {
+        if (!element || !element.isOpen || !element.type?.includes('Drzwi')) return null;
+
+        const elModuleWidthMm = currentModule.width || DEFAULT_MODULAR_WIDTH;
+        const elModuleDepthMm = currentModule.depth || DEFAULT_MODULAR_DEPTH;
+        const elModuleWidthPx = elModuleWidthMm * RENDER_SCALE;
+        const elModuleDepthPx = elModuleDepthMm * RENDER_SCALE;
+        
+        const hinge = getHingePosCallback(element, side, elModuleWidthPx, elModuleDepthPx, WALL_THICKNESS_PX, elModuleWidthMm, elModuleDepthMm);
+        if(!hinge || !isFinite(hinge.x) || !isFinite(hinge.y)) return null;
+
+
+        const elIsDouble = element.type?.includes('podwójne');
+        const elDoorWidthMm = element.width || (elIsDouble ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
+        const W_px = elDoorWidthMm * RENDER_SCALE; // Width of swing
+        const T_px = DOOR_LEAF_THICKNESS_PX;
+
+        let leafRotationDeg = 0;
+        if (element.openingSide === 'left') {
+            leafRotationDeg = element.openingDirection === 'inward' ? 90 : -90;
+        } else { // openingSide 'right'
+            leafRotationDeg = element.openingDirection === 'inward' ? -90 : 90;
+        }
+        const rad = leafRotationDeg * Math.PI / 180;
+
+        // Leaf corners relative to hinge (0,0) before rotation
+        // If hinge left, leaf is [0, W_px] on X. If hinge right, leaf is [-W_px, 0] on X.
+        const x_base1 = element.openingSide === 'left' ? 0 : -W_px;
+        const x_base2 = element.openingSide === 'left' ? W_px : 0;
+
+        const corners = [
+            { x: x_base1, y: -T_px / 2 }, // Hinge-side, one edge of thickness
+            { x: x_base1, y:  T_px / 2 }, // Hinge-side, other edge of thickness
+            { x: x_base2, y: -T_px / 2 }, // Swing-side, one edge of thickness
+            { x: x_base2, y:  T_px / 2 }, // Swing-side, other edge of thickness
+        ];
+
+        // Rotate corners and translate by hinge position
+        const transformedCorners = corners.map(c => ({
+            x: hinge.x + (c.x * Math.cos(rad) - c.y * Math.sin(rad)),
+            y: hinge.y + (c.x * Math.sin(rad) + c.y * Math.cos(rad)),
+        }));
+        
+        // Add hinge itself to corners for AABB calculation
+        transformedCorners.push({x: hinge.x, y: hinge.y});
+
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        transformedCorners.forEach(c => {
+            minX = Math.min(minX, c.x);
+            maxX = Math.max(maxX, c.x);
+            minY = Math.min(minY, c.y);
+            maxY = Math.max(maxY, c.y);
+        });
+        
+        if (!isFinite(minX + maxX + minY + maxY)) return null;
+
+        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    };
+    
+    const proposedOpenAABB = getOpenDoorAABB(elementToCheck, sideToCheck, module);
+
+    for (const otherSide in module.walls) {
+        if (!module.walls[otherSide]?.elements) continue;
+
+        for (const otherElement of module.walls[otherSide].elements) {
+            if (otherElement.id === elementIdToCheck) continue;
+            if (!otherElement.type?.includes('Drzwi')) continue;
+
+            if (proposedIsOpen && otherElement.isOpen) {
+                const otherOpenAABB = getOpenDoorAABB(otherElement, otherSide, module);
+                if (proposedOpenAABB && otherOpenAABB) {
+                    if (checkRectOverlapInternal(proposedOpenAABB, otherOpenAABB, COLLISION_BUFFER_PX)) {
+                        return { collision: true, type: 'aabb_overlap', message: "Dwa otwarte drzwi kolidują ze sobą." };
+                    }
+                }
+            }
+        }
+    }
+
+    return { collision: false };
+};
+
+==== components\Configurator\modes\helpers\moduleInitialization.js ====
+import { 
+    DEFAULT_MODULAR_WIDTH, 
+    DEFAULT_MODULAR_DEPTH,
+    DOOR_WIDTH_MM,
+    DOUBLE_DOOR_WIDTH_MM,
+    DEFAULT_WINDOW_WIDTH_MM
+} from '../../constants'; // Adjusted path
+
+// Helper to initialize module state
+export function initializeModules(projectData) {
+    const defaultModule = {
+        id: crypto.randomUUID(),
+        x: 0, y: 0,
+        width: DEFAULT_MODULAR_WIDTH, depth: DEFAULT_MODULAR_DEPTH,
+        rotation: 0,
+        label: "1",
+        walls: { top: { elements: [] }, bottom: { elements: [] }, left: { elements: [] }, right: { elements: [] } },
+        internalWalls: [] // Ensure internalWalls is initialized
+    };
+
+    if (projectData?.type === 'modular' && Array.isArray(projectData.modules)) {
+        const loadedModules = projectData.modules
+            // Basic filtering for valid module structure
+            .filter(m => m && typeof m === 'object' && typeof m.id === 'string' && m.id.length > 20)
+            .map((m, index) => {
+                const walls = m.walls && typeof m.walls === 'object' ? m.walls : {};
+                // Sanitize elements within each wall
+                const sanitizeElements = (elements) => {
+                    if (!Array.isArray(elements)) return [];
+                    return elements
+                        .filter(el => el && el.id && typeof el.segmentIndex === 'number') // Basic validation
+                        .map(el => {
+                            const isDoor = el.type?.includes('Drzwi');
+                            const isDouble = el.type?.includes('podwójne');
+                            const isWindow = el.type?.includes('Okno');
+                            // Apply default properties if missing
+                            return {
+                                ...el,
+                                ...(isDoor && {
+                                    width: el.width || (isDouble ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM),
+                                    isOpen: el.isOpen ?? false, // Default to closed
+                                    openingSide: el.openingSide || 'right',
+                                    openingDirection: el.openingDirection || 'inward',
+                                }),
+                                ...(isWindow && {
+                                    width: el.width || DEFAULT_WINDOW_WIDTH_MM
+                                }),
+                            };
+                        });
+                };
+
+                const defaultLabel = (index + 1).toString();
+                return {
+                    id: m.id,
+                    x: m.x || 0,
+                    y: m.y || 0,
+                    width: m.width || DEFAULT_MODULAR_WIDTH,
+                    depth: m.depth || DEFAULT_MODULAR_DEPTH,
+                    rotation: m.rotation || 0,
+                    label: m.label || defaultLabel,
+                    walls: {
+                        top: { elements: sanitizeElements(walls.top?.elements) },
+                        bottom: { elements: sanitizeElements(walls.bottom?.elements) },
+                        left: { elements: sanitizeElements(walls.left?.elements) },
+                        right: { elements: sanitizeElements(walls.right?.elements) }
+                    },
+                    internalWalls: Array.isArray(m.internalWalls) ? m.internalWalls.filter(iw => iw && iw.id) : [] // Basic validation for internal walls
+                };
+            });
+
+        if (loadedModules.length > 0) {
+             console.log("Loaded modules:", loadedModules);
+             return loadedModules;
+        }
+    }
+    // Return default module if no valid project data found
+    console.log("Initializing with default module");
+    return [defaultModule];
+} // END OF initializeModules FUNCTION 
+
+==== components\Configurator\modes\InternalWallEditPanel.jsx ====
+// src/components/Configurator/modes/InternalWallEditPanel.jsx
+import React from 'react';
+import PropTypes from 'prop-types';
+import { FaTimes, FaTrashAlt, FaDoorOpen, FaRegWindowMaximize } from 'react-icons/fa';
+
+export const InternalWallEditPanel = ({ internalWallInfo, position, onClose, onDeleteWall, onAddElement }) => {
+    if (!internalWallInfo) return null;
+
+    const { moduleId, wallId } = internalWallInfo;
+
+    const panelStyle = {
+        position: 'absolute',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        minWidth: '180px',
+        zIndex: 50,
+    };
+
+    return (
+         <div
+            style={panelStyle}
+            className="absolute bg-gray-800 text-white rounded-md shadow-xl p-3 z-50 text-sm flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()} // Предотвращаем закрытие панели по клику на нее
+            data-interactive="true" // Помечаем панель как интерактивную
+        >
+             {/* Header */}
+            <div className="flex justify-between items-center border-b border-gray-600 pb-2 mb-1">
+                <span className="font-semibold text-xs truncate">Внутренняя стена</span>
+                <button onClick={onClose} className="text-gray-400 hover:text-white text-lg leading-none" data-interactive="true">
+                    <FaTimes />
+                </button>
+            </div>
+             {/* Actions - Добавление элементов */}
+             <div className="flex flex-col gap-2">
+                 <button
+                    onClick={() => onAddElement("Drzwi Standard")} // Добавляем стандартную дверь
+                    className="flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-blue-500 transition-colors duration-150"
+                    title="Добавить дверь"
+                    data-interactive="true"
+                 >
+                    <FaDoorOpen className="w-3 h-3"/> <span>Добавить Дверь</span>
+                 </button>
+                 <button
+                    onClick={() => onAddElement("Okno Standard")} // Добавляем стандартное окно
+                    className="flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-blue-500 transition-colors duration-150"
+                    title="Добавить окно"
+                    data-interactive="true"
+                 >
+                    <FaRegWindowMaximize className="w-3 h-3"/> <span>Добавить Окно</span>
+                 </button>
+                 {/* TODO: Добавить кнопки для аксессуаров, если они будут разрешены на внутр. стенах */}
+
+                 {/* Разделитель и кнопка удаления */}
+                 <div className="border-t border-gray-600 pt-2 mt-2">
+                     <button
+                        onClick={() => {
+                             // Подтверждение удаления стены (и всех элементов на ней)
+                             if (window.confirm(`Удалить этот сегмент внутренней стены и все элементы на нем?`)) {
+                                 onDeleteWall(moduleId, wallId);
+                             }
+                         }}
+                        className="w-full flex items-center justify-center gap-2 text-xs px-3 py-1.5 rounded bg-red-700 hover:bg-red-800 transition-colors duration-150"
+                        title="Удалить сегмент стены"
+                        data-interactive="true"
+                     >
+                         <FaTrashAlt className="w-3 h-3"/>
+                         <span>Удалить стену</span>
+                     </button>
+                 </div>
+             </div>
+         </div>
+    );
+};
+
+InternalWallEditPanel.propTypes = {
+    internalWallInfo: PropTypes.shape({
+        moduleId: PropTypes.string.isRequired,
+        wallId: PropTypes.string.isRequired,
+    }),
+    position: PropTypes.shape({
+        x: PropTypes.number.isRequired,
+        y: PropTypes.number.isRequired,
+    }).isRequired,
+    onClose: PropTypes.func.isRequired,
+    onDeleteWall: PropTypes.func.isRequired,
+    onAddElement: PropTypes.func.isRequired,
+};
+
+==== components\Configurator\modes\ModularMode.jsx ====
+// src/components/Configurator/modes/ModularMode.jsx
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { FaPlug, FaRadiationAlt, FaSink, FaLightbulb, FaPlus, FaTimes, FaTrashAlt } from 'react-icons/fa';
+import {
+    RENDER_SCALE,
+    DEFAULT_MODULAR_WIDTH,
+    DEFAULT_MODULAR_DEPTH,
+    DEFAULT_PANEL_WIDTH,
+    DOOR_WIDTH_MM,
+    DOUBLE_DOOR_WIDTH_MM,
+    DEFAULT_WINDOW_WIDTH_MM,
+    EXTERNAL_WALL_THICKNESS_PX,
+    GRID_PANEL_WIDTH_PX,
+    DOOR_LEAF_THICKNESS_PX,
+    COLLISION_BUFFER_PX_MODULAR,
+    WALL_THICKNESS_PX_MODULAR,
+    HINGE_OFFSET_FACTOR, // Import HINGE_OFFSET_FACTOR
+} from '../constants'; // Correct path to constants
+import WallEditPanel, { WINDOW_DOOR_TYPES, ACCESSORY_TYPES } from './WallEditPanel';
+import ElementEditPanel from './ElementEditPanel';
+import { ModuleEditPanel } from './ModuleEditPanel';
+import { checkDoorCollision } from './helpers/collisionUtils';
+import { renderWallLineWithOpenings } from './rendering/renderWallLines.jsx';
+import { RenderModuleElements } from './rendering/renderModuleElements.jsx';
+import { RenderInternalWalls } from './rendering/renderInternalWalls.jsx';
+import { RenderInteractiveSegments } from './rendering/renderInteractiveSegments.jsx';
+import { initializeModules } from './helpers/moduleInitialization';
+
+const MIN_VIEWBOX_DIM_FOR_SCALE = 100;
+const HANDLE_SIZE_PX = 8;
+const ZOOM_FACTOR = 1.1;
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 7;
+
+
+const ModularMode = ({ projectData, setProjectData }) => {
+    const [modules, setModules] = useState(() => initializeModules(projectData));
+    const [viewBox, setViewBox] = useState({ x: -100, y: -100, width: (DEFAULT_MODULAR_WIDTH * RENDER_SCALE) + 200, height: (DEFAULT_MODULAR_DEPTH * RENDER_SCALE) + 200 });
+    const svgRef = useRef(null);
+    const [selectedWallSegment, setSelectedWallSegment] = useState(null);
+    const [selectedElement, setSelectedElement] = useState(null);
+    const [selectedModuleId, setSelectedModuleId] = useState(null);
+    const [panelPosition, setPanelPosition] = useState({ x: 0, y: 0 });
+    const [editingModuleId, setEditingModuleId] = useState(null);
+    const [editingInputValue, setEditingInputValue] = useState("");
+    const [draggingCornerInfo, setDraggingCornerInfo] = useState(null);
+
+    const getSvgPoint = useCallback((screenX, screenY) => {
+        const svg = svgRef.current;
+        if (!svg) return { x: 0, y: 0 };
+        const point = svg.createSVGPoint();
+        point.x = screenX;
+        point.y = screenY;
+        const CTM = svg.getScreenCTM()?.inverse();
+        return CTM ? point.matrixTransform(CTM) : { x: 0, y: 0 };
+    }, []);
+
+    const handleUpdateModule = useCallback((moduleId, updates) => {
+        setModules(prevModules => prevModules.map(module =>
+            module.id === moduleId ? { ...module, ...updates } : module
+        ));
+    }, []);
+
+    const collisionConstants = useMemo(() => ({
+        RENDER_SCALE,
+        WALL_THICKNESS_PX: EXTERNAL_WALL_THICKNESS_PX,
+        DOOR_LEAF_THICKNESS_PX,
+        DOUBLE_DOOR_WIDTH_MM,
+        DOOR_WIDTH_MM,
+        COLLISION_BUFFER_PX: COLLISION_BUFFER_PX_MODULAR,
+        DEFAULT_MODULAR_WIDTH,
+        DEFAULT_MODULAR_DEPTH
+    }), []);
+
+    const wallLineConstants = useMemo(() => ({
+        RENDER_SCALE,
+        ACCESSORY_TYPES,
+        DEFAULT_WINDOW_WIDTH_MM,
+        DOUBLE_DOOR_WIDTH_MM,
+        DOOR_WIDTH_MM
+    }), []);
+
+    const getSvgPointRef = useRef(getSvgPoint);
+    const handleUpdateModuleRef = useRef(handleUpdateModule);
+
+    useEffect(() => { setProjectData({ type: 'modular', modules }); }, [modules, setProjectData]);
+    useEffect(() => { getSvgPointRef.current = getSvgPoint; }, [getSvgPoint]);
+    useEffect(() => { handleUpdateModuleRef.current = handleUpdateModule; }, [handleUpdateModule]);
+
+    const getHingePos = useCallback((element, side, moduleWidthPx, moduleDepthPx, wallThicknessPxForHingePlacement, moduleWidthMm, moduleDepthMm) => {
+        // wallThicknessPxForHingePlacement is EXTERNAL_WALL_THICKNESS_PX
+        // HINGE_OFFSET_FACTOR determines where along the wall's thickness the hinge point lies.
+        // 0 = outer edge, 0.5 = center, 1 = inner edge.
+        // The ElementRenderer will draw relative to this point.
+
+        const isDouble = element.type?.includes('podwójne');
+        const elementDoorWidthMm = element.width || (isDouble ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
+        const elementDoorWidthPx = elementDoorWidthMm * RENDER_SCALE;
+
+        const isHorizontal = side === 'top' || side === 'bottom';
+        const wallLengthMm = isHorizontal ? moduleWidthMm : moduleDepthMm;
+        const numPanelsOnWall = Math.max(1, Math.round(wallLengthMm / DEFAULT_PANEL_WIDTH));
+        const panelLengthPxLocal = (isHorizontal ? moduleWidthPx : moduleDepthPx) / numPanelsOnWall;
+        
+        const segmentStartOffsetPx = element.segmentIndex * panelLengthPxLocal;
+        
+        const actualDoorWidthOnPanel = isDouble ? Math.min(elementDoorWidthPx, panelLengthPxLocal * 2) : Math.min(elementDoorWidthPx, panelLengthPxLocal);
+        const doorVisualOffsetInSegment = isDouble ? 0 : Math.max(0, (panelLengthPxLocal - actualDoorWidthOnPanel) / 2);
+        const doorStartRelToWallStart = segmentStartOffsetPx + doorVisualOffsetInSegment;
+
+        const hingeIsOnLeftOrTop = element.openingSide === 'left';
+
+        let hingeX = 0, hingeY = 0;
+        // Hinge Y for horizontal walls, Hinge X for vertical walls is adjusted by HINGE_OFFSET_FACTOR
+        if (isHorizontal) { // Top or Bottom wall
+            if (side === 'top') {
+                hingeY = wallThicknessPxForHingePlacement * HINGE_OFFSET_FACTOR;
+            } else { // bottom
+                hingeY = moduleDepthPx - (wallThicknessPxForHingePlacement * HINGE_OFFSET_FACTOR);
+            }
+            hingeX = doorStartRelToWallStart + (hingeIsOnLeftOrTop ? 0 : actualDoorWidthOnPanel);
+        } else { // Left or Right wall
+            if (side === 'left') {
+                hingeX = wallThicknessPxForHingePlacement * HINGE_OFFSET_FACTOR;
+            } else { // right
+                hingeX = moduleWidthPx - (wallThicknessPxForHingePlacement * HINGE_OFFSET_FACTOR);
+            }
+            hingeY = doorStartRelToWallStart + (hingeIsOnLeftOrTop ? 0 : actualDoorWidthOnPanel);
+        }
+        return { x: hingeX, y: hingeY };
+    }, [RENDER_SCALE, DEFAULT_PANEL_WIDTH, HINGE_OFFSET_FACTOR]); // Added HINGE_OFFSET_FACTOR
+
+    const handleInteractiveSegmentClick = useCallback((event) => {
+        event.stopPropagation();
+        setSelectedModuleId(null);
+        setEditingModuleId(null);
+        setSelectedElement(null);
+        const { moduleId, side, segmentIndex: segIdxStr } = event.target.dataset;
+        const segmentIndex = parseInt(segIdxStr, 10);
+        
+        const targetModule = modules.find(m => m.id === moduleId);
+        if (!targetModule || !side || isNaN(segmentIndex) ) return;
+
+        setSelectedWallSegment({ moduleId: targetModule.id, side, segmentIndex });
+        const svgRect = svgRef.current?.getBoundingClientRect();
+        if (svgRect) {
+            setPanelPosition({ x: event.clientX - svgRect.left + 15, y: event.clientY - svgRect.top + 15 });
+        }
+    }, [modules]);
+
+    const handleElementClick = useCallback((event) => {
+        event.stopPropagation();
+        setSelectedModuleId(null);
+        setEditingModuleId(null);
+        setSelectedWallSegment(null);
+        
+        const group = event.currentTarget;
+        const { moduleId, elementId } = group.dataset; 
+        
+        if (!moduleId || !elementId) {
+             console.warn("Element click: Could not find moduleId or elementId on event.currentTarget.dataset", group);
+            return;
+        }
+        setSelectedElement({ moduleId, elementId });
+        
+        const svgRect = svgRef.current?.getBoundingClientRect();
+        if (svgRect) {
+            setPanelPosition({ x: event.clientX - svgRect.left + 15, y: event.clientY - svgRect.top + 15 });
+        }
+    }, []);
+
+    const handleClosePanels = useCallback(() => {
+        setSelectedWallSegment(null);
+        setSelectedElement(null);
+        setSelectedModuleId(null);
+        setEditingModuleId(null);
+    }, []);
+
+    const baseReferenceWidthForZoom = useMemo(() => (DEFAULT_MODULAR_WIDTH * RENDER_SCALE), []);
+
+    const handleWheel = useCallback((e) => {
+        e.preventDefault();
+        const { clientX, clientY, deltaY } = e;
+        const svgPoint = getSvgPointRef.current(clientX, clientY);
+        if (!svgPoint || !isFinite(svgPoint.x) || !isFinite(svgPoint.y) ) return;
+
+        const zoomFactorApplied = deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+        
+        setViewBox(prev => {
+            const currentZoomLevel = baseReferenceWidthForZoom / prev.width;
+            let newZoomLevel = currentZoomLevel * zoomFactorApplied;
+
+            newZoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoomLevel));
+            
+            const newWidth = baseReferenceWidthForZoom / newZoomLevel;
+            const newHeight = newWidth * (prev.height / prev.width);
+
+            const effectiveScaleChange = prev.width / newWidth;
+
+            const dx = svgPoint.x - prev.x;
+            const dy = svgPoint.y - prev.y;
+            
+            const newX = svgPoint.x - dx * effectiveScaleChange;
+            const newY = svgPoint.y - dy * effectiveScaleChange;
+
+            if (!isFinite(newX) || !isFinite(newY) || !isFinite(newWidth) || !isFinite(newHeight) || newWidth <=0 || newHeight <=0) {
+                console.warn("Zoom resulted in invalid viewBox", {newX, newY, newWidth, newHeight});
+                return prev;
+            }
+            return { x: newX, y: newY, width: newWidth, height: newHeight };
+        });
+    }, [baseReferenceWidthForZoom]);
+
+    const handleModuleClick = useCallback((event, moduleId) => {
+        event.stopPropagation();
+        if (editingModuleId !== moduleId) {
+            setEditingModuleId(null);
+            setSelectedWallSegment(null);
+            setSelectedElement(null);
+            setSelectedModuleId(moduleId);
+            const svgRect = svgRef.current?.getBoundingClientRect();
+            if (svgRect) { setPanelPosition({ x: event.clientX - svgRect.left + 15, y: event.clientY - svgRect.top + 15 }); }
+        }
+    }, [editingModuleId]);
+
+    const handleUpdateElement = useCallback((moduleId, elementId, updates) => {
+        let collisionResult = { collision: false };
+        const targetModule = modules.find(m => m.id === moduleId);
+        if (!targetModule) return;
+
+        let elementType = null;
+        for (const side in targetModule.walls) {
+            const el = targetModule.walls[side]?.elements?.find(e => e.id === elementId);
+            if (el) { elementType = el.type; break; }
+        }
+        // Use combined type for checks
+        const combinedType = updates.type || elementType || "";
+
+
+        const isRelevantDoorUpdate = combinedType.toLowerCase().includes('drzwi') && 
+                                  Object.keys(updates).some(k => ['isOpen', 'openingSide', 'openingDirection', 'width', 'type'].includes(k));
+
+        if (isRelevantDoorUpdate) {
+            const currentModuleWidthPx = (targetModule.width || DEFAULT_MODULAR_WIDTH) * RENDER_SCALE;
+            const currentModuleDepthPx = (targetModule.depth || DEFAULT_MODULAR_DEPTH) * RENDER_SCALE;
+            const currentModuleWidthMm = targetModule.width || DEFAULT_MODULAR_WIDTH;
+            const currentModuleDepthMm = targetModule.depth || DEFAULT_MODULAR_DEPTH;
+
+            collisionResult = checkDoorCollision(targetModule, elementId, updates, 
+                (el, side) => getHingePos(el, side, currentModuleWidthPx, currentModuleDepthPx, EXTERNAL_WALL_THICKNESS_PX, currentModuleWidthMm, currentModuleDepthMm), 
+                collisionConstants
+            );
+        }
+
+        if (collisionResult.collision) {
+            alert(collisionResult.message || "Door operation blocked due to collision.");
+            return;
+        }
+
+        setModules(prevModules => prevModules.map(module => {
+            if (module.id !== moduleId) return module;
+            const updatedWalls = { ...module.walls };
+            let changed = false;
+            for (const side in module.walls) {
+                const wall = module.walls[side];
+                if (!wall?.elements) continue;
+
+                const elementIndex = wall.elements.findIndex(el => el.id === elementId);
+                if (elementIndex > -1) {
+                    const currentElement = wall.elements[elementIndex];
+                    const finalType = updates.type || currentElement.type; // Determine final type after update
+                    const isDoor = finalType.toLowerCase().includes('drzwi');
+                    const isDoubleUpdate = finalType.toLowerCase().includes('podwójne');
+
+                    const updatedElement = {
+                        ...currentElement,
+                        ...updates,
+                    };
+                    if (isDoor) {
+                        updatedElement.openingSide = (updates.openingSide !== undefined ? updates.openingSide : currentElement.openingSide) || 'right';
+                        updatedElement.isOpen = (updates.isOpen !== undefined ? updates.isOpen : currentElement.isOpen) ?? false;
+                        updatedElement.openingDirection = (updates.openingDirection !== undefined ? updates.openingDirection : currentElement.openingDirection) || 'inward';
+                        updatedElement.width = (updates.width !== undefined ? updates.width : currentElement.width) || (isDoubleUpdate ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
+                    }
+                    
+                    const newElements = [...wall.elements];
+                    newElements[elementIndex] = updatedElement;
+                    updatedWalls[side] = { ...wall, elements: newElements };
+                    changed = true;
+                    break; 
+                }
+            }
+            return changed ? { ...module, walls: updatedWalls } : module;
+        }));
+    }, [modules, getHingePos, collisionConstants, RENDER_SCALE, EXTERNAL_WALL_THICKNESS_PX]);
+
+    const handleDeleteElement = useCallback((moduleId, elementId) => {
+        setModules(prevModules => prevModules.map(module => {
+            if (module.id !== moduleId) return module;
+            const updatedWalls = { ...module.walls };
+            let changed = false;
+            for (const side in module.walls) {
+                if (module.walls[side]?.elements) {
+                    const originalLength = module.walls[side].elements.length;
+                    const filteredElements = module.walls[side].elements.filter(el => el.id !== elementId);
+                    if (filteredElements.length < originalLength) {
+                        updatedWalls[side] = { ...module.walls[side], elements: filteredElements };
+                        changed = true;
+                    }
+                }
+            }
+            return changed ? { ...module, walls: updatedWalls } : module;
+        }));
+        handleClosePanels();
+    }, [handleClosePanels]);
+
+    const handleAddElement = useCallback((elementType, options = {}) => {
+        if (!selectedWallSegment) return;
+        const { moduleId, side, segmentIndex } = selectedWallSegment;
+        
+        const targetModule = modules.find(m => m.id === moduleId);
+        if (!targetModule) { handleClosePanels(); return; }
+
+        const wallElements = targetModule.walls?.[side]?.elements || [];
+        const elementTypeLower = elementType.toLowerCase();
+
+
+        const existingElementInSegment = wallElements.find(el => {
+            const elTypeLower = el.type.toLowerCase();
+            if (el.segmentIndex === segmentIndex) return true; // Exact segment match
+            // Double door specific checks
+            if (elementTypeLower.includes('podwójne')) { // If adding a double door
+                if (el.segmentIndex === segmentIndex + 1) return true; // Occupies next segment
+                if (elTypeLower.includes('podwójne') && el.segmentIndex === segmentIndex -1) return true; // Double door starts in prev, overlaps current
+            }
+            if (elTypeLower.includes('podwójne')) { // If existing is double door
+                 if (el.segmentIndex === segmentIndex - 1) return true; // Existing double door occupies current segment
+            }
+            return false;
+        });
+
+
+        if (existingElementInSegment) {
+            alert(`Segment ${segmentIndex + 1} (or adjacent for double element) on wall ${side} is already occupied by ${existingElementInSegment.type}.`);
+            handleClosePanels(); return;
+        }
+        
+        const isHorizontal = side === 'top' || side === 'bottom';
+        const moduleWidthMmCurrent = targetModule.width || DEFAULT_MODULAR_WIDTH;
+        const moduleDepthMmCurrent = targetModule.depth || DEFAULT_MODULAR_DEPTH;
+        const wallLengthMm = isHorizontal ? moduleWidthMmCurrent : moduleDepthMmCurrent;
+        const numPanels = Math.max(1, Math.round(wallLengthMm / DEFAULT_PANEL_WIDTH));
+        const actualSegmentLengthMm = wallLengthMm / numPanels;
+
+        let elementWidthMm = 0;
+        const isDoubleDoor = elementTypeLower.includes('podwójne');
+        const isSingleDoor = elementTypeLower.includes('drzwi') && !isDoubleDoor;
+        const isWindow = elementTypeLower.includes('okno');
+
+        if (isDoubleDoor) elementWidthMm = DOUBLE_DOOR_WIDTH_MM;
+        else if (isSingleDoor) elementWidthMm = DOOR_WIDTH_MM;
+        else if (isWindow) elementWidthMm = DEFAULT_WINDOW_WIDTH_MM;
+
+        if (!isDoubleDoor && elementWidthMm > 0 && elementWidthMm > actualSegmentLengthMm + 1) {
+            alert(`Element (${elementType}, width ${elementWidthMm}mm) is too wide for this segment (${actualSegmentLengthMm.toFixed(0)}mm).`); handleClosePanels(); return;
+        }
+        if (isDoubleDoor && elementWidthMm > 0 && elementWidthMm > actualSegmentLengthMm * 2 + 1) {
+             alert(`Double door (${elementType}, width ${elementWidthMm}mm) is too wide for two segments (${(actualSegmentLengthMm*2).toFixed(0)}mm).`); handleClosePanels(); return;
+        }
+        if (isDoubleDoor && segmentIndex >= numPanels - 1) {
+             alert(`Cannot place double door starting in the last segment.`); handleClosePanels(); return;
+        }
+        
+        let addCollisionResult = { collision: false };
+        if (elementTypeLower.includes('drzwi')) {
+            const tempNewElementId = `temp-${crypto.randomUUID()}`;
+            const tempModule = JSON.parse(JSON.stringify(targetModule));
+            if (!tempModule.walls[side]) tempModule.walls[side] = { elements: [] };
+             if (!tempModule.walls[side].elements) tempModule.walls[side].elements = [];
+
+            const tempNewElement = {
+                id: tempNewElementId, type: elementType, segmentIndex,
+                openingSide: 'right', width: elementWidthMm, isOpen: true, openingDirection: 'inward', ...options
+            };
+            tempModule.walls[side].elements.push(tempNewElement);
+            
+            const currentModuleWidthPx = (tempModule.width || DEFAULT_MODULAR_WIDTH) * RENDER_SCALE;
+            const currentModuleDepthPx = (tempModule.depth || DEFAULT_MODULAR_DEPTH) * RENDER_SCALE;
+
+            addCollisionResult = checkDoorCollision(tempModule, tempNewElementId, { isOpen: true }, 
+                (el, s) => getHingePos(el, s, currentModuleWidthPx, currentModuleDepthPx, EXTERNAL_WALL_THICKNESS_PX, tempModule.width || DEFAULT_MODULAR_WIDTH, tempModule.depth || DEFAULT_MODULAR_DEPTH), 
+                collisionConstants
+            );
+            if (addCollisionResult.collision) {
+                alert(addCollisionResult.message || "Cannot add door here due to potential collision.");
+                handleClosePanels(); return;
+            }
+        }
+
+        const newElement = {
+            id: crypto.randomUUID(), type: elementType, segmentIndex,
+            ...(elementTypeLower.includes('drzwi') && {
+                openingSide: 'right', isOpen: false, openingDirection: 'inward',
+                width: elementWidthMm || (isDoubleDoor ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM)
+            }),
+            ...(isWindow && { width: elementWidthMm || DEFAULT_WINDOW_WIDTH_MM }),
+            ...options,
+        };
+
+        setModules(prevModules => prevModules.map(m => {
+            if (m.id !== moduleId) return m;
+            const newWalls = { ...m.walls };
+            if (!newWalls[side]) newWalls[side] = { elements: [] };
+            if (!newWalls[side].elements) newWalls[side].elements = [];
+            newWalls[side].elements = [...newWalls[side].elements, newElement];
+            return { ...m, walls: newWalls };
+        }));
+        handleClosePanels();
+    }, [modules, selectedWallSegment, handleClosePanels, getHingePos, collisionConstants, RENDER_SCALE, EXTERNAL_WALL_THICKNESS_PX]);
+
+    const startEditingLabel = useCallback((event, moduleId, currentLabel) => {
+        event.stopPropagation();
+        setSelectedModuleId(null); 
+        setEditingModuleId(moduleId);
+        setEditingInputValue(currentLabel || "");
+    }, []);
+
+    const handleLabelInputChange = useCallback((event) => {
+        setEditingInputValue(event.target.value);
+    }, []);
+
+    const commitLabelChange = useCallback((moduleIdToSave) => {
+        if (editingInputValue.trim() !== "") {
+            handleUpdateModuleRef.current(moduleIdToSave, { label: editingInputValue.trim() });
+        }
+        setEditingModuleId(null);
+    }, [editingInputValue]);
+
+    const handleLabelInputKeyDown = useCallback((event) => {
+        if (event.key === 'Enter') {
+            commitLabelChange(editingModuleId);
+        } else if (event.key === 'Escape') {
+            setEditingModuleId(null);
+            setEditingInputValue(""); 
+        }
+    }, [editingModuleId, commitLabelChange]);
+
+    const handleDeleteModule = useCallback((moduleId) => {
+        setModules(prevModules => prevModules.filter(module => module.id !== moduleId));
+        handleClosePanels();
+    }, [handleClosePanels]);
+
+    const internalHandleCornerMouseMove = useCallback((event) => {
+        if (!draggingCornerInfo) return;
+        event.preventDefault();
+    }, [draggingCornerInfo]);
+
+    const internalHandleCornerMouseUp = useCallback((event) => {
+        if (!draggingCornerInfo) return;
+        const currentSvgPos = getSvgPointRef.current(event.clientX, event.clientY);
+        if (!currentSvgPos || !isFinite(currentSvgPos.x) || !isFinite(currentSvgPos.y) ) { 
+            setDraggingCornerInfo(null); return; 
+        }
+
+        const deltaX = currentSvgPos.x - draggingCornerInfo.startSvgPos.x;
+        const deltaY = currentSvgPos.y - draggingCornerInfo.startSvgPos.y;
+        const { moduleId, startWidth, startDepth } = draggingCornerInfo;
+        
+        const deltaWidthMm = deltaX / RENDER_SCALE;
+        const deltaDepthMm = deltaY / RENDER_SCALE;
+        const widthBlocksChange = Math.round(deltaWidthMm / DEFAULT_PANEL_WIDTH);
+        const depthBlocksChange = Math.round(deltaDepthMm / DEFAULT_PANEL_WIDTH);
+        
+        const newWidth = Math.max(DEFAULT_PANEL_WIDTH, startWidth + widthBlocksChange * DEFAULT_PANEL_WIDTH);
+        const newDepth = Math.max(DEFAULT_PANEL_WIDTH, startDepth + depthBlocksChange * DEFAULT_PANEL_WIDTH);
+        
+        let update = {};
+        if (newWidth !== startWidth) update.width = newWidth;
+        if (newDepth !== startDepth) update.depth = newDepth;
+        if (Object.keys(update).length > 0) {
+            handleUpdateModuleRef.current(moduleId, update);
+        }
+        setDraggingCornerInfo(null);
+    }, [draggingCornerInfo, RENDER_SCALE, DEFAULT_PANEL_WIDTH]);
+
+    useEffect(() => {
+        const moveListener = internalHandleCornerMouseMove;
+        const upListener = internalHandleCornerMouseUp;
+        if (draggingCornerInfo) {
+            window.addEventListener('mousemove', moveListener);
+            window.addEventListener('mouseup', upListener);
+        }
+        return () => {
+            window.removeEventListener('mousemove', moveListener);
+            window.removeEventListener('mouseup', upListener);
+        };
+    }, [draggingCornerInfo, internalHandleCornerMouseMove, internalHandleCornerMouseUp]);
+
+    const handleCornerResizeMouseDown = useCallback((event, moduleId) => {
+        event.stopPropagation();
+        const module = modules.find(m => m.id === moduleId);
+        if (!module) return;
+        const startSvgPos = getSvgPointRef.current(event.clientX, event.clientY);
+        if (!startSvgPos || !isFinite(startSvgPos.x) || !isFinite(startSvgPos.y)) return;
+        setDraggingCornerInfo({
+            moduleId, startSvgPos,
+            startWidth: module.width || DEFAULT_MODULAR_WIDTH,
+            startDepth: module.depth || DEFAULT_MODULAR_DEPTH
+        });
+    }, [modules]);
+
+    const safeViewBoxWidth = Math.max(viewBox.width || MIN_VIEWBOX_DIM_FOR_SCALE, MIN_VIEWBOX_DIM_for_scale);
+    const dynamicStrokeScaleFactor = useMemo(() => Math.max(0.1, Math.min(10, Math.sqrt(baseReferenceWidthForZoom / safeViewBoxWidth))), [baseReferenceWidthForZoom, safeViewBoxWidth]);
+    
+    const dynamicStrokes = useMemo(() => ({
+        wall: Math.max(0.3, 1.5 * dynamicStrokeScaleFactor),
+        grid: Math.max(0.05, 0.5 * dynamicStrokeScaleFactor),
+        segment: Math.max(0.1, 0.4 * dynamicStrokeScaleFactor),
+        highlight: Math.max(0.5, 2 * dynamicStrokeScaleFactor),
+        moduleResizeHandleRadius: Math.max(3, HANDLE_SIZE_PX * dynamicStrokeScaleFactor),
+        moduleLabelFontSize: Math.max(6, 10 * dynamicStrokeScaleFactor),
+        moduleSelectedStroke: Math.max(0.5, 2 * dynamicStrokeScaleFactor)
+    }), [dynamicStrokeScaleFactor]);
+
+    const commonElementRenderProps = useMemo(() => ({
+        getHingePos,
+        ACCESSORY_TYPES,
+        dynamicStrokeScale: dynamicStrokeScaleFactor
+    }), [getHingePos, ACCESSORY_TYPES, dynamicStrokeScaleFactor]);
+
+
+    return (
+        <div className="relative w-full h-full flex items-center justify-center bg-gray-100 overflow-hidden select-none">
+            <svg ref={svgRef} width="100%" height="100%"
+                 viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
+                 preserveAspectRatio="xMidYMid meet"
+                 className="bg-white shadow-lg rounded border border-gray-300"
+                 onClick={handleClosePanels}
+                 onWheel={handleWheel}
+            >
+                 <defs>
+                    <pattern id="gridPattern" patternUnits="userSpaceOnUse" width={GRID_PANEL_WIDTH_PX} height={GRID_PANEL_WIDTH_PX}>
+                         {isFinite(dynamicStrokes.grid) && dynamicStrokes.grid > 0 && GRID_PANEL_WIDTH_PX > 0 && (
+                            <path d={`M ${GRID_PANEL_WIDTH_PX} 0 L 0 0 0 ${GRID_PANEL_WIDTH_PX}`} fill="none" stroke="#e5e7eb" strokeWidth={dynamicStrokes.grid} />
+                         )}
+                     </pattern>
+                     <pattern id="doorTexturePattern" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+                        <path d="M 0 0 L 0 6" stroke="#CBD5E1" strokeWidth={0.5}/>
+                    </pattern>
+                 </defs>
+                 {isFinite(viewBox.x + viewBox.y + viewBox.width + viewBox.height) && viewBox.width > 0 && viewBox.height > 0 && (
+                    <rect x={viewBox.x} y={viewBox.y} width={viewBox.width} height={viewBox.height} fill="url(#gridPattern)" />
+                 )}
+                <g>
+                    {Array.isArray(modules) && modules.map((module, index) => {
+                         const moduleWidthMm = module.width || DEFAULT_MODULAR_WIDTH;
+                         const moduleDepthMm = module.depth || DEFAULT_MODULAR_DEPTH;
+                         const modWidthPx = moduleWidthMm * RENDER_SCALE;
+                         const modDepthPx = moduleDepthMm * RENDER_SCALE;
+                         const numPanelsWidth = Math.max(1, Math.round(moduleWidthMm / DEFAULT_PANEL_WIDTH));
+                         const numPanelsDepth = Math.max(1, Math.round(moduleDepthMm / DEFAULT_PANEL_WIDTH));
+                         
+                         const moduleX = module.x || 0;
+                         const moduleY = module.y || 0;
+                         const moduleRotation = module.rotation || 0;
+                         const isSelectedForPanel = module.id === selectedModuleId;
+                         const isSelectedForHighlight = module.id === selectedModuleId && !editingModuleId;
+                         
+                         return (
+                            <g key={module.id}
+                               transform={`translate(${moduleX * RENDER_SCALE}, ${moduleY * RENDER_SCALE}) rotate(${moduleRotation})`}
+                                className={`module-group ${isSelectedForHighlight ? 'selected-module-highlight' : ''}`}
+                            >
+                                <rect x={0} y={0} width={modWidthPx} height={modDepthPx}
+                                    fill="#f9f9f9"
+                                    stroke={isSelectedForHighlight ? '#ef4444' : '#e0e0e0'}
+                                    strokeWidth={isSelectedForHighlight ? dynamicStrokes.moduleSelectedStroke : (dynamicStrokes.wall * 0.3)}
+                                    onClick={(e) => handleModuleClick(e, module.id)}
+                                    style={{ cursor: 'pointer' }}
+                                    rx={dynamicStrokes.wall * 0.3} ry={dynamicStrokes.wall * 0.3}
+                                />
+                                <g stroke="#d1d5db" strokeWidth={dynamicStrokes.segment} style={{pointerEvents: 'none'}}>
+                                     {numPanelsWidth > 1 && ( Array.from({ length: numPanelsWidth - 1 }, (_, i) => { const xPos = (i + 1) * (modWidthPx / numPanelsWidth); return <line key={`v-${i}`} x1={xPos} y1={EXTERNAL_WALL_THICKNESS_PX} x2={xPos} y2={modDepthPx - EXTERNAL_WALL_THICKNESS_PX} />; }))}
+                                     {numPanelsDepth > 1 && ( Array.from({ length: numPanelsDepth - 1 }, (_, i) => { const yPos = (i + 1) * (modDepthPx / numPanelsDepth); return <line key={`h-${i}`} x1={EXTERNAL_WALL_THICKNESS_PX} y1={yPos} x2={modWidthPx - EXTERNAL_WALL_THICKNESS_PX} y2={yPos} />; }))}
+                                </g>
+                                <g className="walls">
+                                    {renderWallLineWithOpenings({ side: 'top', lengthPx: modWidthPx, numPanels: numPanelsWidth, isHorizontal: true, moduleElements: module.walls?.top?.elements || [], moduleWidthPx: modWidthPx, moduleDepthPx: modDepthPx, wallThicknessPx: EXTERNAL_WALL_THICKNESS_PX, dynamicStrokeWidth: dynamicStrokes.wall, ...wallLineConstants })}
+                                    {renderWallLineWithOpenings({ side: 'bottom', lengthPx: modWidthPx, numPanels: numPanelsWidth, isHorizontal: true, moduleElements: module.walls?.bottom?.elements || [], moduleWidthPx: modWidthPx, moduleDepthPx: modDepthPx, wallThicknessPx: EXTERNAL_WALL_THICKNESS_PX, dynamicStrokeWidth: dynamicStrokes.wall, ...wallLineConstants })}
+                                    {renderWallLineWithOpenings({ side: 'left', lengthPx: modDepthPx, numPanels: numPanelsDepth, isHorizontal: false, moduleElements: module.walls?.left?.elements || [], moduleWidthPx: modWidthPx, moduleDepthPx: modDepthPx, wallThicknessPx: EXTERNAL_WALL_THICKNESS_PX, dynamicStrokeWidth: dynamicStrokes.wall, ...wallLineConstants })}
+                                    {renderWallLineWithOpenings({ side: 'right', lengthPx: modDepthPx, numPanels: numPanelsDepth, isHorizontal: false, moduleElements: module.walls?.right?.elements || [], moduleWidthPx: modWidthPx, moduleDepthPx: modDepthPx, wallThicknessPx: EXTERNAL_WALL_THICKNESS_PX, dynamicStrokeWidth: dynamicStrokes.wall, ...wallLineConstants })}
+                                </g>
+                                <g className="internal-walls">
+                                    <RenderInternalWalls 
+                                        internalWalls={module.internalWalls || []} moduleId={module.id} 
+                                        RENDER_SCALE={RENDER_SCALE} WALL_THICKNESS_PX={WALL_THICKNESS_PX_MODULAR} 
+                                    />
+                                </g>
+                                <g className="interactive-overlays">
+                                     <RenderInteractiveSegments side='top' lengthPx={modWidthPx} numPanels={numPanelsWidth} isHorizontal={true} moduleWidthPx={modWidthPx} moduleDepthPx={modDepthPx} moduleIndex={index} moduleId={module.id} wallThicknessPx={EXTERNAL_WALL_THICKNESS_PX} dynamicStrokeScale={dynamicStrokeScaleFactor} elementsOnSide={module.walls?.top?.elements || []} selectedWallSegment={selectedWallSegment} handleInteractiveSegmentClick={handleInteractiveSegmentClick} dynamicStrokeWidth={dynamicStrokes.highlight} />
+                                     <RenderInteractiveSegments side='bottom' lengthPx={modWidthPx} numPanels={numPanelsWidth} isHorizontal={true} moduleWidthPx={modWidthPx} moduleDepthPx={modDepthPx} moduleIndex={index} moduleId={module.id} wallThicknessPx={EXTERNAL_WALL_THICKNESS_PX} dynamicStrokeScale={dynamicStrokeScaleFactor} elementsOnSide={module.walls?.bottom?.elements || []} selectedWallSegment={selectedWallSegment} handleInteractiveSegmentClick={handleInteractiveSegmentClick} dynamicStrokeWidth={dynamicStrokes.highlight} />
+                                     <RenderInteractiveSegments side='left' lengthPx={modDepthPx} numPanels={numPanelsDepth} isHorizontal={false} moduleWidthPx={modWidthPx} moduleDepthPx={modDepthPx} moduleIndex={index} moduleId={module.id} wallThicknessPx={EXTERNAL_WALL_THICKNESS_PX} dynamicStrokeScale={dynamicStrokeScaleFactor} elementsOnSide={module.walls?.left?.elements || []} selectedWallSegment={selectedWallSegment} handleInteractiveSegmentClick={handleInteractiveSegmentClick} dynamicStrokeWidth={dynamicStrokes.highlight} />
+                                     <RenderInteractiveSegments side='right' lengthPx={modDepthPx} numPanels={numPanelsDepth} isHorizontal={false} moduleWidthPx={modWidthPx} moduleDepthPx={modDepthPx} moduleIndex={index} moduleId={module.id} wallThicknessPx={EXTERNAL_WALL_THICKNESS_PX} dynamicStrokeScale={dynamicStrokeScaleFactor} elementsOnSide={module.walls?.right?.elements || []} selectedWallSegment={selectedWallSegment} handleInteractiveSegmentClick={handleInteractiveSegmentClick} dynamicStrokeWidth={dynamicStrokes.highlight} />
+                                 </g>
+                                <g className="elements">
+                                    <RenderModuleElements side='top' numPanels={numPanelsWidth} totalLengthPx={modWidthPx} isHorizontal={true} moduleElements={module.walls?.top?.elements || []} moduleWidthPx={modWidthPx} moduleDepthPx={modDepthPx} moduleId={module.id} moduleWidthMm={moduleWidthMm} moduleDepthMm={moduleDepthMm} selectedElement={selectedElement} handleElementClick={handleElementClick} {...commonElementRenderProps} />
+                                    <RenderModuleElements side='bottom' numPanels={numPanelsWidth} totalLengthPx={modWidthPx} isHorizontal={true} moduleElements={module.walls?.bottom?.elements || []} moduleWidthPx={modWidthPx} moduleDepthPx={modDepthPx} moduleId={module.id} moduleWidthMm={moduleWidthMm} moduleDepthMm={moduleDepthMm} selectedElement={selectedElement} handleElementClick={handleElementClick} {...commonElementRenderProps} />
+                                    <RenderModuleElements side='left' numPanels={numPanelsDepth} totalLengthPx={modDepthPx} isHorizontal={false} moduleElements={module.walls?.left?.elements || []} moduleWidthPx={modWidthPx} moduleDepthPx={modDepthPx} moduleId={module.id} moduleWidthMm={moduleWidthMm} moduleDepthMm={moduleDepthMm} selectedElement={selectedElement} handleElementClick={handleElementClick} {...commonElementRenderProps} />
+                                    <RenderModuleElements side='right' numPanels={numPanelsDepth} totalLengthPx={modDepthPx} isHorizontal={false} moduleElements={module.walls?.right?.elements || []} moduleWidthPx={modWidthPx} moduleDepthPx={modDepthPx} moduleId={module.id} moduleWidthMm={moduleWidthMm} moduleDepthMm={moduleDepthMm} selectedElement={selectedElement} handleElementClick={handleElementClick} {...commonElementRenderProps} />
+                                </g>
+                                {editingModuleId === module.id ? (
+                                    <foreignObject x={(modWidthPx / 2) - 40} y={(modDepthPx / 2) - 12} width="80" height="25" style={{ overflow: 'visible' }}>
+                                        <input type="text" value={editingInputValue}
+                                            onChange={handleLabelInputChange}
+                                            onBlur={() => commitLabelChange(editingModuleId)}
+                                            onKeyDown={handleLabelInputKeyDown} autoFocus
+                                            className="p-1 border border-blue-500 rounded bg-white text-black text-xs shadow-md w-full"
+                                            onClick={e => e.stopPropagation()}
+                                        />
+                                    </foreignObject>
+                                ) : (
+                                    <text x={modWidthPx / 2} y={modDepthPx / 2}
+                                        textAnchor="middle" dominantBaseline="central"
+                                        fill={isSelectedForHighlight ? "#dc2626" : "#4b5563"}
+                                        fontSize={dynamicStrokes.moduleLabelFontSize} fontWeight="bold"
+                                        style={{pointerEvents: 'all', cursor: 'text', userSelect: 'none'}}
+                                        onClick={(e) => startEditingLabel(e, module.id, module.label || (index + 1).toString())}
+                                        data-interactive="true"
+                                    >
+                                        {module.label || (index + 1).toString()}
+                                    </text>
+                                )}
+                                {isSelectedForHighlight && (
+                                    <g className="corner-resize-handle">
+                                        <circle cx={modWidthPx} cy={modDepthPx} r={dynamicStrokes.moduleResizeHandleRadius}
+                                            fill="#ef4444" stroke="#ffffff" strokeWidth={Math.max(0.2, 0.8 * dynamicStrokeScaleFactor)}
+                                            cursor="nwse-resize" onMouseDown={(e) => handleCornerResizeMouseDown(e, module.id)}
+                                            data-interactive="true" className="hover:fill-red-500 transition-colors"
+                                        />
+                                    </g>
+                                )}
+                            </g>
+                         );
+                    })}
+                </g>
+            </svg>
+
+             {selectedElement && (() => {
+                let elementData = null;
+                const moduleForElement = modules.find(m => m.id === selectedElement.moduleId);
+                if (moduleForElement?.walls) {
+                    for (const side in moduleForElement.walls) {
+                        const found = moduleForElement.walls[side]?.elements?.find(el => el.id === selectedElement.elementId);
+                        if (found) { elementData = { ...found, side }; break; }
+                    }
+                }
+                return elementData ? (
+                    <ElementEditPanel
+                        key={selectedElement.elementId + (elementData.isOpen ? '-open':'-closed') + (elementData.openingSide || '') + (elementData.openingDirection || '') + (elementData.width || '') + (elementData.type || '')}
+                        elementInfo={selectedElement}
+                        currentElementData={elementData}
+                        modules={modules} 
+                        position={panelPosition}
+                        onClose={handleClosePanels}
+                        onUpdate={handleUpdateElement}
+                        onDelete={() => handleDeleteElement(selectedElement.moduleId, selectedElement.elementId)}
+                    />
+                ) : null;
+             })()}
+             {selectedWallSegment && !selectedElement && (
+                <WallEditPanel
+                    segmentInfo={selectedWallSegment} position={panelPosition}
+                    onClose={handleClosePanels} onAddElement={handleAddElement}
+                />
+             )}
+             {selectedModuleId && !selectedElement && !selectedWallSegment && (
+                 <ModuleEditPanel
+                    module={modules.find(m => m.id === selectedModuleId)}
+                    position={panelPosition} onClose={handleClosePanels}
+                    onUpdateModule={handleUpdateModuleRef.current}
+                    onDeleteModule={handleDeleteModule}
+                 />
+             )}
+        </div>
+    );
+};
+
+export default ModularMode;
+
+==== components\Configurator\modes\ModuleEditPanel.jsx ====
+import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { FaTimes, FaTrashAlt, FaRedo, FaUndo } from 'react-icons/fa';
+
+export const ModuleEditPanel = ({ module, position, onClose, onUpdateModule, onDeleteModule }) => {
+    const [rotation, setRotation] = useState(module?.rotation || 0);
+
+    // Update local state if the selected module changes
+    useEffect(() => {
+        setRotation(module?.rotation || 0);
+    }, [module]);
+
+    if (!module) return null;
+
+    const panelStyle = {
+        position: 'absolute',
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        minWidth: '180px', // Can be narrower now
+        zIndex: 50,
+    };
+
+    const handleRotate = (delta) => {
+        let newRotation = (rotation + delta) % 360;
+        if (newRotation < 0) newRotation += 360;
+        setRotation(newRotation);
+        onUpdateModule(module.id, { rotation: newRotation });
+    };
+
+    const handleDelete = () => {
+        if (window.confirm(`Are you sure you want to delete module "${module.label || module.id}"?`)) {
+            onDeleteModule(module.id);
+            onClose();
+        }
+    };
+
+
+    return (
+        <div
+            style={panelStyle}
+            className="absolute bg-gray-800 text-white rounded-md shadow-xl p-3 z-50 text-sm flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+            data-interactive="true"
+        >
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-gray-600 pb-2 mb-1">
+                <span className="font-semibold text-base truncate" title={module.label || 'Module'}>
+                    {module.label || `Module ${module.id.substring(0, 4)}`}
+                </span>
+                <button onClick={onClose} className="text-gray-400 hover:text-white text-lg leading-none" data-interactive="true">
+                    <FaTimes />
+                </button>
+            </div>
+
+            {/* Rotation */}
+            <div className="flex justify-between items-center gap-2">
+                <span className="text-xs font-medium">Rotation:</span>
+                <div className="flex items-center gap-1">
+                    <button onClick={() => handleRotate(-90)} className="p-1 bg-gray-700 hover:bg-gray-600 rounded" data-interactive="true" title="Rotate Left 90°">
+                        <FaUndo />
+                    </button>
+                    <span className="text-xs w-8 text-center">{module?.rotation || 0}°</span>
+                    <button onClick={() => handleRotate(90)} className="p-1 bg-gray-700 hover:bg-gray-600 rounded" data-interactive="true" title="Rotate Right 90°">
+                        <FaRedo />
+                    </button>
+                </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end border-t border-gray-600 pt-2 mt-1">
+                 <button
+                     onClick={handleDelete}
+                     className="flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-xs"
+                     data-interactive="true"
+                     title="Delete Module"
+                >
+                     <FaTrashAlt />
+                     Delete
+                 </button>
+            </div>
+        </div>
+    );
+};
+
+ModuleEditPanel.propTypes = {
+    module: PropTypes.object,
+    position: PropTypes.shape({
+        x: PropTypes.number.isRequired,
+        y: PropTypes.number.isRequired,
+    }).isRequired,
+    onClose: PropTypes.func.isRequired,
+    onUpdateModule: PropTypes.func.isRequired,
+    onDeleteModule: PropTypes.func.isRequired,
+}; 
+
+==== components\Configurator\modes\ModuleRenderer.jsx ====
+// src/components/Configurator/modes/ModuleRenderer.jsx
+import React from 'react';
+import PropTypes from 'prop-types';
+import { ElementRenderer } from '../ElementRenderer';
+import {
+    DEFAULT_MODULAR_WIDTH, DEFAULT_MODULAR_DEPTH, DEFAULT_PANEL_WIDTH,
+    DOOR_WIDTH_MM, DOUBLE_DOOR_WIDTH_MM, DEFAULT_WINDOW_WIDTH_MM,
+    EXTERNAL_WALL_THICKNESS_PX, RENDER_SCALE,
+    GRID_PANEL_WIDTH_PX, ACCESSORY_SIZE_PX,
+} from './../constants';
+import { WINDOW_DOOR_TYPES, ACCESSORY_TYPES } from './WallEditPanel';
+
+// --- Render Functions ---
+
+const renderAccessory = (x, y, rotationDeg, interactionProps, IconComponent) => {
+    const size = ACCESSORY_SIZE_PX;
+    return (
+        <g transform={`translate(${x}, ${y}) rotate(${rotationDeg})`} {...interactionProps}>
+            {/* The inner <g> centers the icon, assuming the icon's own drawing origin is top-left */}
+            <g transform={`translate(${-size/2}, ${-size/2})`}>
+                <IconComponent size={size} />
+            </g>
+        </g>
+    );
+};
+
+const renderWallLineWithOpenings = (side, module, numPanels, isHorizontal, modWidthPx, modDepthPx, strokeWidths) => {
+    const wallSegments = []; const moduleElements = module.walls?.[side]?.elements || []; const lengthPx = isHorizontal ? modWidthPx : modDepthPx;
+    if (numPanels <= 0 || lengthPx <= 0) return []; const panelLengthPx = lengthPx / numPanels;
+    for (let i = 0; i < numPanels; i++) {
+        const elementInSegment = moduleElements.find(el => el.segmentIndex === i); const segmentStartPx = i * panelLengthPx; const segmentEndPx = (i + 1) * panelLengthPx;
+        let outerLinePoints = []; let innerLinePoints = []; const wallThickness = EXTERNAL_WALL_THICKNESS_PX;
+        const yOuter = isHorizontal ? (side === 'top' ? 0 : modDepthPx) : 0; const yInner = isHorizontal ? (side === 'top' ? wallThickness : modDepthPx - wallThickness) : 0;
+        const xOuter = !isHorizontal ? (side === 'left' ? 0 : modWidthPx) : 0; const xInner = !isHorizontal ? (side === 'left' ? wallThickness : modWidthPx - wallThickness) : 0;
+        const doubleDoorFromPrevious = moduleElements.find(el => el.type?.includes('podwójne') && el.segmentIndex === i - 1); if (doubleDoorFromPrevious) { continue; }
+        if (elementInSegment) {
+            const isDouble = elementInSegment.type?.includes('podwójne'); const isWindowOrDoor = WINDOW_DOOR_TYPES.includes(elementInSegment.type);
+            if (isWindowOrDoor) {
+                const defaultWidthMM = elementInSegment.type?.includes('Okno') ? DEFAULT_WINDOW_WIDTH_MM : (isDouble ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
+                const elementWidthMM = elementInSegment.width || defaultWidthMM; const elementWidthPx = elementWidthMM * RENDER_SCALE;
+                const elementLengthToDraw = isDouble ? Math.min(elementWidthPx, panelLengthPx * 2) : Math.min(elementWidthPx, panelLengthPx);
+                const elementOffset = isDouble ? 0 : Math.max(0, (panelLengthPx - elementLengthToDraw) / 2);
+                const elementStartPx = segmentStartPx + elementOffset; const elementEndPx = elementStartPx + elementLengthToDraw; const segmentEndCoord = isDouble ? segmentStartPx + panelLengthPx * 2 : segmentEndPx;
+                if (elementOffset > 1e-6) { if (isHorizontal) { outerLinePoints.push({ x1: segmentStartPx, y1: yOuter, x2: elementStartPx, y2: yOuter }); innerLinePoints.push({ x1: segmentStartPx, y1: yInner, x2: elementStartPx, y2: yInner }); } else { outerLinePoints.push({ x1: xOuter, y1: segmentStartPx, x2: xOuter, y2: elementStartPx }); innerLinePoints.push({ x1: xInner, y1: segmentStartPx, x2: xInner, y2: elementStartPx }); } }
+                if ((segmentEndCoord - elementEndPx) > 1e-6) { if (isHorizontal) { outerLinePoints.push({ x1: elementEndPx, y1: yOuter, x2: segmentEndCoord, y2: yOuter }); innerLinePoints.push({ x1: elementEndPx, y1: yInner, x2: segmentEndCoord, y2: yInner }); } else { outerLinePoints.push({ x1: xOuter, y1: elementEndPx, x2: xOuter, y2: segmentEndCoord }); innerLinePoints.push({ x1: xInner, y1: elementEndPx, x2: xInner, y2: segmentEndCoord }); } }
+            } else { if (isHorizontal) { outerLinePoints.push({ x1: segmentStartPx, y1: yOuter, x2: segmentEndPx, y2: yOuter }); innerLinePoints.push({ x1: segmentStartPx, y1: yInner, x2: segmentEndPx, y2: yInner }); } else { outerLinePoints.push({ x1: xOuter, y1: segmentStartPx, x2: xOuter, y2: segmentEndPx }); innerLinePoints.push({ x1: xInner, y1: segmentStartPx, x2: xInner, y2: segmentEndPx }); } }
+        } else { if (isHorizontal) { outerLinePoints.push({ x1: segmentStartPx, y1: yOuter, x2: segmentEndPx, y2: yOuter }); innerLinePoints.push({ x1: segmentStartPx, y1: yInner, x2: segmentEndPx, y2: yInner }); } else { outerLinePoints.push({ x1: xOuter, y1: segmentStartPx, x2: xOuter, y2: segmentEndPx }); innerLinePoints.push({ x1: xInner, y1: segmentStartPx, x2: xInner, y2: segmentEndPx }); } }
+        outerLinePoints.forEach((p, idx) => { if (isFinite(p.x1 + p.y1 + p.x2 + p.y2)) wallSegments.push( <line key={`${side}-${i}-outer-${idx}`} {...p} stroke="#4b5563" strokeWidth={strokeWidths.wall} /> ); });
+        innerLinePoints.forEach((p, idx) => { if (isFinite(p.x1 + p.y1 + p.x2 + p.y2)) wallSegments.push( <line key={`${side}-${i}-inner-${idx}`} {...p} stroke="#9ca3af" strokeWidth={strokeWidths.wall * 0.4} /> ); });
+    } return wallSegments;
+};
+
+const renderAllElements = (module, selectedElement, onElementClick) => {
+     const rendered = [];
+     const moduleWidthMm = module.width || DEFAULT_MODULAR_WIDTH; const moduleDepthMm = module.depth || DEFAULT_MODULAR_DEPTH;
+     const modWidthPx = moduleWidthMm * RENDER_SCALE; const modDepthPx = moduleDepthMm * RENDER_SCALE;
+     const numPanelsWidth = Math.max(1, Math.round(moduleWidthMm / DEFAULT_PANEL_WIDTH)); const numPanelsDepth = Math.max(1, Math.round(moduleDepthMm / DEFAULT_PANEL_WIDTH));
+
+     // 1. External elements
+     for (const side in module.walls) {
+         const elements = module.walls[side]?.elements || []; const isHorizontal = side === 'top' || side === 'bottom';
+         const wallLengthPx = isHorizontal ? modWidthPx : modDepthPx; const numPanels = isHorizontal ? numPanelsWidth : numPanelsDepth; if (numPanels <= 0) continue;
+         const panelLengthPx = wallLengthPx / numPanels;
+         elements.forEach(element => {
+              if (module.walls[side].elements.some(otherEl => otherEl.type?.includes('podwójne') && otherEl.segmentIndex === element.segmentIndex - 1)) return;
+              const isDouble = element.type?.includes('podwójne'); const isAccessory = ACCESSORY_TYPES.includes(element.type);
+              const defaultWidthMM = element.type?.includes('Okno') ? DEFAULT_WINDOW_WIDTH_MM : (isDouble ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
+              const elementWidthMm = element.width || defaultWidthMM; const elementWidthPx = elementWidthMm * RENDER_SCALE;
+              const segmentStartPx = element.segmentIndex * panelLengthPx;
+              const elementVisualWidthPx = isAccessory ? ACCESSORY_SIZE_PX : (isDouble ? Math.min(elementWidthPx, panelLengthPx * 2) : Math.min(elementWidthPx, panelLengthPx));
+              const offset = isAccessory ? (panelLengthPx - elementVisualWidthPx) / 2 : (isDouble ? 0 : Math.max(0, (panelLengthPx - elementVisualWidthPx) / 2));
+              const elementStartCoord = segmentStartPx + offset; let position = { x: 0, y: 0 }; let rotation = 0;
+              if (isHorizontal) { position = { x: elementStartCoord + elementVisualWidthPx / 2, y: side === 'top' ? EXTERNAL_WALL_THICKNESS_PX / 2 : modDepthPx - EXTERNAL_WALL_THICKNESS_PX / 2 }; rotation = side === 'top' ? 0 : 180; }
+              else { position = { x: side === 'left' ? EXTERNAL_WALL_THICKNESS_PX / 2 : modWidthPx - EXTERNAL_WALL_THICKNESS_PX / 2, y: elementStartCoord + elementVisualWidthPx / 2 }; rotation = side === 'left' ? -90 : 90; }
+
+              // Add check for finite position before rendering
+              if (!isFinite(position.x) || !isFinite(position.y)) {
+                  console.warn("Invalid position calculated for external element:", element, position);
+                  return; // Skip rendering this element
+              }
+
+              rendered.push( <ElementRenderer key={element.id} element={{ ...element, position, rotation, location: 'external', moduleId: module.id }} wallThicknessPx={EXTERNAL_WALL_THICKNESS_PX} isSelected={selectedElement?.elementId === element.id} onClick={onElementClick} /> );
+         });
+     }
+     // 2. Internal elements
+     return rendered;
+};
+
+const renderInteractiveSegments = (side, module, numPanels, isHorizontal, modWidthPx, modDepthPx, moduleIndex, selectedWallSegment, onExternalSegmentClick, strokeWidths) => {
+     const segments = []; const elementsOnSide = module.walls?.[side]?.elements || []; const lengthPx = isHorizontal ? modWidthPx : modDepthPx;
+     if (numPanels <= 0 || lengthPx <= 0) return []; const panelLengthPx = lengthPx / numPanels; const wallThickness = EXTERNAL_WALL_THICKNESS_PX;
+     for (let i = 0; i < numPanels; i++) {
+         const isOccupiedByDoubleFromPrevious = elementsOnSide.some(el => el.type?.includes('podwójne') && el.segmentIndex === i - 1); if (isOccupiedByDoubleFromPrevious) { continue; }
+         let segX, segY, segWidth, segHeight; const hitAreaThicknessPx = Math.max(10, wallThickness * 1.5); const margin = (hitAreaThicknessPx - wallThickness) / 2;
+         if (isHorizontal) { segX = i * panelLengthPx; segWidth = panelLengthPx; segY = (side === 'top' ? -margin : modDepthPx - wallThickness - margin); segHeight = hitAreaThicknessPx; } else { segY = i * panelLengthPx; segHeight = panelLengthPx; segX = (side === 'left' ? -margin : modWidthPx - wallThickness - margin); segWidth = hitAreaThicknessPx; }
+         if (isFinite(segX + segY + segWidth + segHeight)) { segments.push( <rect key={`${side}-${i}-interactive`} x={segX} y={segY} width={segWidth} height={segHeight} fill="transparent" stroke="none" data-module-index={moduleIndex} data-side={side} data-segment-index={i} onClick={(e) => onExternalSegmentClick(e, moduleIndex, side, i)} data-interactive="true" className="cursor-pointer hover:fill-red-500 hover:fill-opacity-10 transition-colors duration-150" /> ); }
+         if (selectedWallSegment && selectedWallSegment.moduleId === module.id && selectedWallSegment.side === side && selectedWallSegment.segmentIndex === i) {
+              let hlX, hlY, hlWidth, hlHeight; const hlPadding = strokeWidths.dynamic * 0.2; const wallCenterOffset = wallThickness / 2;
+              if (isHorizontal) { hlX = i * panelLengthPx + hlPadding; hlWidth = panelLengthPx - 2 * hlPadding; hlY = (side === 'top' ? wallCenterOffset : modDepthPx - wallCenterOffset) - strokeWidths.highlight / 2; hlHeight = strokeWidths.highlight; } else { hlY = i * panelLengthPx + hlPadding; hlHeight = panelLengthPx - 2 * hlPadding; hlX = (side === 'left' ? wallCenterOffset : modWidthPx - wallCenterOffset) - strokeWidths.highlight / 2; hlWidth = strokeWidths.highlight; }
+              if (isFinite(hlX + hlY + hlWidth + hlHeight) && hlWidth > 0 && hlHeight > 0) { segments.push( <rect key={`${side}-${i}-highlight`} x={hlX} y={hlY} width={hlWidth} height={hlHeight} fill="none" stroke="#ef4444" strokeWidth={strokeWidths.highlight} rx={strokeWidths.dynamic * 0.5} ry={strokeWidths.dynamic * 0.5} style={{ pointerEvents: 'none' }} /> ); }
+         }
+     } return segments;
+};
+
+// --- Main ModuleRenderer Component ---
+
+export const ModuleRenderer = ({
+    module, moduleIndex, dynamicStrokeScale, selectedWallSegment,
+    selectedElement,
+    onElementClick,
+    onExternalSegmentClick,
+}) => {
+
+    const moduleWidthMm = module.width || DEFAULT_MODULAR_WIDTH;
+    const moduleDepthMm = module.depth || DEFAULT_MODULAR_DEPTH;
+    const modWidthPx = moduleWidthMm * RENDER_SCALE;
+    const modDepthPx = moduleDepthMm * RENDER_SCALE;
+    const numPanelsWidth = Math.max(1, Math.round(moduleWidthMm / DEFAULT_PANEL_WIDTH));
+    const numPanelsDepth = Math.max(1, Math.round(moduleDepthMm / DEFAULT_PANEL_WIDTH));
+    const moduleX = module.x || 0; const moduleY = module.y || 0; const moduleRotation = module.rotation || 0;
+
+    // Ensure module position and dimensions are valid before rendering
+    if (!isFinite(moduleX + moduleY + modWidthPx + modDepthPx) || modWidthPx <= 0 || modDepthPx <= 0) {
+         console.warn("Invalid module dimensions or position:", module);
+         return null;
+    }
+
+    const strokeWidths = {
+        wall: Math.max(0.3, 1.5 * dynamicStrokeScale),
+        segment: Math.max(0.1, 0.4 * dynamicStrokeScale),
+        highlight: Math.max(0.8, 4 * dynamicStrokeScale),
+        dynamic: dynamicStrokeScale
+    };
+
+    return (
+        <g transform={`translate(${moduleX * RENDER_SCALE}, ${moduleY * RENDER_SCALE}) rotate(${moduleRotation})`}>
+            <rect x={0} y={0} width={modWidthPx} height={modDepthPx} fill="#f9f9f9" stroke="#e0e0e0" strokeWidth={strokeWidths.wall * 0.2} />
+            <g stroke="#d1d5db" strokeWidth={strokeWidths.segment} style={{ pointerEvents: 'none' }}>
+                 {numPanelsWidth > 1 && isFinite(EXTERNAL_WALL_THICKNESS_PX) && ( Array.from({ length: numPanelsWidth - 1 }, (_, i) => { const x = (i + 1) * (modWidthPx / numPanelsWidth); if (isFinite(x)) return <line key={`v-${i}`} x1={x} y1={EXTERNAL_WALL_THICKNESS_PX} x2={x} y2={modDepthPx - EXTERNAL_WALL_THICKNESS_PX} />; return null; }).filter(Boolean) )}
+                 {numPanelsDepth > 1 && isFinite(EXTERNAL_WALL_THICKNESS_PX) && ( Array.from({ length: numPanelsDepth - 1 }, (_, i) => { const y = (i + 1) * (modDepthPx / numPanelsDepth); if (isFinite(y)) return <line key={`h-${i}`} x1={EXTERNAL_WALL_THICKNESS_PX} y1={y} x2={modWidthPx - EXTERNAL_WALL_THICKNESS_PX} y2={y} />; return null; }).filter(Boolean) )}
+            </g>
+            <g className="walls">
+                 {renderWallLineWithOpenings('top', module, numPanelsWidth, true, modWidthPx, modDepthPx, strokeWidths)}
+                 {renderWallLineWithOpenings('bottom', module, numPanelsWidth, true, modWidthPx, modDepthPx, strokeWidths)}
+                 {renderWallLineWithOpenings('left', module, numPanelsDepth, false, modWidthPx, modDepthPx, strokeWidths)}
+                 {renderWallLineWithOpenings('right', module, numPanelsDepth, false, modWidthPx, modDepthPx, strokeWidths)}
+            </g>
+            <g className="interactive-overlays">
+                 {renderInteractiveSegments('top', module, numPanelsWidth, true, modWidthPx, modDepthPx, moduleIndex, selectedWallSegment, onExternalSegmentClick, strokeWidths)}
+                 {renderInteractiveSegments('bottom', module, numPanelsWidth, true, modWidthPx, modDepthPx, moduleIndex, selectedWallSegment, onExternalSegmentClick, strokeWidths)}
+                 {renderInteractiveSegments('left', module, numPanelsDepth, false, modWidthPx, modDepthPx, moduleIndex, selectedWallSegment, onExternalSegmentClick, strokeWidths)}
+                 {renderInteractiveSegments('right', module, numPanelsDepth, false, modWidthPx, modDepthPx, moduleIndex, selectedWallSegment, onExternalSegmentClick, strokeWidths)}
+             </g>
+            <g className="elements">
+                 {renderAllElements(module, selectedElement, onElementClick)}
+            </g>
+            <text x={modWidthPx / 2} y={modDepthPx / 2} textAnchor="middle" dominantBaseline="central" fill="#dc2626" fontSize={Math.max(8, 14 * dynamicStrokeScale)} fontWeight="bold" style={{ pointerEvents: 'none' }}> Nr {moduleIndex + 1} </text>
+        </g>
+    );
+};
+
+ModuleRenderer.propTypes = {
+    module: PropTypes.object.isRequired,
+    moduleIndex: PropTypes.number.isRequired,
+    dynamicStrokeScale: PropTypes.number.isRequired,
+    selectedWallSegment: PropTypes.object,
+    selectedElement: PropTypes.object,
+    onElementClick: PropTypes.func.isRequired,
+    onExternalSegmentClick: PropTypes.func.isRequired,
+};
+
+==== components\Configurator\modes\rendering\renderInteractiveSegments.jsx ====
+import React from 'react';
+
+export const RenderInteractiveSegments = ({
+    side,
+    lengthPx,
+    numPanels,
+    isHorizontal,
+    moduleWidthPx,
+    moduleDepthPx,
+    moduleIndex,
+    moduleId, // Need moduleId to check against selectedWallSegment
+    wallThicknessPx,
+    dynamicStrokeScale,
+    // modules, // Access to module.walls[side].elements can be simplified by passing elementsOnSide directly
+    elementsOnSide, // Pass pre-filtered elements for this side
+    selectedWallSegment, // state from ModularMode
+    handleInteractiveSegmentClick, // callback from ModularMode
+    // Constants that might be needed, if any dynamicStrokeWidth calculations are done here
+    // For now, assuming dynamicStrokeWidth for highlight is passed or calculated from dynamicStrokeScale
+    dynamicStrokeWidth // For highlight rx/ry if needed, or could be a fixed value or derived
+}) => {
+    const segments = [];
+    if (numPanels <= 0 || lengthPx <= 0) return []; // Removed modules[moduleIndex] check as we pass elementsOnSide
+
+    const panelLengthPx = lengthPx / numPanels;
+    // const currentModule = modules[moduleIndex]; // Not needed if elementsOnSide is passed
+    // const elementsOnSide = currentModule.walls?.[side]?.elements || []; // This logic is now outside
+
+    const segmentStrokeWidthForPadding = Math.max(0.1, 0.4 * dynamicStrokeScale); // For highlight padding
+    const highlightStrokeThickness = Math.max(0.8, 4 * dynamicStrokeScale); // Highlight thickness
+
+    for (let i = 0; i < numPanels; i++) {
+        const isOccupiedByDoubleFromPrevious = elementsOnSide.some(el =>
+            el.type?.includes('podwójne') && el.segmentIndex === i - 1
+        );
+        if (isOccupiedByDoubleFromPrevious) continue;
+
+        let segX, segY, segWidth, segHeight;
+        const hitAreaThicknessPx = Math.max(10, wallThicknessPx * 1.5);
+        const margin = (hitAreaThicknessPx - wallThicknessPx) / 2;
+
+        if (isHorizontal) {
+            segX = i * panelLengthPx;
+            segWidth = panelLengthPx;
+            segY = (side === 'top' ? -margin : moduleDepthPx - wallThicknessPx - margin);
+            segHeight = hitAreaThicknessPx;
+        } else { // Vertical
+            segY = i * panelLengthPx;
+            segHeight = panelLengthPx;
+            segX = (side === 'left' ? -margin : moduleWidthPx - wallThicknessPx - margin);
+            segWidth = hitAreaThicknessPx;
+        }
+
+        if (isFinite(segX + segY + segWidth + segHeight)) {
+            segments.push(
+                <rect
+                    key={`${side}-${moduleId}-${i}-interactive`} // Ensure key is unique across modules too
+                    x={segX} y={segY}
+                    width={segWidth} height={segHeight}
+                    fill="transparent"
+                    stroke="none"
+                    data-module-index={moduleIndex} // Keep for handler if it still uses index
+                    data-module-id={moduleId} // Pass moduleId for handler
+                    data-side={side}
+                    data-segment-index={i}
+                    onClick={handleInteractiveSegmentClick}
+                    data-interactive="true"
+                    className="cursor-pointer wall-segment-interactive hover:fill-blue-500 hover:fill-opacity-20 transition-colors duration-150"
+                />
+            );
+        }
+
+        if (selectedWallSegment && selectedWallSegment.moduleId === moduleId && selectedWallSegment.side === side && selectedWallSegment.segmentIndex === i) {
+            let hlX, hlY, hlWidth, hlHeight;
+            const hlPadding = segmentStrokeWidthForPadding * 0.5;
+            const wallCenterOffset = wallThicknessPx / 2;
+            const dynamicHighlightStroke = Math.max(0.5, 2 / dynamicStrokeScale); 
+
+            if (isHorizontal) {
+                hlX = i * panelLengthPx + hlPadding;
+                hlY = (side === 'top' ? wallCenterOffset : moduleDepthPx - wallCenterOffset) - (dynamicHighlightStroke / 2);
+                hlWidth = panelLengthPx - 2 * hlPadding;
+                hlHeight = dynamicHighlightStroke;
+            } else { // Vertical
+                hlX = (side === 'left' ? wallCenterOffset : moduleWidthPx - wallCenterOffset) - (dynamicHighlightStroke / 2);
+                hlY = i * panelLengthPx + hlPadding;
+                hlWidth = dynamicHighlightStroke;
+                hlHeight = panelLengthPx - 2 * hlPadding;
+            }
+
+            if (isFinite(hlX + hlY + hlWidth + hlHeight) && hlWidth > 0 && hlHeight > 0) {
+                segments.push(
+                    <rect
+                        key={`${side}-${moduleId}-${i}-highlight`}
+                        x={hlX} y={hlY}
+                        width={hlWidth} height={hlHeight}
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth={dynamicHighlightStroke}
+                        rx={dynamicStrokeWidth * 0.5} // Use passed dynamicStrokeWidth
+                        ry={dynamicStrokeWidth * 0.5}
+                        style={{ pointerEvents: 'none' }}
+                    />
+                );
+            }
+        }
+    }
+    return segments;
+}; 
+
+==== components\Configurator\modes\rendering\renderInternalWalls.jsx ====
+import React from 'react';
+
+export const RenderInternalWalls = ({
+    internalWalls,
+    moduleId,
+    RENDER_SCALE,
+    WALL_THICKNESS_PX // Base wall thickness for consistent scaling, can be adjusted by a factor if needed
+}) => {
+    if (!internalWalls || internalWalls.length === 0) return null;
+
+    return internalWalls.map(wall => {
+        if (!wall || !wall.id) return null; // Basic validation
+        return (
+             <line
+                key={wall.id}
+                x1={wall.x1 * RENDER_SCALE}
+                y1={wall.y1 * RENDER_SCALE}
+                x2={wall.x2 * RENDER_SCALE}
+                y2={wall.y2 * RENDER_SCALE} // Assuming coords are in MM
+                stroke={"#6B7280"}
+                strokeWidth={(wall.thickness || WALL_THICKNESS_PX * 0.6)} // Use provided thickness or a factor of main wall
+                data-module-id={moduleId}
+                data-element-id={wall.id}
+                data-element-type="internalWall"
+                className="internal-wall cursor-not-allowed" 
+            />
+         );
+     }).filter(Boolean);
+}; 
+
+==== components\Configurator\modes\rendering\renderModuleElements.jsx ====
+// src/components/Configurator/modes/rendering/renderModuleElements.jsx
+import React from 'react';
+import { FaRadiationAlt, FaSink, FaPlug, FaLightbulb } from 'react-icons/fa';
+import { ElementRenderer } from '../../ElementRenderer'; // Corrected path
+import {
+    RENDER_SCALE,
+    DEFAULT_WINDOW_WIDTH_MM,
+    DOUBLE_DOOR_WIDTH_MM,
+    DOOR_WIDTH_MM,
+    ACCESSORY_SIZE_PX,
+    EXTERNAL_WALL_THICKNESS_PX
+} from '../../constants';
+
+export const RenderModuleElements = ({
+    side,
+    numPanels,
+    totalLengthPx,
+    isHorizontal,
+    moduleElements,
+    moduleWidthPx,
+    moduleDepthPx,
+    moduleId,
+    moduleWidthMm,
+    moduleDepthMm,
+    dynamicStrokeScale,
+    handleElementClick,
+    getHingePos,
+    ACCESSORY_TYPES,
+    selectedElement
+}) => {
+    if (!moduleElements || moduleElements.length === 0) return null;
+
+    const panelLengthPx = totalLengthPx / numPanels;
+    if (!isFinite(panelLengthPx) || panelLengthPx <= 0) return null;
+
+    const renderAccessory = (element, IconComponent) => {
+        const segmentStartPx = element.segmentIndex * panelLengthPx;
+        const segmentCenterCoord = segmentStartPx + panelLengthPx / 2;
+        let x_center, y_center;
+        
+        const iconBaseSize = ACCESSORY_SIZE_PX;
+        const iconRenderSize = Math.max(iconBaseSize * 0.6, Math.min(iconBaseSize * 1.8, iconBaseSize / dynamicStrokeScale));
+
+        if (isHorizontal) {
+            x_center = segmentCenterCoord;
+            y_center = (side === 'top' ? EXTERNAL_WALL_THICKNESS_PX / 2 : moduleDepthPx - EXTERNAL_WALL_THICKNESS_PX / 2);
+        } else {
+            y_center = segmentCenterCoord;
+            x_center = (side === 'left' ? EXTERNAL_WALL_THICKNESS_PX / 2 : moduleWidthPx - EXTERNAL_WALL_THICKNESS_PX / 2);
+        }
+
+        if (!isFinite(x_center + y_center)) return null;
+        
+        const foreignObjectX = x_center - iconRenderSize / 2;
+        const foreignObjectY = y_center - iconRenderSize / 2;
+
+        return (
+            <g key={element.id}
+               data-module-id={moduleId} data-element-id={element.id}
+               data-interactive="true" className="cursor-pointer element-group"
+               onClick={handleElementClick}
+               transform={`translate(${foreignObjectX}, ${foreignObjectY})`}
+            >
+                <foreignObject width={iconRenderSize} height={iconRenderSize} overflow="visible">
+                    <div className={`w-full h-full flex items-center justify-center text-gray-500 ${(selectedElement?.elementId === element.id && selectedElement?.moduleId === moduleId) ? 'text-blue-500' : ''}`}
+                         style={{ fontSize: `${iconRenderSize * 0.75}px` }}>
+                         <IconComponent />
+                    </div>
+                </foreignObject>
+            </g>
+        );
+    };
+
+    return moduleElements.map(element => {
+        const isSecondHalfOfDouble = moduleElements.some(otherEl =>
+            otherEl.type?.includes('podwójne') && otherEl.segmentIndex === element.segmentIndex - 1
+        );
+        if (isSecondHalfOfDouble) return null;
+
+        const isSelected = selectedElement?.elementId === element.id && selectedElement?.moduleId === moduleId;
+        const elementTypeNormalized = element.type.toLowerCase();
+
+
+        if (ACCESSORY_TYPES.some(accType => elementTypeNormalized === accType.toLowerCase())) {
+            if (elementTypeNormalized === 'grzejnik') return renderAccessory(element, FaRadiationAlt);
+            if (elementTypeNormalized === 'umywalka') return renderAccessory(element, FaSink);
+            if (elementTypeNormalized === 'gniazdko') return renderAccessory(element, FaPlug);
+            if (elementTypeNormalized === 'lampa') return renderAccessory(element, FaLightbulb);
+            return null;
+        }
+
+        let elementPositionForRenderer;
+        let elementRotationForRenderer;
+        let specificWidthMm = element.width;
+
+        if (isHorizontal) {
+            elementRotationForRenderer = (side === 'top' ? 0 : 180);
+        } else {
+            elementRotationForRenderer = (side === 'left' ? -90 : 90);
+        }
+
+        if (elementTypeNormalized.includes('drzwi')) {
+            elementPositionForRenderer = getHingePos(element, side, moduleWidthPx, moduleDepthPx, EXTERNAL_WALL_THICKNESS_PX, moduleWidthMm, moduleDepthMm);
+            if (!specificWidthMm) {
+                specificWidthMm = elementTypeNormalized.includes('podwójne') ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM;
+            }
+        } else if (elementTypeNormalized.includes('okno')) {
+            const windowBaseWidthMm = element.width || DEFAULT_WINDOW_WIDTH_MM;
+            specificWidthMm = windowBaseWidthMm;
+            const windowVisualWidthPx = Math.min(windowBaseWidthMm * RENDER_SCALE, panelLengthPx);
+            const segmentStartPx = element.segmentIndex * panelLengthPx;
+            const offsetInSegment = Math.max(0, (panelLengthPx - windowVisualWidthPx) / 2);
+            const windowCenterOnWallLine = segmentStartPx + offsetInSegment + windowVisualWidthPx / 2;
+
+            if (isHorizontal) {
+                elementPositionForRenderer = {
+                    x: windowCenterOnWallLine,
+                    y: (side === 'top' ? EXTERNAL_WALL_THICKNESS_PX / 2 : moduleDepthPx - EXTERNAL_WALL_THICKNESS_PX / 2)
+                };
+            } else {
+                elementPositionForRenderer = {
+                    x: (side === 'left' ? EXTERNAL_WALL_THICKNESS_PX / 2 : moduleWidthPx - EXTERNAL_WALL_THICKNESS_PX / 2),
+                    y: windowCenterOnWallLine
+                };
+            }
+        } else {
+            console.warn("RenderModuleElements: Unsupported element type for ElementRenderer pipeline:", element.type);
+            return null;
+        }
+
+        if (!elementPositionForRenderer || !isFinite(elementPositionForRenderer.x) || !isFinite(elementPositionForRenderer.y)) {
+            console.warn("RenderModuleElements: Invalid position calculated for element:", element, elementPositionForRenderer);
+            return null;
+        }
+        
+        const elementForRenderer = {
+            ...element,
+            position: elementPositionForRenderer,
+            rotation: elementRotationForRenderer,
+            width: specificWidthMm, 
+            moduleId: moduleId,
+        };
+
+        return (
+            <ElementRenderer
+                key={element.id + (element.isOpen ? '-o' : '-c') + (element.openingSide || '') + (element.openingDirection || '') + (element.width || '')}
+                element={elementForRenderer}
+                wallThicknessPx={EXTERNAL_WALL_THICKNESS_PX}
+                isSelected={isSelected}
+                onClick={handleElementClick}
+            />
+        );
+
+    }).filter(Boolean);
+};
+
+==== components\Configurator\modes\rendering\renderWallLines.jsx ====
+import React from 'react';
+
+// Note: Constants previously defined in ModularMode need to be passed or imported
+
+export const renderWallLineWithOpenings = ({
+    side,
+    lengthPx,
+    numPanels,
+    isHorizontal,
+    moduleElements,
+    moduleWidthPx,
+    moduleDepthPx,
+    wallThicknessPx,
+    dynamicStrokeWidth,
+    // Constants passed from ModularMode
+    RENDER_SCALE,
+    ACCESSORY_TYPES, // This might require importing WallEditPanel constants if not passed
+    DEFAULT_WINDOW_WIDTH_MM,
+    DOUBLE_DOOR_WIDTH_MM,
+    DOOR_WIDTH_MM
+}) => {
+    const wallSegments = [];
+    if (numPanels <= 0 || lengthPx <= 0 || !moduleElements) return [];
+
+    const panelLengthPx = lengthPx / numPanels;
+
+    for (let i = 0; i < numPanels; i++) {
+        const elementInSegment = moduleElements.find(el => el.segmentIndex === i);
+        const segmentStartPx = i * panelLengthPx;
+        const segmentEndPx = (i + 1) * panelLengthPx;
+
+        let outerLinePoints = [];
+        let innerLinePoints = [];
+
+        const yOuter = isHorizontal ? (side === 'top' ? 0 : moduleDepthPx) : 0;
+        const yInner = isHorizontal ? (side === 'top' ? wallThicknessPx : moduleDepthPx - wallThicknessPx) : 0;
+        const xOuter = !isHorizontal ? (side === 'left' ? 0 : moduleWidthPx) : 0;
+        const xInner = !isHorizontal ? (side === 'left' ? wallThicknessPx : moduleWidthPx - wallThicknessPx) : 0;
+
+        const doubleDoorFromPrevious = moduleElements.find(el => el.type?.includes('podwójne') && el.segmentIndex === i - 1);
+        if (doubleDoorFromPrevious) {
+             continue; // Skip rendering wall lines for this segment
+        }
+
+        if (elementInSegment) {
+            const isDouble = elementInSegment.type?.includes('podwójne');
+            const isAccessory = ACCESSORY_TYPES.includes(elementInSegment.type);
+            const defaultWidth = elementInSegment.type?.includes('Okno') ? DEFAULT_WINDOW_WIDTH_MM : (isDouble ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
+            const elementWidthMm = elementInSegment.width || defaultWidth;
+            const elementWidthPx = elementWidthMm * RENDER_SCALE;
+
+            const elementOffset = (isDouble || isAccessory) ? 0 : Math.max(0, (panelLengthPx - elementWidthPx) / 2);
+            const elementStartPx = segmentStartPx + elementOffset;
+            const elementEndPx = elementStartPx + (isDouble ? Math.min(elementWidthPx, panelLengthPx * 2) : Math.min(elementWidthPx, panelLengthPx));
+            const segmentEndCoordForWall = isDouble ? segmentStartPx + panelLengthPx * 2 : segmentEndPx;
+
+            if (isAccessory) {
+                if (isHorizontal) {
+                    outerLinePoints.push({ x1: segmentStartPx, y1: yOuter, x2: segmentEndPx, y2: yOuter });
+                    innerLinePoints.push({ x1: segmentStartPx, y1: yInner, x2: segmentEndPx, y2: yInner });
+                } else {
+                    outerLinePoints.push({ x1: xOuter, y1: segmentStartPx, x2: xOuter, y2: segmentEndPx });
+                    innerLinePoints.push({ x1: xInner, y1: segmentStartPx, x2: xInner, y2: segmentEndPx });
+                }
+            } else {
+                if (elementStartPx > segmentStartPx + 1e-6) {
+                    if (isHorizontal) {
+                        outerLinePoints.push({ x1: segmentStartPx, y1: yOuter, x2: elementStartPx, y2: yOuter });
+                        innerLinePoints.push({ x1: segmentStartPx, y1: yInner, x2: elementStartPx, y2: yInner });
+                    } else {
+                        outerLinePoints.push({ x1: xOuter, y1: segmentStartPx, x2: xOuter, y2: elementStartPx });
+                        innerLinePoints.push({ x1: xInner, y1: segmentStartPx, x2: xInner, y2: elementStartPx });
+                    }
+                }
+                 const startWallAfter = isDouble ? elementStartPx + Math.min(elementWidthPx, panelLengthPx * 2) : elementEndPx;
+                 const endWallAt = isDouble ? segmentStartPx + panelLengthPx * 2 : segmentEndPx;
+                 if (endWallAt > startWallAfter + 1e-6) { 
+                    if (isHorizontal) {
+                        outerLinePoints.push({ x1: startWallAfter, y1: yOuter, x2: endWallAt, y2: yOuter });
+                        innerLinePoints.push({ x1: startWallAfter, y1: yInner, x2: endWallAt, y2: yInner });
+                    } else {
+                        outerLinePoints.push({ x1: xOuter, y1: startWallAfter, x2: xOuter, y2: endWallAt });
+                        innerLinePoints.push({ x1: xInner, y1: startWallAfter, x2: xInner, y2: endWallAt });
+                    }
+                }
+            }
+        } else {
+            if (isHorizontal) {
+                outerLinePoints.push({ x1: segmentStartPx, y1: yOuter, x2: segmentEndPx, y2: yOuter });
+                innerLinePoints.push({ x1: segmentStartPx, y1: yInner, x2: segmentEndPx, y2: yInner });
+            } else {
+                outerLinePoints.push({ x1: xOuter, y1: segmentStartPx, x2: xOuter, y2: segmentEndPx });
+                innerLinePoints.push({ x1: xInner, y1: segmentStartPx, x2: xInner, y2: segmentEndPx });
+            }
+        }
+
+        outerLinePoints.forEach((p, idx) => {
+            if (isFinite(p.x1 + p.y1 + p.x2 + p.y2)) {
+                wallSegments.push( <line key={`${side}-${i}-outer-${idx}`} {...p} stroke="#4b5563" strokeWidth={dynamicStrokeWidth} /> );
+            }
+        });
+        innerLinePoints.forEach((p, idx) => {
+             if (isFinite(p.x1 + p.y1 + p.x2 + p.y2)) {
+                wallSegments.push( <line key={`${side}-${i}-inner-${idx}`} {...p} stroke="#9ca3af" strokeWidth={dynamicStrokeWidth * 0.4} /> );
+            }
+        });
+    }
+    return wallSegments;
+}; 
+
+==== components\Configurator\modes\WallEditPanel.jsx ====
+// src/components/Configurator/modes/WallEditPanel.jsx
+import React from 'react';
+import {
+    FaTimes, FaDoorOpen, FaRegWindowMaximize, FaPlug, FaRadiationAlt,
+    FaBox, FaToilet, FaChair, FaBed, FaSink, FaLightbulb
+} from 'react-icons/fa';
+
+// Иконки для элементов
+const WindowIcon = () => <FaRegWindowMaximize className="w-5 h-5 mb-1 text-gray-300"/>;
+const DoorIcon = () => <FaDoorOpen className="w-5 h-5 mb-1 text-gray-300"/>;
+const SocketIcon = () => <FaPlug className="w-5 h-5 mb-1 text-gray-300"/>; // Розетка
+const RadiatorIcon = () => <FaRadiationAlt className="w-5 h-5 mb-1 text-gray-300"/>; // Радиатор
+const SinkIcon = () => <FaSink className="w-5 h-5 mb-1 text-gray-300"/>; // Раковина
+const LampIcon = () => <FaLightbulb className="w-5 h-5 mb-1 text-gray-300"/>; // Лампа
+const ToiletIcon = () => <FaToilet className="w-5 h-5 mb-1 text-gray-300"/>;
+const ChairIcon = () => <FaChair className="w-5 h-5 mb-1 text-gray-300"/>;
+const BedIcon = () => <FaBed className="w-5 h-5 mb-1 text-gray-300"/>;
+const PlaceholderIcon = ({ className = "w-5 h-5 mb-1" }) => <FaBox className={`${className} text-gray-400`}/>;
+
+// Определим типы элементов, которые НЕЛЬЗЯ добавлять на стену из этой панели
+// Это только мебель/сантехника, которые должны ставиться внутри.
+const NON_WALL_MOUNTED_TYPES = ["Łóżko", "Sofa", "Stół Okrągły", "Krzesło", "WC", "Prysznic", "Szafka", "Kuchnia"];
+// Определим типы окон/дверей для проверки ограничения
+const WINDOW_DOOR_TYPES = ["Okno Standard", "Okno Panorama", "Drzwi Standard", "Drzwi Szklane", "Drzwi podwójne"]; // Добавим двойную дверь
+const ACCESSORY_TYPES = ["Grzejnik", "Umywalka", "Gniazdko", "Lampa"]; // Типы аксессуаров
+
+const WallEditPanel = ({ segmentInfo, position, onClose, onAddElement }) => {
+    if (!segmentInfo) return null;
+
+    const { moduleId, side, segmentIndex } = segmentInfo;
+
+    // Категории и элементы согласно ТЗ
+    const elementCategories = [
+        {
+            name: "OKNA / DRZWI",
+            items: [
+                { name: "Okno Standard", icon: <WindowIcon /> },
+                { name: "Okno Panorama", icon: <WindowIcon /> },
+                { name: "Drzwi Standard", icon: <DoorIcon /> },
+                // { name: "Drzwi Szklane", icon: <DoorIcon /> }, // Пока уберем, если нужно - добавить
+            ]
+        },
+        {
+            name: "AKCESORIA ŚCIENNE",
+             items: [
+                 { name: "Grzejnik", icon: <RadiatorIcon /> },
+                 { name: "Umywalka", icon: <SinkIcon /> },
+                 { name: "Gniazdko", icon: <SocketIcon /> },
+                 { name: "Lampa", icon: <LampIcon /> },
+             ]
+        },
+         {
+            name: "MEBLE / SANITARIATY", // Эти будут неактивны
+             items: [
+                  { name: "Łóżko", icon: <BedIcon /> },
+                 // { name: "Sofa", icon: <PlaceholderIcon /> },
+                 // { name: "Stół Okrągły", icon: <PlaceholderIcon /> },
+                 // { name: "Krzesło", icon: <ChairIcon /> },
+                 // { name: "WC", icon: <ToiletIcon /> },
+                 // { name: "Prysznic", icon: <PlaceholderIcon /> },
+                 // { name: "Szafka", icon: <PlaceholderIcon /> },
+                 // { name: "Kuchnia", icon: <PlaceholderIcon /> },
+             ]
+        },
+    ];
+
+
+    return (
+        <div
+            className="absolute bg-gray-800 text-white rounded-md shadow-xl p-3 z-50 text-sm flex flex-col gap-3"
+            style={{ left: `${position.x}px`, top: `${position.y}px`, minWidth: '220px' }}
+            onClick={(e) => e.stopPropagation()}
+        >
+             <div className="flex justify-between items-center border-b border-gray-600 pb-2 mb-1">
+                <span className="font-semibold text-xs">Стена: {side.toUpperCase()} / Сегмент: {segmentIndex + 1}</span>
+                 <button onClick={onClose} className="text-gray-400 hover:text-white text-lg leading-none">×</button>
+             </div>
+
+             {elementCategories.map((category) => (
+                <div key={category.name}>
+                    <h4 className="text-xs uppercase font-bold text-red-500 mb-2">{category.name}</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                         {category.items.map((item) => {
+                             // Отключаем только мебель/сантехнику
+                             const isDisabled = NON_WALL_MOUNTED_TYPES.includes(item.name);
+                             return (
+                                 <button
+                                    key={item.name}
+                                    onClick={() => {
+                                        if (!isDisabled) {
+                                            // Передаем тип добавляемого элемента
+                                            onAddElement(item.name); // Просто имя типа
+                                        }
+                                    }}
+                                    className={`flex flex-col items-center justify-center text-center p-1 rounded transition-colors duration-150 w-[60px] h-[55px] ${
+                                        isDisabled
+                                        ? 'bg-gray-600 opacity-50 cursor-not-allowed' // Стиль для неактивных
+                                        : 'bg-gray-700 hover:bg-red-600 cursor-pointer' // Стиль для активных
+                                    }`}
+                                    title={isDisabled ? `${item.name} (нельзя добавить на стену)` : item.name}
+                                    disabled={isDisabled}
+                                 >
+                                     {item.icon}
+                                     <span className="text-[9px] leading-tight mt-0.5 truncate w-full">{item.name}</span>
+                                 </button>
+                             );
+                         })}
+                    </div>
+                </div>
+             ))}
+        </div>
+    );
+};
+
+export default WallEditPanel;
+// Добавим экспорт типов для использования в ModularMode
+export { WINDOW_DOOR_TYPES, ACCESSORY_TYPES };
+
+==== index.css ====
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add any global styles below */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+} 
+
+==== index.js ====
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css'; // Assuming you have global styles here
+import App from './App';
+import reportWebVitals from './reportWebVitals'; // Optional: for performance monitoring
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+    <App />
+
+);
+
+
+
+==== reportWebVitals.js ====
+// src/reportWebVitals.js
+const reportWebVitals = onPerfEntry => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals; 
