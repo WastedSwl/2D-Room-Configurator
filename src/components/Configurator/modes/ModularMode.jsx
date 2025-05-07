@@ -321,68 +321,55 @@ const ModularMode = ({ projectData, setProjectData, floor }) => {
         );
     };
 
-    // SVG-дверь для архитектурного отображения (архитектурный стиль)
+    // Исправленный DoorSVG
     const DoorSVG = ({ orientation = 'horizontal', width = 100, height = 14, isOpen = true, hingeSide = 'left', openDirection = 'in' }) => {
-        // Размеры для горизонтальной и вертикальной двери
-        const doorLength = width - 10;
-        const doorThickness = 3;
+        const doorThickness = 6;
         const boxLength = 10;
         const handleLength = 8;
         if (orientation === 'horizontal') {
-            // Петли и ручка слева/справа
+            const doorLength = width - 10;
             const swing = openDirection === 'in' ? 1 : -1;
-            // Петли слева или справа
             const boxX = hingeSide === 'left' ? 0 : width - boxLength;
             const doorX = hingeSide === 'left' ? boxLength : width - boxLength;
-            // Если дверь закрыта, угол поворота 0, иначе 90 градусов
             const doorRotate = isOpen ? (hingeSide === 'left' ? swing * 90 : -swing * 90) : 0;
             const arcStartX = hingeSide === 'left' ? boxLength : width - boxLength;
             const arcEndX = hingeSide === 'left' ? boxLength + swing * doorLength : width - boxLength - swing * doorLength;
-            // Ручка
             const handleX = hingeSide === 'left' ? boxLength + doorLength - handleLength : width - boxLength - doorLength;
             return (
-                <svg width={width} height={height * 4} viewBox={`0 0 ${width} ${height * 4}`} style={{ display: 'block', overflow: 'visible' }}>
-                    {/* Коробка двери */}
-                    <rect x={boxX} y={height} width={boxLength} height={doorThickness} fill="#222" rx={2} />
-                    {/* Створка двери */}
-                    <rect x={doorX} y={height} width={doorLength} height={doorThickness} fill="#fff" stroke="#222" strokeWidth={1.5} rx={2} transform={`rotate(${doorRotate},${doorX},${height})`} />
-                    {/* Дуга открывания (только если дверь открыта) */}
+                <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', overflow: 'visible' }}>
+                    <rect x={boxX} y={(height - doorThickness) / 2} width={boxLength} height={doorThickness} fill="#222" rx={2} />
+                    <rect x={doorX} y={(height - doorThickness) / 2} width={doorLength} height={doorThickness} fill="#fff" stroke="#222" strokeWidth={1.5} rx={2} transform={`rotate(${doorRotate},${doorX},${height / 2})`} />
                     {isOpen && (
-                        <path d={`M${arcStartX},${height + doorThickness / 2} A${doorLength},${doorLength} 0 0,1 ${arcEndX},${height + swing * doorLength}`} fill="none" stroke="#888" strokeWidth={1.2} />
+                        <path d={`M${arcStartX},${height / 2} A${doorLength},${doorLength} 0 0,1 ${arcEndX},${height / 2 + swing * doorLength}`} fill="none" stroke="#888" strokeWidth={1.2} />
                     )}
-                    {/* Петли */}
-                    <rect x={boxX - 2} y={height - 2} width={4} height={4} fill="#222" rx={1} />
-                    {/* Ручка */}
-                    <rect x={handleX} y={height + doorThickness / 2 - 1} width={handleLength} height={2} fill="#888" rx={1} />
+                    <rect x={boxX - 2} y={(height - 4) / 2} width={4} height={4} fill="#222" rx={1} />
+                    <rect x={handleX} y={(height - 2) / 2} width={handleLength} height={2} fill="#888" rx={1} />
                 </svg>
             );
         } else {
-            // Для вертикальной двери
-            const doorLengthV = height - 10;
+            // ВЕРТИКАЛЬНАЯ ДВЕРЬ: исправлено позиционирование
+            const doorLength = height - 10;
             const swing = openDirection === 'in' ? 1 : -1;
-            // Петли сверху или снизу
             const boxY = hingeSide === 'top' ? 0 : height - boxLength;
             const doorY = hingeSide === 'top' ? boxLength : height - boxLength;
-            // Если дверь закрыта, угол поворота 0, иначе 90 градусов
             const doorRotate = isOpen ? (hingeSide === 'top' ? swing * 90 : -swing * 90) : 0;
             const arcStartY = hingeSide === 'top' ? boxLength : height - boxLength;
-            const arcEndY = hingeSide === 'top' ? boxLength + swing * doorLengthV : height - boxLength - swing * doorLengthV;
-            // Ручка
-            const handleY = hingeSide === 'top' ? boxLength + doorLengthV - handleLength : height - boxLength - doorLengthV;
+            const arcEndY = hingeSide === 'top' ? boxLength + swing * doorLength : height - boxLength - swing * doorLength;
+            const handleY = hingeSide === 'top' ? boxLength + doorLength - handleLength : height - boxLength - doorLength;
             return (
-                <svg width={height * 4} height={width} viewBox={`0 0 ${height * 4} ${width}`} style={{ display: 'block', overflow: 'visible' }}>
+                <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', overflow: 'visible' }}>
                     {/* Коробка двери */}
-                    <rect x={height} y={boxY} width={doorThickness} height={boxLength} fill="#222" ry={2} />
+                    <rect x={(width - doorThickness) / 2} y={boxY} width={doorThickness} height={boxLength} fill="#222" ry={2} />
                     {/* Створка двери */}
-                    <rect x={height} y={doorY} width={doorThickness} height={doorLengthV} fill="#fff" stroke="#222" strokeWidth={1.5} ry={2} transform={`rotate(${doorRotate},${height},${doorY})`} />
-                    {/* Дуга открывания (только если дверь открыта) */}
+                    <rect x={(width - doorThickness) / 2} y={doorY} width={doorThickness} height={doorLength} fill="#fff" stroke="#222" strokeWidth={1.5} ry={2} transform={`rotate(${doorRotate},${width / 2},${doorY})`} />
+                    {/* Дуга открывания */}
                     {isOpen && (
-                        <path d={`M${height + doorThickness / 2},${arcStartY} A${doorLengthV},${doorLengthV} 0 0,1 ${height + swing * doorLengthV},${arcEndY}`} fill="none" stroke="#888" strokeWidth={1.2} />
+                        <path d={`M${width / 2},${arcStartY} A${doorLength},${doorLength} 0 0,1 ${width / 2 + swing * doorLength},${arcEndY}`} fill="none" stroke="#888" strokeWidth={1.2} />
                     )}
                     {/* Петли */}
-                    <rect x={height - 2} y={boxY - 2} width={4} height={4} fill="#222" ry={1} />
+                    <rect x={(width - 4) / 2} y={boxY - 2} width={4} height={4} fill="#222" ry={1} />
                     {/* Ручка */}
-                    <rect x={height + doorThickness / 2 - 1} y={handleY} width={2} height={handleLength} fill="#888" ry={1} />
+                    <rect x={(width - 2) / 2} y={handleY} width={2} height={handleLength} fill="#888" ry={1} />
                 </svg>
             );
         }
@@ -496,8 +483,8 @@ const ModularMode = ({ projectData, setProjectData, floor }) => {
                                     key={`extblock-${block.wall}-${block.idx}`}
                                     className={`absolute cursor-pointer transition-all duration-100 ${hoveredBlock && hoveredBlock.key === `extblock-${block.wall}-${block.idx}` && !hasElement ? 'bg-blue-200/70' : ''}`}
                                     style={{
-                                        left: block.x + (block.orientation === 'vertical' ? -7 : 0),
-                                        top: block.y + (block.orientation === 'horizontal' ? -7 : 0),
+                                        left: block.orientation === 'vertical' ? block.x - 7 : block.x,
+                                        top: block.orientation === 'horizontal' ? block.y - 7 : block.y,
                                         width: block.orientation === 'horizontal' ? `${gridSizePx}px` : '14px',
                                         height: block.orientation === 'horizontal' ? '14px' : `${gridSizePx}px`,
                                         zIndex: 50,
@@ -543,8 +530,8 @@ const ModularMode = ({ projectData, setProjectData, floor }) => {
                                     key={`intblock-${idx}`}
                                     className={`absolute cursor-pointer transition-all duration-100 ${hoveredBlock && hoveredBlock.key === `intblock-${idx}` && !hasElement ? 'bg-blue-200/70' : ''}`}
                                     style={{
-                                        left: block.x + (block.orientation === 'vertical' ? -7 : 0),
-                                        top: block.y + (block.orientation === 'horizontal' ? -7 : 0),
+                                        left: block.orientation === 'vertical' ? block.x - 7 : block.x,
+                                        top: block.orientation === 'horizontal' ? block.y - 7 : block.y,
                                         width: block.orientation === 'horizontal' ? `${gridSizePx}px` : '14px',
                                         height: block.orientation === 'horizontal' ? '14px' : `${gridSizePx}px`,
                                         zIndex: 20,
