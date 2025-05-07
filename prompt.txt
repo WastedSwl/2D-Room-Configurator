@@ -1,0 +1,3383 @@
+Структура проекта:
+- .eslintrc.js
+- package-lock.json
+- package.json
+- postcss.config.js
++ public
+  - index.html
+  - manifest.json
+- README.md
++ src
+  - App.js
+  + components
+    + Configurator
+      - appConstants.js
+      - Configurator.jsx
+      - ElementRenderer.jsx
+      - HelpPanel.jsx
+      + modes
+        - FramelessMode.jsx
+        - FrameMode.jsx
+        - ModularMode.jsx
+      - ProjectInfo.jsx
+  - index.css
+  - index.js
+  - reportWebVitals.js
+- tailwind.config.js
+
+Содержимое некоторых файлов:
+
+==== .eslintrc.js ====
+/* eslint-disable no-unused-vars */
+// ========================================================================
+// FILE: .eslintrc.js
+// ========================================================================
+// Assuming a standard ESLint config for Create React App or similar.
+// No changes needed based on the prompt unless specific rules were provided.
+module.exports = {
+  env: {
+    browser: true,
+    es2021: true,
+    jest: true,
+  },
+  extends: [
+    "eslint:recommended",
+    "react-app",
+    "react-app/jest",
+  ],
+  parserOptions: {
+    ecmaFeatures: {
+      jsx: true,
+    },
+    ecmaVersion: "latest",
+    sourceType: "module",
+  },
+  rules: {
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "warn",
+    "jsx-a11y/anchor-is-valid": "warn",
+    "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+  },
+  settings: {
+    react: {
+      version: "detect",
+    },
+  },
+  overrides: [
+    {
+      files: ["**/*.test.js", "**/*.test.jsx"],
+      env: {
+        jest: true,
+      },
+    },
+  ],
+};
+
+
+==== package.json ====
+{
+  "name": "bird",
+  "version": "0.2.0",
+  "private": true,
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@heroicons/react": "^2.2.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^13.5.0",
+    "aos": "^2.3.4",
+    "axios": "^1.8.4",
+    "dotenv": "^16.4.7",
+    "framer-motion": "^12.5.0",
+    "prop-types": "^15.8.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.4.0",
+    "react-scripts": "^5.0.1",
+    "react-select": "^5.10.1",
+    "react-slick": "^0.30.3",
+    "react-toastify": "^11.0.5",
+    "slick-carousel": "^1.8.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/line-clamp": "^0.4.4",
+    "@tailwindcss/postcss": "^4.0.15",
+    "@tailwindcss/typography": "^0.5.16",
+    "autoprefixer": "^10.4.21",
+    "clsx": "^2.1.1",
+    "eslint": "^8.57.1",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "nodemon": "^3.1.9",
+    "postcss": "^8.5.3",
+    "postcss-flexbugs-fixes": "^5.0.2",
+    "postcss-preset-env": "^10.1.5",
+    "prettier": "^3.5.3",
+    "tailwindcss": "^3.4.3"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,css,md}": "prettier --write",
+    "*.{js,jsx}": "eslint --fix"
+  }
+}
+
+==== postcss.config.js ====
+// ========================================================================
+// FILE: postcss.config.js
+// ========================================================================
+// Adjusted for standard Tailwind v3+ installation
+module.exports = {
+  plugins: {
+    tailwindcss: {}, // Standard Tailwind plugin
+    autoprefixer: {},
+    // Removed '@tailwindcss/postcss7-compat' as using standard Tailwind now
+    // Removed '@tailwindcss/postcss' which seems redundant/incorrect here
+    // Removed 'postcss-flexbugs-fixes' and 'postcss-preset-env' as Autoprefixer handles prefixes
+  },
+};
+
+
+==== public\index.html ====
+<!-- FILE: public/index.html -->
+<!-- No changes needed based on the prompt -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!-- Consider adding fonts here if needed, e.g., Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <title>Mission Hire | HRM App</title>
+    <!-- Updated Title -->
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
+
+
+==== public\manifest.json ====
+{
+  "short_name": "Mission Hire",
+  "name": "Mission Hire - Recruitment Platform",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#007BFF",
+  "background_color": "#1A1A1A"
+}
+
+
+==== README.md ====
+# Getting Started with Create React App
+
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+
+## Available Scripts
+
+In the project directory, you can run:
+
+### `npm start`
+
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
+
+### `npm test`
+
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+
+### `npm run build`
+
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
+
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
+
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+
+### `npm run eject`
+
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+
+## Learn More
+
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+
+To learn React, check out the [React documentation](https://reactjs.org/).
+
+### Code Splitting
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+
+### Analyzing the Bundle Size
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+
+### Making a Progressive Web App
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+
+### Advanced Configuration
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+
+### Deployment
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+
+### `npm run build` fails to minify
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+
+==== src\App.js ====
+import React from "react";
+import Configurator from "./components/Configurator/Configurator";
+import "./index.css"; // Ensure Tailwind CSS is imported
+
+// Для ModularMode и других режимов может понадобиться ToastContainer, если будете использовать toast
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+// Если решите вынести ProjectInfo и HelpPanel на уровень App
+// import ProjectInfo from './components/Configurator/ProjectInfo';
+// import HelpPanel from './components/Configurator/HelpPanel';
+
+// Если будете управлять режимами из App.js
+// import { DEFAULT_MODE, MODES } from './components/Configurator/appConstants';
+// import FramelessMode from './components/Configurator/modes/FramelessMode';
+// import FrameMode from './components/Configurator/modes/FrameMode';
+// import ModularMode from './components/Configurator/modes/ModularMode';
+
+function App() {
+  // Пример управления состоянием, если вынести его в App.js
+  // const [activeMode, setActiveMode] = React.useState(DEFAULT_MODE);
+  // const [projectInfoData, setProjectInfoData] = React.useState({ area: 0, cost: 0, elements: [] });
+
+  // const renderModeSpecificUIForApp = (configuratorInterface) => {
+  //   switch (activeMode) {
+  //     case MODES.FRAMELESS:
+  //       return <FramelessMode {...configuratorInterface} />;
+  //     case MODES.FRAMED:
+  //       return <FrameMode {...configuratorInterface} />;
+  //     case MODES.MODULAR:
+  //       return <ModularMode {...configuratorInterface} />;
+  //     default:
+  //       return null;
+  //   }
+  // };
+
+  return (
+    <div className="App h-screen flex flex-col">
+      <ToastContainer position="bottom-right" autoClose={3000} newestOnTop />
+      <Configurator
+      // activeMode={activeMode} // Передаем, если управляем из App
+      // setProjectInfoData={setProjectInfoData} // Передаем, если управляем из App
+      // renderModeSpecificUI={renderModeSpecificUIForApp} // Передаем, если управляем из App
+      />
+      {/* <ProjectInfo {...projectInfoData} /> */}
+      {/* <HelpPanel /> */}
+    </div>
+  );
+}
+
+export default App;
+
+
+==== src\components\Configurator\appConstants.js ====
+export const MODES = {
+  MODULAR: "modular",
+  FRAMELESS: "frameless",
+  FRAMED: "framed",
+};
+
+export const DEFAULT_MODE = MODES.MODULAR;
+
+export const DEFAULT_PANEL_WIDTH_M = 1.15;
+export const DOOR_WIDTH_M = 0.9;
+export const WINDOW_WIDTH_M = 1.2;
+export const WALL_THICKNESS_M = 0.15;
+
+
+==== src\components\Configurator\Configurator.jsx ====
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import PropTypes from "prop-types";
+import {
+  MODES,
+  DEFAULT_MODE,
+  DEFAULT_PANEL_WIDTH_M as APP_DEFAULT_PANEL_WIDTH_M,
+  WALL_THICKNESS_M,
+  DOOR_WIDTH_M as APP_DOOR_WIDTH_M,
+  WINDOW_WIDTH_M as APP_WINDOW_WIDTH_M,
+} from "./appConstants";
+
+// --- Константы ---
+const PANEL_SIZE_M = APP_DEFAULT_PANEL_WIDTH_M;
+const INITIAL_PPM = 50;
+const GRID_LINE_COLOR = "#e0e0e0";
+const GRID_BOLD_LINE_COLOR = "#c0c0c0";
+const ORIGIN_POINT_COLOR = "red";
+const SNAP_THRESHOLD_WORLD = 0.05;
+const SNAP_LINE_COLOR = "rgba(255, 0, 255, 0.7)";
+const PASTE_OFFSET_M = 0.2;
+const MAX_HISTORY_SIZE = 50;
+const MARQUEE_FILL_COLOR = "rgba(0, 100, 255, 0.1)";
+const MARQUEE_STROKE_COLOR = "rgba(0, 100, 255, 0.5)";
+const MIN_DRAG_FOR_MARQUEE_PAN = 5;
+const RESIZE_HANDLE_SIZE_PX = 8;
+const RESIZE_HANDLE_COLOR = "rgba(0, 100, 255, 0.8)";
+const DIMENSION_TEXT_COLOR = "black";
+const DIMENSION_TEXT_BG_COLOR = "rgba(255, 255, 255, 0.7)";
+const OVERLAP_HIGHLIGHT_COLOR = "rgba(255, 0, 0, 0.3)";
+const LOCKED_OBJECT_STROKE_COLOR = "orange";
+const DOOR_LEAF_VISUAL_THICKNESS_M = 0.05;
+
+const objectColors = {
+  panel: "lightgray",
+  window: "lightblue",
+  door: "#D2B48C",
+  outlet: "yellow",
+  wall: "#A0AEC0",
+  default: "purple",
+  sofa: "#DEB887",
+  table: "#A0522D",
+  cabinet: "#D2691E",
+  toilet: "#F5F5F5",
+  bed: "#CD853F",
+};
+
+let objectIdCounter = 0;
+const getNextId = () => `obj-${objectIdCounter++}`;
+
+const createObject = (type, x, y, width, height, data = {}) => {
+  const baseObj = {
+    id: getNextId(),
+    type,
+    x,
+    y,
+    width,
+    height,
+    rotation: data.rotation || 0,
+    label: data.label || "",
+    ...data,
+  };
+  if (type === "door") {
+    baseObj.isOpen = data.isOpen === undefined ? false : data.isOpen;
+    baseObj.openingAngle =
+      data.openingAngle === undefined ? 90 : data.openingAngle;
+    baseObj.hingeSide = data.hingeSide || "left";
+    baseObj.openingDirection = data.openingDirection || "inward";
+  }
+  return baseObj;
+};
+
+const defaultObjectSizes = {
+  panel: { width: PANEL_SIZE_M, height: PANEL_SIZE_M },
+  window: { width: APP_WINDOW_WIDTH_M, height: WALL_THICKNESS_M },
+  door: { width: APP_DOOR_WIDTH_M, height: WALL_THICKNESS_M },
+  outlet: { width: 0.15, height: 0.15 },
+  wall: { width: PANEL_SIZE_M, height: WALL_THICKNESS_M },
+  sofa: { width: 1.8, height: 0.8 },
+  table: { width: 1.0, height: 0.5 }, // smaller coffee table
+  cabinet: { width: 0.8, height: 0.4 }, // wider cabinet
+  toilet: { width: 0.4, height: 0.7 },
+  bed: { width: 1.5, height: 2.0 }, // slightly wider bed
+};
+
+const getInitialObjects = () => {
+  objectIdCounter = 0;
+  const initialObjects = [];
+  const WT = WALL_THICKNESS_M; // Wall Thickness shorthand
+
+  const houseWidthOuter = 6;
+  const houseDepthOuter = 3.5; // Increased depth slightly
+
+  // Outer Walls
+  initialObjects.push(
+    createObject("wall", 0, 0, houseWidthOuter, WT, { label: "Верхняя стена" }),
+  );
+  initialObjects.push(
+    createObject("wall", 0, houseDepthOuter - WT, houseWidthOuter, WT, {
+      label: "Нижняя стена",
+    }),
+  );
+  initialObjects.push(
+    createObject("wall", 0, WT, WT, houseDepthOuter - 2 * WT, {
+      label: "Левая стена",
+    }),
+  );
+  initialObjects.push(
+    createObject(
+      "wall",
+      houseWidthOuter - WT,
+      WT,
+      WT,
+      houseDepthOuter - 2 * WT,
+      { label: "Правая стена" },
+    ),
+  );
+
+  // Door on bottom wall
+  const mainDoorWidth = APP_DOOR_WIDTH_M; // 0.9m
+  initialObjects.push(
+    createObject("door", 1.0, houseDepthOuter - WT, mainDoorWidth, WT, {
+      hingeSide: "left",
+      openingDirection: "inward",
+      isOpen: false,
+      label: "Входная дверь",
+    }),
+  );
+
+  // Window on top wall
+  const mainWindowWidth = APP_WINDOW_WIDTH_M; // 1.2m
+  initialObjects.push(
+    createObject(
+      "window",
+      houseWidthOuter / 2 - mainWindowWidth / 2,
+      0,
+      mainWindowWidth,
+      WT,
+      { label: "Окно гостиной" },
+    ),
+  );
+
+  // --- Internal Layout ---
+  const gap = 0.1; // Gap from walls for furniture
+
+  // Living Area (left side)
+  const sofaWidth = 1.8;
+  const sofaDepth = 0.8;
+  initialObjects.push(
+    createObject("sofa", WT + gap, WT + gap, sofaWidth, sofaDepth, {
+      label: "Диван",
+    }),
+  );
+
+  const coffeeTableWidth = 1.0;
+  const coffeeTableDepth = 0.5;
+  initialObjects.push(
+    createObject(
+      "table",
+      WT + gap + (sofaWidth - coffeeTableWidth) / 2,
+      WT + gap + sofaDepth + 0.3,
+      coffeeTableWidth,
+      coffeeTableDepth,
+      { label: "Кофейный столик" },
+    ),
+  );
+
+  // Bedroom Area (right side)
+  const bedWidth = 1.5;
+  const bedDepth = 2.0;
+  const bedX = houseWidthOuter - WT - gap - bedWidth;
+  const bedY = WT + gap;
+  initialObjects.push(
+    createObject("bed", bedX, bedY, bedWidth, bedDepth, { label: "Кровать" }),
+  );
+
+  const wardrobeWidth = 0.8;
+  const wardrobeDepth = 0.5; // Wardrobe depth
+  initialObjects.push(
+    createObject(
+      "cabinet",
+      bedX - gap - wardrobeWidth,
+      bedY,
+      wardrobeWidth,
+      wardrobeDepth,
+      { label: "Шкаф" },
+    ),
+  );
+
+  // Bathroom (in a corner, e.g., bottom-right of bedroom area, or near entrance)
+  // Let's place it to the right of the entrance door area
+  const bathroomWidthInner = 1.5;
+  const bathroomDepthInner = 1.8;
+
+  const bathroomOuterWallX =
+    houseWidthOuter - WT - gap - bathroomWidthInner - WT; // X for the leftmost wall of the bathroom
+  const bathroomOuterWallY = WT + gap; // Y for the topmost wall of the bathroom
+
+  // Bathroom Walls
+  // Top wall of bathroom
+  initialObjects.push(
+    createObject(
+      "wall",
+      bathroomOuterWallX,
+      bathroomOuterWallY,
+      bathroomWidthInner + WT,
+      WT,
+      { label: "Стена ванной (верх)" },
+    ),
+  );
+  // Right wall of bathroom (uses main house wall)
+  // Left wall of bathroom
+  initialObjects.push(
+    createObject(
+      "wall",
+      bathroomOuterWallX,
+      bathroomOuterWallY + WT,
+      WT,
+      bathroomDepthInner,
+      { label: "Стена ванной (лево)" },
+    ),
+  );
+  // Bottom wall of bathroom (partial, for door)
+  const bathroomBottomWallDoorOpening = 0.75;
+  const bathroomBottomWallSegment1Length =
+    (bathroomWidthInner + WT - bathroomBottomWallDoorOpening) / 2;
+
+  initialObjects.push(
+    createObject(
+      "wall",
+      bathroomOuterWallX,
+      bathroomOuterWallY + WT + bathroomDepthInner,
+      bathroomBottomWallSegment1Length,
+      WT,
+      { label: "Стена ванной (низ1)" },
+    ),
+  );
+  initialObjects.push(
+    createObject(
+      "wall",
+      bathroomOuterWallX +
+        bathroomBottomWallSegment1Length +
+        bathroomBottomWallDoorOpening,
+      bathroomOuterWallY + WT + bathroomDepthInner,
+      bathroomBottomWallSegment1Length,
+      WT,
+      { label: "Стена ванной (низ2)" },
+    ),
+  );
+
+  // Bathroom Door
+  const bathroomDoorWidth = 0.7;
+  initialObjects.push(
+    createObject(
+      "door",
+      bathroomOuterWallX + bathroomBottomWallSegment1Length,
+      bathroomOuterWallY + WT + bathroomDepthInner,
+      bathroomDoorWidth,
+      WT,
+      {
+        hingeSide: "right",
+        openingDirection: "inward",
+        isOpen: false,
+        label: "Дверь в ванную",
+      },
+    ),
+  );
+
+  // Toilet inside bathroom
+  const toiletWidth = 0.4;
+  const toiletDepth = 0.7;
+  initialObjects.push(
+    createObject(
+      "toilet",
+      bathroomOuterWallX + WT + gap,
+      bathroomOuterWallY + WT + gap,
+      toiletWidth,
+      toiletDepth,
+      { label: "Туалет" },
+    ),
+  );
+
+  return initialObjects;
+};
+
+const PropertyInput = ({
+  label,
+  type = "number",
+  value,
+  onChange,
+  step = 0.01,
+  children,
+  disabled,
+  ...props
+}) => (
+  <div className="mb-2">
+    <label className="block text-xs text-gray-600 mb-1">{label}</label>
+    {children || (
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        step={step}
+        className={`w-full p-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
+        disabled={disabled}
+        {...props}
+      />
+    )}
+  </div>
+);
+
+const rotatePoint = (point, angleRad, center) => {
+  const s = Math.sin(angleRad);
+  const c = Math.cos(angleRad);
+  const px = point.x - center.x;
+  const py = point.y - center.y;
+  const xNew = px * c - py * s;
+  const yNew = px * s + py * c;
+  return { x: xNew + center.x, y: yNew + center.y };
+};
+
+const getAABB = (obj) => {
+  const { x, y, width, height, rotation = 0 } = obj;
+  const angleRad = (rotation * Math.PI) / 180;
+  const localCenterX = width / 2;
+  const localCenterY = height / 2;
+  const worldRotCenterX = x + localCenterX;
+  const worldRotCenterY = y + localCenterY;
+  const center = { x: worldRotCenterX, y: worldRotCenterY };
+  const corners = [
+    { x: x, y: y },
+    { x: x + width, y: y },
+    { x: x + width, y: y + height },
+    { x: x, y: y + height },
+  ];
+  if (rotation === 0 || rotation % 360 === 0) {
+    return {
+      minX: x,
+      minY: y,
+      maxX: x + width,
+      maxY: y + height,
+      centerX: worldRotCenterX,
+      centerY: worldRotCenterY,
+    };
+  }
+  const rotatedCorners = corners.map((p) => rotatePoint(p, angleRad, center));
+  const minX = Math.min(...rotatedCorners.map((p) => p.x));
+  const minY = Math.min(...rotatedCorners.map((p) => p.y));
+  const maxX = Math.max(...rotatedCorners.map((p) => p.x));
+  const maxY = Math.max(...rotatedCorners.map((p) => p.y));
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+  };
+};
+
+const Configurator = ({
+  activeMode: activeModeProp,
+  setProjectInfoData: setProjectInfoDataProp,
+  renderModeSpecificUI: renderModeSpecificUIProp,
+}) => {
+  const activeMode =
+    activeModeProp !== undefined ? activeModeProp : DEFAULT_MODE;
+  const setProjectInfoData = setProjectInfoDataProp || (() => {});
+  const renderModeSpecificUI = renderModeSpecificUIProp || (() => null);
+
+  const [objects, setObjectsState] = useState(() => getInitialObjects());
+  const [selectedObjectIds, setSelectedObjectIds] = useState([]);
+  const [lockedObjectIds, setLockedObjectIds] = useState([]);
+  const [draggingState, setDraggingState] = useState(null);
+  const [resizingState, setResizingState] = useState(null);
+  const [viewTransform, setViewTransform] = useState({
+    x: 80,
+    y: 60,
+    scale: INITIAL_PPM * 0.6, // Further adjusted initial view
+  });
+  const [modifierKeys, setModifierKeys] = useState({
+    ctrl: false,
+    alt: false,
+    meta: false,
+    shift: false,
+    spacebar: false,
+  });
+  const [addingObjectType, setAddingObjectType] = useState(null);
+  const [activeSnapLines, setActiveSnapLines] = useState([]);
+  const [copiedObjectsData, setCopiedObjectsData] = useState(null);
+  const [marqueeRect, setMarqueeRect] = useState({
+    startScreenX: 0,
+    startScreenY: 0,
+    currentScreenX: 0,
+    currentScreenY: 0,
+    active: false,
+  });
+  const [isPanningWithSpace, setIsPanningWithSpace] = useState(false);
+  const mouseDownStartPosRef = useRef(null);
+  const [history, setHistory] = useState({ undo: [], redo: [] });
+
+  const objectsRef = useRef(objects);
+  const [overlappingObjectIds, setOverlappingObjectIds] = useState([]);
+
+  useEffect(() => {
+    objectsRef.current = objects;
+  }, [objects]);
+
+  const svgRef = useRef(null);
+  const mainContainerRef = useRef(null);
+
+  const setObjects = useCallback(
+    (newObjectsOrCallback, saveToHistory = false) => {
+      const objectsBeforeUpdate = objectsRef.current;
+      setObjectsState((prevState) => {
+        const newState =
+          typeof newObjectsOrCallback === "function"
+            ? newObjectsOrCallback(prevState)
+            : newObjectsOrCallback;
+        if (saveToHistory) {
+          if (
+            JSON.stringify(newState) !== JSON.stringify(objectsBeforeUpdate)
+          ) {
+            setHistory((prevHistory) => ({
+              undo: [objectsBeforeUpdate, ...prevHistory.undo].slice(
+                0,
+                MAX_HISTORY_SIZE,
+              ),
+              redo: [],
+            }));
+          }
+        }
+        if (setProjectInfoData) {
+          let totalArea = 0;
+          newState.forEach((obj) => {
+            if (
+              obj &&
+              typeof obj.width === "number" &&
+              typeof obj.height === "number" &&
+              (obj.type === "panel" ||
+                obj.type === "wall" ||
+                obj.type.match(/sofa|table|cabinet|toilet|bed/))
+            ) {
+              totalArea += obj.width * obj.height;
+            }
+          });
+          setProjectInfoData((prev) => ({
+            ...prev,
+            area: totalArea,
+            elements: [{ name: "Objects", count: newState.length }],
+          }));
+        }
+        return newState;
+      });
+    },
+    [setProjectInfoData],
+  );
+
+  const handleUndo = useCallback(() => {
+    setHistory((prevHistory) => {
+      if (prevHistory.undo.length > 0) {
+        const stateToRestore = prevHistory.undo[0];
+        const remainingUndo = prevHistory.undo.slice(1);
+        const currentStateForRedo = objectsRef.current;
+        setObjectsState(stateToRestore);
+        setSelectedObjectIds([]);
+        return {
+          undo: remainingUndo,
+          redo: [currentStateForRedo, ...prevHistory.redo].slice(
+            0,
+            MAX_HISTORY_SIZE,
+          ),
+        };
+      }
+      return prevHistory;
+    });
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    setHistory((prevHistory) => {
+      if (prevHistory.redo.length > 0) {
+        const [stateToRestore, ...remainingRedo] = prevHistory.redo;
+        const currentStateForUndo = objectsRef.current;
+        setObjectsState(stateToRestore);
+        setSelectedObjectIds([]);
+        return {
+          undo: [currentStateForUndo, ...prevHistory.undo].slice(
+            0,
+            MAX_HISTORY_SIZE,
+          ),
+          redo: remainingRedo,
+        };
+      }
+      return prevHistory;
+    });
+  }, []);
+
+  const primarySelectedObject =
+    selectedObjectIds.length === 1
+      ? objects.find((obj) => obj.id === selectedObjectIds[0])
+      : null;
+
+  useEffect(() => {
+    mainContainerRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const mainEl = mainContainerRef.current;
+    if (!mainEl) return;
+    const handleKeyDown = (e) => {
+      setModifierKeys((prev) => ({
+        ...prev,
+        ctrl: e.ctrlKey,
+        alt: e.altKey,
+        meta: e.metaKey,
+        shift: e.shiftKey,
+        spacebar: e.code === "Space" ? true : prev.spacebar,
+      }));
+      if (
+        e.code === "Space" &&
+        (document.activeElement === mainEl ||
+          svgRef.current?.contains(document.activeElement))
+      )
+        e.preventDefault();
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+      const isInputFocused =
+        document.activeElement &&
+        ["INPUT", "TEXTAREA", "SELECT"].includes(
+          document.activeElement.tagName,
+        );
+      if (isInputFocused) {
+        if (
+          isCtrlOrCmd &&
+          (e.key.toLowerCase() === "c" ||
+            e.key.toLowerCase() === "v" ||
+            e.key.toLowerCase() === "x" ||
+            e.key.toLowerCase() === "z" ||
+            e.key.toLowerCase() === "y")
+        )
+          return;
+        if (e.key === "Escape") {
+          setAddingObjectType(null);
+          if (document.activeElement instanceof HTMLElement)
+            document.activeElement.blur();
+          return;
+        }
+        if (e.key === "Delete" || e.key === "Backspace") return;
+      }
+      if (e.key.toLowerCase() === "l" && !isInputFocused) {
+        e.preventDefault();
+        if (selectedObjectIds.length > 0) {
+          setLockedObjectIds((prevLockedIds) => {
+            const newLockedIds = new Set(prevLockedIds);
+            selectedObjectIds.forEach((id) => {
+              newLockedIds.has(id)
+                ? newLockedIds.delete(id)
+                : newLockedIds.add(id);
+            });
+            return Array.from(newLockedIds);
+          });
+        }
+      }
+      if (isCtrlOrCmd && e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (
+        (isCtrlOrCmd && e.key.toLowerCase() === "y") ||
+        (isCtrlOrCmd && e.shiftKey && e.key.toLowerCase() === "z")
+      ) {
+        e.preventDefault();
+        handleRedo();
+      } else if (isCtrlOrCmd && e.key.toLowerCase() === "c") {
+        /* Copy logic */
+      } else if (isCtrlOrCmd && e.key.toLowerCase() === "v") {
+        /* Paste logic */
+      } else if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedObjectIds.length > 0
+      ) {
+        /* Delete logic */
+      } else if (e.key === "Escape") {
+        /* Escape logic */
+      }
+    };
+    const handleKeyUp = (e) => {
+      /* KeyUp logic */
+    };
+    mainEl.addEventListener("keydown", handleKeyDown);
+    mainEl.addEventListener("keyup", handleKeyUp);
+    return () => {
+      mainEl.removeEventListener("keydown", handleKeyDown);
+      mainEl.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [
+    selectedObjectIds,
+    lockedObjectIds,
+    modifierKeys,
+    copiedObjectsData,
+    setObjects,
+    handleUndo,
+    handleRedo,
+    marqueeRect.active,
+    resizingState,
+    addingObjectType,
+  ]);
+
+  const screenToWorld = useCallback(
+    (screenX, screenY) => {
+      if (!svgRef.current) return { x: 0, y: 0 };
+      const svgRect = svgRef.current.getBoundingClientRect();
+      return {
+        x: (screenX - svgRect.left - viewTransform.x) / viewTransform.scale,
+        y: (screenY - svgRect.top - viewTransform.y) / viewTransform.scale,
+      };
+    },
+    [viewTransform],
+  );
+
+  const screenToWorldRect = useCallback(
+    (rect) => {
+      const tl = screenToWorld(rect.startScreenX, rect.startScreenY);
+      const br = screenToWorld(rect.currentScreenX, rect.currentScreenY);
+      return {
+        minX: Math.min(tl.x, br.x),
+        minY: Math.min(tl.y, br.y),
+        maxX: Math.max(tl.x, br.x),
+        maxY: Math.max(tl.y, br.y),
+      };
+    },
+    [screenToWorld],
+  );
+
+  const checkAABBIntersection = (aabb1, aabb2) =>
+    aabb1.minX < aabb2.maxX &&
+    aabb1.maxX > aabb2.minX &&
+    aabb1.minY < aabb2.maxY &&
+    aabb1.maxY > aabb2.minY;
+
+  const checkAndSetOverlaps = useCallback(() => {
+    const overlaps = new Set();
+    const currentManipulatedIds = resizingState
+      ? [resizingState.objectId]
+      : draggingState?.initialPositions?.map((p) => p.id) || [];
+    if (currentManipulatedIds.length > 0) {
+      const activeObjects = objectsRef.current.filter((obj) =>
+        currentManipulatedIds.includes(obj.id),
+      );
+      const staticObjects = objectsRef.current.filter(
+        (obj) => !currentManipulatedIds.includes(obj.id),
+      );
+      activeObjects.forEach((activeObj) => {
+        const activeAABB = getAABB(activeObj);
+        staticObjects.forEach((staticObj) => {
+          const staticAABB = getAABB(staticObj);
+          if (checkAABBIntersection(activeAABB, staticAABB)) {
+            overlaps.add(activeObj.id);
+            overlaps.add(staticObj.id);
+          }
+        });
+      });
+    }
+    setOverlappingObjectIds(Array.from(overlaps));
+  }, [resizingState, draggingState]);
+
+  const handleMouseDownOnObject = useCallback(
+    (e, clickedObjectId) => {
+      e.stopPropagation();
+      if (addingObjectType) return;
+      const objectIsLocked = lockedObjectIds.includes(clickedObjectId);
+      if (objectIsLocked && !modifierKeys.shift) return;
+      mainContainerRef.current?.focus();
+      mouseDownStartPosRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        shiftKeyAtStart: modifierKeys.shift,
+      };
+      const newSelectedIds = modifierKeys.shift
+        ? selectedObjectIds.includes(clickedObjectId)
+          ? selectedObjectIds.filter((id) => id !== clickedObjectId)
+          : [...selectedObjectIds, clickedObjectId]
+        : selectedObjectIds.includes(clickedObjectId) &&
+            selectedObjectIds.length === 1
+          ? selectedObjectIds
+          : [clickedObjectId];
+      setSelectedObjectIds(newSelectedIds);
+      if (
+        newSelectedIds.length > 0 &&
+        (!objectIsLocked || modifierKeys.shift)
+      ) {
+        const initialPositions = objectsRef.current
+          .filter((obj) => newSelectedIds.includes(obj.id))
+          .map((obj) => ({
+            id: obj.id,
+            x: obj.x,
+            y: obj.y,
+            rotation: obj.rotation,
+          }));
+        setDraggingState({
+          primaryDraggedObjectId: clickedObjectId,
+          startScreenX: e.clientX,
+          startScreenY: e.clientY,
+          initialPositions: initialPositions,
+          objectsBeforeOp: [...objectsRef.current],
+        });
+      } else {
+        setDraggingState(null);
+      }
+    },
+    [addingObjectType, modifierKeys.shift, selectedObjectIds, lockedObjectIds],
+  );
+
+  const handleMouseDownOnResizeHandle = useCallback(
+    (e, objectId, handleType) => {
+      e.stopPropagation();
+      const objectIsLocked = lockedObjectIds.includes(objectId);
+      if (objectIsLocked && !modifierKeys.shift) {
+        return;
+      }
+
+      mainContainerRef.current?.focus();
+      const obj = objectsRef.current.find((o) => o.id === objectId);
+      if (!obj) return;
+      setResizingState({
+        objectId,
+        handleType,
+        startScreenX: e.clientX,
+        startScreenY: e.clientY,
+        originalObject: { ...obj },
+        objectsBeforeOp: [...objectsRef.current],
+      });
+      setDraggingState(null);
+    },
+    [lockedObjectIds, modifierKeys.shift],
+  );
+
+  const handleMouseDownOnCanvas = useCallback(
+    (e) => {
+      mainContainerRef.current?.focus();
+      if (e.button !== 0) return;
+      setActiveSnapLines([]);
+      mouseDownStartPosRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        shiftKeyAtStart: modifierKeys.shift, // Capture shift state at mousedown for marquee
+      };
+      if (addingObjectType) {
+        const { x: worldX, y: worldY } = screenToWorld(e.clientX, e.clientY);
+        const defaultSize = defaultObjectSizes[addingObjectType] || {
+          width: 1, // Default fallback size
+          height: 1,
+        };
+        const newObject = createObject(
+          addingObjectType,
+          worldX - defaultSize.width / 2, // Place center
+          worldY - defaultSize.height / 2,
+          defaultSize.width,
+          defaultSize.height,
+        );
+        setObjects((prev) => [...prev, newObject], true);
+        setAddingObjectType(null);
+        setSelectedObjectIds([newObject.id]);
+      } else if (modifierKeys.spacebar) {
+        setIsPanningWithSpace(true);
+        setDraggingState({
+          isPanning: true,
+          startScreenX: e.clientX,
+          startScreenY: e.clientY,
+          initialViewX: viewTransform.x,
+          initialViewY: viewTransform.y,
+        });
+      } else {
+        setMarqueeRect({
+          startScreenX: e.clientX,
+          startScreenY: e.clientY,
+          currentScreenX: e.clientX,
+          currentScreenY: e.clientY,
+          active: false,
+        });
+        if (!modifierKeys.shift) setSelectedObjectIds([]);
+      }
+    },
+    [
+      addingObjectType,
+      modifierKeys.shift,
+      modifierKeys.spacebar,
+      screenToWorld,
+      viewTransform.x,
+      viewTransform.y,
+      setObjects,
+    ],
+  );
+
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (
+        addingObjectType &&
+        !draggingState?.primaryDraggedObjectId &&
+        !resizingState
+      )
+        return;
+
+      if (isPanningWithSpace && draggingState?.isPanning) {
+        const dxScreen = e.clientX - draggingState.startScreenX;
+        const dyScreen = e.clientY - draggingState.startScreenY;
+        setViewTransform((prev) => ({
+          ...prev,
+          x: draggingState.initialViewX + dxScreen,
+          y: draggingState.initialViewY + dyScreen,
+        }));
+        return;
+      }
+
+      if (
+        mouseDownStartPosRef.current &&
+        !draggingState?.initialPositions &&
+        !resizingState &&
+        !addingObjectType &&
+        !isPanningWithSpace
+      ) {
+        const dx = Math.abs(e.clientX - mouseDownStartPosRef.current.x);
+        const dy = Math.abs(e.clientY - mouseDownStartPosRef.current.y);
+        if (
+          !marqueeRect.active &&
+          (dx > MIN_DRAG_FOR_MARQUEE_PAN || dy > MIN_DRAG_FOR_MARQUEE_PAN)
+        ) {
+          setMarqueeRect((prev) => ({
+            ...prev,
+            startScreenX: mouseDownStartPosRef.current.x,
+            startScreenY: mouseDownStartPosRef.current.y,
+            currentScreenX: e.clientX,
+            currentScreenY: e.clientY,
+            active: true,
+          }));
+        } else if (marqueeRect.active) {
+          setMarqueeRect((prev) => ({
+            ...prev,
+            currentScreenX: e.clientX,
+            currentScreenY: e.clientY,
+          }));
+        }
+      }
+
+      if (resizingState) {
+        const {
+          objectId,
+          handleType,
+          startScreenX,
+          startScreenY,
+          originalObject,
+        } = resizingState;
+        const scale = viewTransform.scale;
+        const dxScreen = e.clientX - startScreenX;
+        const dyScreen = e.clientY - startScreenY;
+        let dxWorld = dxScreen / scale;
+        let dyWorld = dyScreen / scale;
+
+        const angleRad = (-originalObject.rotation * Math.PI) / 180;
+        const cosA = Math.cos(angleRad);
+        const sinA = Math.sin(angleRad);
+
+        const localDx = dxWorld * cosA + dyWorld * sinA; // Corrected: dx in obj's X-axis
+        const localDy = -dxWorld * sinA + dyWorld * cosA; // Corrected: dy in obj's Y-axis
+
+        let newX = originalObject.x;
+        let newY = originalObject.y;
+        let newWidth = originalObject.width;
+        let newHeight = originalObject.height;
+
+        if (handleType.includes("r")) newWidth += localDx;
+        if (handleType.includes("l")) {
+          newWidth -= localDx;
+          // When dragging left handle, origin moves by the projected world delta onto rotated axes
+          newX += dxWorld * cosA * cosA + dyWorld * sinA * cosA; // World delta projected on original X axis
+          newY += dxWorld * cosA * sinA + dyWorld * sinA * sinA; // World delta projected on original Y axis for X handle
+        }
+        if (handleType.includes("b")) newHeight += localDy;
+        if (handleType.includes("t")) {
+          newHeight -= localDy;
+          newX += -dxWorld * sinA * cosA + dyWorld * cosA * cosA; // World delta projected for Y handle
+          newY += dxWorld * sinA * sinA + dyWorld * cosA * cosA;
+        }
+        // For corner handles, combine logic (e.g. 'tl' is 't' and 'l')
+        // This part needs more robust geometry if precise corner dragging on rotated objects is critical.
+        // The above might oversimplify combined handle movements.
+        // For non-rotated, it simplifies:
+        if (
+          originalObject.rotation === 0 ||
+          originalObject.rotation % 360 === 0
+        ) {
+          newX = originalObject.x;
+          newY = originalObject.y; // Reset for axis-aligned
+          newWidth = originalObject.width;
+          newHeight = originalObject.height;
+          if (handleType.includes("r")) newWidth += dxWorld;
+          if (handleType.includes("l")) {
+            newWidth -= dxWorld;
+            newX = originalObject.x + dxWorld;
+          }
+          if (handleType.includes("b")) newHeight += dyWorld;
+          if (handleType.includes("t")) {
+            newHeight -= dyWorld;
+            newY = originalObject.y + dyWorld;
+          }
+        }
+
+        newWidth = Math.max(0.01, newWidth);
+        newHeight = Math.max(0.01, newHeight);
+
+        setObjectsState((prevObjs) =>
+          prevObjs.map((obj) => {
+            if (obj.id === objectId) {
+              return {
+                ...obj,
+                width: newWidth,
+                height: newHeight,
+                x: newX,
+                y: newY,
+              };
+            }
+            return obj;
+          }),
+        );
+        checkAndSetOverlaps();
+        return;
+      }
+
+      if (
+        draggingState &&
+        draggingState.initialPositions &&
+        draggingState.initialPositions.length > 0
+      ) {
+        const currentSnapLines = [];
+        const dxScreen = e.clientX - draggingState.startScreenX;
+        const dyScreen = e.clientY - draggingState.startScreenY;
+        let dxWorld = dxScreen / viewTransform.scale;
+        let dyWorld = dyScreen / viewTransform.scale;
+        let finalDx = dxWorld;
+        let finalDy = dyWorld;
+
+        if (modifierKeys.ctrl && draggingState.primaryDraggedObjectId) {
+          const pOI = draggingState.initialPositions.find(
+            (p) => p.id === draggingState.primaryDraggedObjectId,
+          );
+          const pOCD = objectsRef.current.find(
+            (o) => o.id === draggingState.primaryDraggedObjectId,
+          );
+
+          if (pOI && pOCD) {
+            const targetPosX = pOI.x + dxWorld;
+            const targetPosY = pOI.y + dyWorld;
+            const primaryObjectForSnapping = {
+              ...pOCD,
+              x: targetPosX,
+              y: targetPosY,
+              rotation: pOI.rotation,
+            };
+            const draggedAABB = getAABB(primaryObjectForSnapping);
+            const draggedSnapLines = {
+              x: [draggedAABB.minX, draggedAABB.centerX, draggedAABB.maxX],
+              y: [draggedAABB.minY, draggedAABB.centerY, draggedAABB.maxY],
+            };
+
+            let bestSnapX = null,
+              bestSnapY = null;
+
+            for (const otherObject of objectsRef.current) {
+              if (selectedObjectIds.includes(otherObject.id)) continue;
+
+              const otherAABB = getAABB(otherObject);
+              const otherSnapLines = {
+                x: [otherAABB.minX, otherAABB.centerX, otherAABB.maxX],
+                y: [otherAABB.minY, otherAABB.centerY, otherAABB.maxY],
+              };
+
+              for (const dXVal of draggedSnapLines.x) {
+                for (const oXVal of otherSnapLines.x) {
+                  const diff = Math.abs(dXVal - oXVal);
+                  if (
+                    diff < SNAP_THRESHOLD_WORLD &&
+                    (!bestSnapX || diff < bestSnapX.diff)
+                  ) {
+                    bestSnapX = {
+                      targetValue: oXVal,
+                      draggedValue: dXVal,
+                      diff,
+                      otherAABB,
+                    };
+                  }
+                }
+              }
+              for (const dYVal of draggedSnapLines.y) {
+                for (const oYVal of otherSnapLines.y) {
+                  const diff = Math.abs(dYVal - oYVal);
+                  if (
+                    diff < SNAP_THRESHOLD_WORLD &&
+                    (!bestSnapY || diff < bestSnapY.diff)
+                  ) {
+                    bestSnapY = {
+                      targetValue: oYVal,
+                      draggedValue: dYVal,
+                      diff,
+                      otherAABB,
+                    };
+                  }
+                }
+              }
+            }
+
+            if (bestSnapX) {
+              finalDx =
+                dxWorld + (bestSnapX.targetValue - bestSnapX.draggedValue);
+              currentSnapLines.push({
+                type: "x",
+                val: bestSnapX.targetValue,
+                start: Math.min(
+                  draggedAABB.minY + (finalDy - dyWorld),
+                  bestSnapX.otherAABB.minY,
+                ),
+                end: Math.max(
+                  draggedAABB.maxY + (finalDy - dyWorld),
+                  bestSnapX.otherAABB.maxY,
+                ),
+              });
+            }
+            if (bestSnapY) {
+              finalDy =
+                dyWorld + (bestSnapY.targetValue - bestSnapY.draggedValue);
+              currentSnapLines.push({
+                type: "y",
+                val: bestSnapY.targetValue,
+                start: Math.min(
+                  draggedAABB.minX + (finalDx - dxWorld),
+                  bestSnapY.otherAABB.minX,
+                ),
+                end: Math.max(
+                  draggedAABB.maxX + (finalDx - dxWorld),
+                  bestSnapY.otherAABB.maxX,
+                ),
+              });
+            }
+          }
+        } else if (modifierKeys.alt && draggingState.primaryDraggedObjectId) {
+          const pOI = draggingState.initialPositions.find(
+            (p) => p.id === draggingState.primaryDraggedObjectId,
+          );
+          if (pOI) {
+            const snappedPosX =
+              Math.round((pOI.x + dxWorld) / PANEL_SIZE_M) * PANEL_SIZE_M;
+            const snappedPosY =
+              Math.round((pOI.y + dyWorld) / PANEL_SIZE_M) * PANEL_SIZE_M;
+            finalDx = snappedPosX - pOI.x;
+            finalDy = snappedPosY - pOI.y;
+          }
+        }
+
+        setObjectsState((prevObjs) =>
+          prevObjs.map((obj) => {
+            const initialPos = draggingState.initialPositions.find(
+              (p) => p.id === obj.id,
+            );
+            if (initialPos) {
+              if (lockedObjectIds.includes(obj.id) && !modifierKeys.shift) {
+                return obj;
+              }
+              return {
+                ...obj,
+                x: initialPos.x + finalDx,
+                y: initialPos.y + finalDy,
+              };
+            }
+            return obj;
+          }),
+        );
+        setActiveSnapLines(currentSnapLines);
+        checkAndSetOverlaps();
+      } else {
+        if (!marqueeRect.active) setActiveSnapLines([]);
+      }
+    },
+    [
+      addingObjectType,
+      draggingState,
+      resizingState,
+      isPanningWithSpace,
+      marqueeRect.active,
+      viewTransform.scale,
+      modifierKeys.ctrl,
+      modifierKeys.alt,
+      modifierKeys.shift,
+      selectedObjectIds,
+      lockedObjectIds,
+      checkAndSetOverlaps,
+      PANEL_SIZE_M, // Now used for grid snap
+    ],
+  );
+
+  const handleMouseUp = useCallback(
+    (e) => {
+      const currentMouseDownStartPos = mouseDownStartPosRef.current;
+      let opMadeChange = false;
+      let objectsBeforeCurrentOperation = null;
+
+      if (draggingState && draggingState.objectsBeforeOp) {
+        objectsBeforeCurrentOperation = draggingState.objectsBeforeOp;
+        if (
+          JSON.stringify(objectsBeforeCurrentOperation) !==
+          JSON.stringify(objectsRef.current)
+        ) {
+          opMadeChange = true;
+        }
+      } else if (resizingState && resizingState.objectsBeforeOp) {
+        objectsBeforeCurrentOperation = resizingState.objectsBeforeOp;
+        if (
+          JSON.stringify(objectsBeforeCurrentOperation) !==
+          JSON.stringify(objectsRef.current)
+        ) {
+          opMadeChange = true;
+        }
+      }
+
+      if (opMadeChange && objectsBeforeCurrentOperation) {
+        setHistory((prevH) => ({
+          undo: [objectsBeforeCurrentOperation, ...prevH.undo].slice(
+            0,
+            MAX_HISTORY_SIZE,
+          ),
+          redo: [],
+        }));
+      }
+
+      if (isPanningWithSpace) setIsPanningWithSpace(false);
+      if (marqueeRect.active) {
+        const worldMarquee = screenToWorldRect({
+          startScreenX: marqueeRect.startScreenX,
+          startScreenY: marqueeRect.startScreenY,
+          currentScreenX: marqueeRect.currentScreenX,
+          currentScreenY: marqueeRect.currentScreenY,
+        });
+        const newlySelectedInMarquee = [];
+        objectsRef.current.forEach((obj) => {
+          const objectIsLocked = lockedObjectIds.includes(obj.id);
+          // Only include in marquee if:
+          // 1. Not locked OR
+          // 2. Locked BUT Shift was held at the START of the marquee drag
+          if (
+            !objectIsLocked ||
+            (objectIsLocked && currentMouseDownStartPos?.shiftKeyAtStart)
+          ) {
+            if (checkAABBIntersection(getAABB(obj), worldMarquee)) {
+              newlySelectedInMarquee.push(obj.id);
+            }
+          }
+        });
+
+        if (currentMouseDownStartPos?.shiftKeyAtStart) {
+          // Add to existing selection, ensuring locked items are only added if Shift was indeed held for marquee.
+          // The filter above already handled not adding locked items if shift wasn't held.
+          setSelectedObjectIds((prevIds) =>
+            Array.from(new Set([...prevIds, ...newlySelectedInMarquee])),
+          );
+        } else {
+          // Replace selection. Locked items are excluded if shift wasn't held.
+          setSelectedObjectIds(newlySelectedInMarquee);
+        }
+      } else if (
+        !draggingState?.initialPositions &&
+        !resizingState &&
+        !modifierKeys.spacebar &&
+        !addingObjectType &&
+        currentMouseDownStartPos
+      ) {
+        const downPos = currentMouseDownStartPos;
+        const dx =
+          e.clientX !== undefined ? Math.abs(e.clientX - downPos.x) : 0;
+        const dy =
+          e.clientY !== undefined ? Math.abs(e.clientY - downPos.y) : 0;
+
+        if (dx < MIN_DRAG_FOR_MARQUEE_PAN && dy < MIN_DRAG_FOR_MARQUEE_PAN) {
+          if (!downPos.shiftKeyAtStart && e.target) {
+            const clickedElement =
+              e.target instanceof Element ? e.target : null;
+            const clickedOnObject =
+              clickedElement && clickedElement.closest("[data-object-id]");
+            const clickedOnResizeHandle =
+              clickedElement && clickedElement.closest("[data-resize-handle]");
+            const targetIsCanvasOrGrid =
+              svgRef.current === e.target ||
+              e.target.id === "grid" ||
+              e.target.parentNode?.id === "grid";
+
+            if (
+              targetIsCanvasOrGrid &&
+              !clickedOnObject &&
+              !clickedOnResizeHandle
+            ) {
+              setSelectedObjectIds([]);
+            }
+            // If clicked on an object, selection is handled by handleMouseDownOnObject.
+            // If it was a locked object without shift, mousedown returned early, selection wasn't changed.
+          }
+        }
+      }
+
+      setMarqueeRect((prev) => ({ ...prev, active: false }));
+      setDraggingState(null);
+      setResizingState(null);
+      setActiveSnapLines([]);
+      setOverlappingObjectIds([]);
+      mouseDownStartPosRef.current = null;
+    },
+    [
+      isPanningWithSpace,
+      marqueeRect,
+      screenToWorldRect,
+      draggingState,
+      resizingState,
+      modifierKeys.spacebar,
+      // modifierKeys.shift IS NOT a direct dependency here, currentMouseDownStartPos.shiftKeyAtStart is used
+      addingObjectType,
+      lockedObjectIds,
+    ],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    if (isPanningWithSpace) setIsPanningWithSpace(false);
+    if (marqueeRect.active)
+      setMarqueeRect((prev) => ({ ...prev, active: false }));
+
+    if (draggingState || resizingState) {
+      handleMouseUp({});
+    }
+
+    setActiveSnapLines([]);
+    setOverlappingObjectIds([]);
+    if (!draggingState && !resizingState && !marqueeRect.active) {
+      mouseDownStartPosRef.current = null;
+    }
+  }, [
+    isPanningWithSpace,
+    marqueeRect.active,
+    draggingState,
+    resizingState,
+    handleMouseUp,
+  ]);
+
+  useEffect(() => {
+    const currentSvgElement = svgRef.current;
+    if (!currentSvgElement) return;
+
+    const wheelHandler = (e) => {
+      e.preventDefault();
+      const scaleAmount = 1.1;
+      const newScaleFactor = e.deltaY > 0 ? 1 / scaleAmount : scaleAmount;
+
+      const svgRect = currentSvgElement.getBoundingClientRect();
+      const mouseX = e.clientX - svgRect.left;
+      const mouseY = e.clientY - svgRect.top;
+
+      setViewTransform((prevTransform) => {
+        const worldBeforeZoomX =
+          (mouseX - prevTransform.x) / prevTransform.scale;
+        const worldBeforeZoomY =
+          (mouseY - prevTransform.y) / prevTransform.scale;
+        const newScale = prevTransform.scale * newScaleFactor;
+        const newViewX = mouseX - worldBeforeZoomX * newScale;
+        const newViewY = mouseY - worldBeforeZoomY * newScale;
+        return { x: newViewX, y: newViewY, scale: newScale };
+      });
+    };
+
+    currentSvgElement.addEventListener("wheel", wheelHandler, {
+      passive: false,
+    });
+
+    return () => {
+      currentSvgElement.removeEventListener("wheel", wheelHandler);
+    };
+  }, []);
+
+  const updateSelectedObjectProperty = useCallback(
+    (property, value) => {
+      if (selectedObjectIds.length !== 1) return;
+      const targetId = selectedObjectIds[0];
+
+      const objectIsLocked = lockedObjectIds.includes(targetId);
+      if (objectIsLocked && !modifierKeys.shift) {
+        return;
+      }
+
+      const numValue = parseFloat(value);
+      let parsedValue = isNaN(numValue) ? value : numValue;
+      if (property === "isOpen")
+        parsedValue = value === "true" || value === true;
+
+      setObjects(
+        (prev) =>
+          prev.map((obj) =>
+            obj.id === targetId ? { ...obj, [property]: parsedValue } : obj,
+          ),
+        true,
+      );
+    },
+    [selectedObjectIds, lockedObjectIds, modifierKeys.shift, setObjects],
+  );
+
+  const renderGridFn = useCallback(() => {
+    if (!svgRef.current) return null;
+    const { width: svgWidth, height: svgHeight } =
+      svgRef.current.getBoundingClientRect();
+    if (svgWidth === 0 || svgHeight === 0) return null;
+    const { x: viewX, y: viewY, scale } = viewTransform;
+    const finalGridLines = [];
+    const majorGridSizeWorld = 1;
+    const minorGridDivisions = 10;
+    const majorGridSizeScaled = majorGridSizeWorld * scale;
+    const minorGridSizeScaled =
+      (majorGridSizeWorld / minorGridDivisions) * scale;
+    const majorLineThreshold = 20;
+    const minorLineThreshold = 5;
+
+    if (majorGridSizeScaled > majorLineThreshold) {
+      const startOffsetX = viewX % majorGridSizeScaled;
+      for (let x = startOffsetX; x < svgWidth; x += majorGridSizeScaled) {
+        finalGridLines.push(
+          <line
+            key={`major-gv-${x}`}
+            x1={x}
+            y1={0}
+            x2={x}
+            y2={svgHeight}
+            stroke={GRID_BOLD_LINE_COLOR}
+            strokeWidth={0.5}
+          />,
+        );
+      }
+      if (
+        minorGridSizeScaled > minorLineThreshold &&
+        majorGridSizeScaled / minorGridSizeScaled > 1.5
+      ) {
+        const minorStartOffsetX = viewX % minorGridSizeScaled;
+        for (
+          let x = minorStartOffsetX;
+          x < svgWidth;
+          x += minorGridSizeScaled
+        ) {
+          if (
+            Math.abs(
+              (x - (viewX % majorGridSizeScaled) + majorGridSizeScaled) %
+                majorGridSizeScaled,
+            ) >
+            minorGridSizeScaled * 0.1
+          ) {
+            finalGridLines.push(
+              <line
+                key={`minor-gv-${x}`}
+                x1={x}
+                y1={0}
+                x2={x}
+                y2={svgHeight}
+                stroke={GRID_LINE_COLOR}
+                strokeWidth={0.25}
+              />,
+            );
+          }
+        }
+      }
+    }
+
+    if (majorGridSizeScaled > majorLineThreshold) {
+      const startOffsetY = viewY % majorGridSizeScaled;
+      for (let y = startOffsetY; y < svgHeight; y += majorGridSizeScaled) {
+        finalGridLines.push(
+          <line
+            key={`major-gh-${y}`}
+            x1={0}
+            y1={y}
+            x2={svgWidth}
+            y2={y}
+            stroke={GRID_BOLD_LINE_COLOR}
+            strokeWidth={0.5}
+          />,
+        );
+      }
+      if (
+        minorGridSizeScaled > minorLineThreshold &&
+        majorGridSizeScaled / minorGridSizeScaled > 1.5
+      ) {
+        const minorStartOffsetY = viewY % minorGridSizeScaled;
+        for (
+          let y = minorStartOffsetY;
+          y < svgHeight;
+          y += minorGridSizeScaled
+        ) {
+          if (
+            Math.abs(
+              (y - (viewY % majorGridSizeScaled) + majorGridSizeScaled) %
+                majorGridSizeScaled,
+            ) >
+            minorGridSizeScaled * 0.1
+          ) {
+            finalGridLines.push(
+              <line
+                key={`minor-gh-${y}`}
+                x1={0}
+                y1={y}
+                x2={svgWidth}
+                y2={y}
+                stroke={GRID_LINE_COLOR}
+                strokeWidth={0.25}
+              />,
+            );
+          }
+        }
+      }
+    }
+
+    finalGridLines.push(
+      <circle
+        key="origin"
+        cx={viewX}
+        cy={viewY}
+        r={Math.max(1, 3 / (scale / INITIAL_PPM))}
+        fill={ORIGIN_POINT_COLOR}
+        stroke="black"
+        strokeWidth={Math.max(0.1, 0.5 / (scale / INITIAL_PPM))}
+      />,
+    );
+    return <g id="grid">{finalGridLines}</g>;
+  }, [viewTransform, INITIAL_PPM]);
+
+  const getResizeCursor = useCallback((handleType, rotationDeg) => {
+    const angle = ((rotationDeg % 360) + 360) % 360;
+    let cursor = "default";
+    if (["tl", "br"].includes(handleType)) cursor = "nwse-resize";
+    if (["tr", "bl"].includes(handleType)) cursor = "nesw-resize";
+    if (["t", "b"].includes(handleType)) cursor = "ns-resize";
+    if (["l", "r"].includes(handleType)) cursor = "ew-resize";
+    const rotationSegment = Math.round(angle / 45) % 8;
+    if (rotationSegment === 1 || rotationSegment === 2) {
+      if (cursor === "ns-resize") cursor = "nesw-resize";
+      else if (cursor === "ew-resize") cursor = "nwse-resize";
+      else if (cursor === "nwse-resize") cursor = "ns-resize";
+      else if (cursor === "nesw-resize") cursor = "ew-resize";
+    } else if (rotationSegment === 3 || rotationSegment === 4) {
+      if (cursor === "ns-resize") cursor = "ew-resize";
+      else if (cursor === "ew-resize") cursor = "ns-resize";
+      else if (cursor === "nwse-resize") cursor = "nesw-resize";
+      else if (cursor === "nesw-resize") cursor = "nwse-resize";
+    } else if (rotationSegment === 5 || rotationSegment === 6) {
+      if (cursor === "ns-resize") cursor = "nesw-resize";
+      else if (cursor === "ew-resize") cursor = "nwse-resize";
+      else if (cursor === "nwse-resize") cursor = "ns-resize";
+      else if (cursor === "nesw-resize") cursor = "ew-resize";
+    } else if (rotationSegment === 7) {
+      if (cursor === "ns-resize") cursor = "ew-resize";
+      else if (cursor === "ew-resize") cursor = "ns-resize";
+      else if (cursor === "nwse-resize") cursor = "nesw-resize";
+      else if (cursor === "nesw-resize") cursor = "nwse-resize";
+    }
+    return cursor;
+  }, []);
+
+  const renderSelectionExtras = useCallback(
+    (obj, scale) => {
+      const handles = [];
+      const dimensionTexts = [];
+      const OBBHandlesDef = [
+        { type: "tl", x: 0, y: 0 },
+        { type: "t", x: obj.width / 2, y: 0 },
+        { type: "tr", x: obj.width, y: 0 },
+        { type: "l", x: 0, y: obj.height / 2 },
+        { type: "r", x: obj.width, y: obj.height / 2 },
+        { type: "bl", x: 0, y: obj.height },
+        { type: "b", x: obj.width / 2, y: obj.height },
+        { type: "br", x: obj.width, y: obj.height },
+      ];
+
+      const objectIsLocked = lockedObjectIds.includes(obj.id);
+      const canInteractWithHandles = !objectIsLocked || modifierKeys.shift;
+      const handleSizeUnscaled = RESIZE_HANDLE_SIZE_PX;
+      const handleSizeScaled = Math.max(
+        4,
+        handleSizeUnscaled / Math.sqrt(scale / INITIAL_PPM),
+      ); // Scale less aggressively
+      const handleStrokeWidth = Math.max(
+        0.2,
+        0.5 / Math.sqrt(scale / INITIAL_PPM),
+      );
+
+      OBBHandlesDef.forEach((h) => {
+        handles.push(
+          <rect
+            key={`handle-${h.type}`}
+            data-resize-handle="true"
+            x={h.x * scale - handleSizeScaled / 2}
+            y={h.y * scale - handleSizeScaled / 2}
+            width={handleSizeScaled}
+            height={handleSizeScaled}
+            fill={RESIZE_HANDLE_COLOR}
+            stroke="white"
+            strokeWidth={handleStrokeWidth}
+            style={{
+              cursor: canInteractWithHandles
+                ? getResizeCursor(h.type, obj.rotation || 0)
+                : "default", // Changed from "not-allowed" to "default" for locked handles
+            }}
+            onMouseDown={(e) => {
+              if (canInteractWithHandles) {
+                handleMouseDownOnResizeHandle(e, obj.id, h.type);
+              } else {
+                e.stopPropagation();
+              }
+            }}
+          />,
+        );
+      });
+
+      const midPointXScaled = (obj.width / 2) * scale;
+      const midPointYScaled = (obj.height / 2) * scale;
+      const textOffsetUnscaled = 15;
+      const textOffset = textOffsetUnscaled / Math.sqrt(scale / INITIAL_PPM);
+      const fontSizeUnscaled = 10;
+      const fontSize = Math.max(
+        6,
+        fontSizeUnscaled / Math.sqrt(scale / INITIAL_PPM),
+      );
+      const strokeBgWidthUnscaled = 3;
+      const strokeBgWidth = Math.max(
+        1,
+        strokeBgWidthUnscaled / Math.sqrt(scale / INITIAL_PPM),
+      );
+
+      dimensionTexts.push(
+        <text
+          key="dim-width"
+          x={midPointXScaled}
+          y={-textOffset}
+          fontSize={`${fontSize}px`}
+          textAnchor="middle"
+          fill={DIMENSION_TEXT_COLOR}
+          style={{
+            paintOrder: "stroke",
+            stroke: DIMENSION_TEXT_BG_COLOR,
+            strokeWidth: `${strokeBgWidth}px`,
+            strokeLinejoin: "round",
+            pointerEvents: "none",
+          }}
+        >
+          {obj.width.toFixed(2)} м
+        </text>,
+      );
+      dimensionTexts.push(
+        <text
+          key="dim-height"
+          x={-textOffset}
+          y={midPointYScaled}
+          fontSize={`${fontSize}px`}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          transform={`rotate(-90, ${-textOffset}, ${midPointYScaled})`}
+          fill={DIMENSION_TEXT_COLOR}
+          style={{
+            paintOrder: "stroke",
+            stroke: DIMENSION_TEXT_BG_COLOR,
+            strokeWidth: `${strokeBgWidth}px`,
+            strokeLinejoin: "round",
+            pointerEvents: "none",
+          }}
+        >
+          {obj.height.toFixed(2)} м
+        </text>,
+      );
+      return [...handles, ...dimensionTexts];
+    },
+    [
+      getResizeCursor,
+      handleMouseDownOnResizeHandle,
+      lockedObjectIds,
+      modifierKeys.shift,
+      INITIAL_PPM,
+    ],
+  );
+
+  const renderObjects = useCallback(() => {
+    const objScale = viewTransform.scale;
+    return objects.map((obj) => {
+      if (!obj) return null;
+      const isSelected = selectedObjectIds.includes(obj.id);
+      const isLocked = lockedObjectIds.includes(obj.id);
+      const isOverlapping = overlappingObjectIds.includes(obj.id);
+      const rotationCenterXScaled = (obj.width * objScale) / 2;
+      const rotationCenterYScaled = (obj.height * objScale) / 2;
+      let strokeColor = objectColors[obj.type]
+        ? objectColors[obj.type] === "lightgray"
+          ? "#555"
+          : "black"
+        : "black";
+      if (obj.type === "wall") strokeColor = "#666";
+      if (isLocked) {
+        strokeColor = LOCKED_OBJECT_STROKE_COLOR;
+      } else if (isSelected) {
+        strokeColor = "blue";
+      }
+      const baseStrokeWidthUnscaled = 1;
+      const selectedStrokeWidthUnscaled = 2;
+      const baseStrokeWidth = Math.max(
+        0.2,
+        baseStrokeWidthUnscaled / (objScale / INITIAL_PPM),
+      );
+      const selectedStrokeWidth = Math.max(
+        0.5,
+        selectedStrokeWidthUnscaled / (objScale / INITIAL_PPM),
+      );
+      const commonProps = {
+        stroke: strokeColor,
+        strokeWidth:
+          isSelected && !isLocked ? selectedStrokeWidth : baseStrokeWidth,
+        style: {
+          cursor:
+            isLocked && !modifierKeys.shift && !isSelected
+              ? "default"
+              : draggingState?.initialPositions?.find((p) => p.id === obj.id) ||
+                  resizingState?.objectId === obj.id
+                ? "grabbing"
+                : "grab",
+        },
+        "data-object-id": obj.id,
+      };
+      const groupTransform = `translate(${obj.x * objScale}, ${obj.y * objScale}) rotate(${obj.rotation || 0}, ${rotationCenterXScaled}, ${rotationCenterYScaled})`;
+      let objectVisual;
+
+      if (obj.type === "door") {
+        const frameW_s = obj.width * objScale;
+        const frameT_s = obj.height * objScale; // Wall thickness
+        const leafT_s = DOOR_LEAF_VISUAL_THICKNESS_M * objScale;
+
+        // Pivot point on the frame (in frame's local scaled coords)
+        const pivotX_s = obj.hingeSide === "left" ? 0 : frameW_s;
+        const pivotY_s = frameT_s / 2;
+
+        // Calculate final SVG rotation angle for the leaf
+        let finalRotationForSVG = 0;
+        if (obj.isOpen && obj.openingAngle !== 0) {
+          let angle = obj.openingAngle; // Base angle from properties
+          if (obj.openingDirection === "outward") {
+            angle *= -1; // Outward opening inverts the angle
+          }
+          // If right hinge, positive opening angle should visually mean CW rotation.
+          // SVG positive rotate is CCW. So, for right hinge, invert the angle.
+          finalRotationForSVG = obj.hingeSide === "left" ? angle : -angle;
+        }
+
+        // Arc calculation (always based on finalRotationForSVG)
+        const arcRadius = frameW_s;
+        const arcAngleRad = finalRotationForSVG * (Math.PI / 180);
+        const arcStartX = pivotX_s;
+        const arcStartY = pivotY_s;
+        const arcEndX = pivotX_s + arcRadius * Math.cos(arcAngleRad);
+        const arcEndY = pivotY_s + arcRadius * Math.sin(arcAngleRad);
+        const arcSweepFlag = finalRotationForSVG >= 0 ? 1 : 0; // 1 for CCW (positive angle), 0 for CW
+
+        objectVisual = (
+          <>
+            {/* Door Frame (part of the wall) */}
+            <rect
+              x="0"
+              y="0"
+              width={frameW_s}
+              height={frameT_s}
+              fill={objectColors.door}
+              {...commonProps}
+            />
+            {/* Door Leaf - Group for rotation */}
+            <g
+              transform={`rotate(${finalRotationForSVG}, ${pivotX_s}, ${pivotY_s})`}
+            >
+              <rect
+                x="0" // Leaf is always drawn starting at x=0 relative to its rotation group
+                y={pivotY_s - leafT_s / 2} // Centered vertically on the pivot line
+                width={frameW_s}
+                height={leafT_s}
+                fill={
+                  isSelected && !isLocked
+                    ? "#B59460"
+                    : objectColors.door || "#A07D50"
+                }
+                stroke={commonProps.stroke}
+                strokeWidth={commonProps.strokeWidth * 0.7}
+              />
+            </g>
+            {/* Opening Arc */}
+            {obj.isOpen && obj.openingAngle > 0 && (
+              <path
+                d={`M ${arcStartX} ${arcStartY} A ${arcRadius} ${arcRadius} 0 0 ${arcSweepFlag} ${arcEndX} ${arcEndY}`}
+                fill="none"
+                stroke={commonProps.stroke}
+                strokeWidth={commonProps.strokeWidth * 0.4}
+                strokeDasharray="3,2"
+              />
+            )}
+          </>
+        );
+      } else if (obj.type === "outlet") {
+        /* Outlet rendering */ objectVisual = (
+          <circle
+            cx={rotationCenterXScaled}
+            cy={rotationCenterYScaled}
+            r={Math.max(
+              1,
+              (obj.width * objScale) / 2 -
+                parseFloat(commonProps.strokeWidth) / 2,
+            )}
+            fill={objectColors[obj.type] || objectColors.default}
+            {...commonProps}
+          />
+        );
+      } else if (obj.type === "window") {
+        /* Window rendering */ objectVisual = (
+          <>
+            <rect
+              x="0"
+              y="0"
+              width={obj.width * objScale}
+              height={obj.height * objScale}
+              fill={objectColors.window}
+              {...commonProps}
+            />
+            <line
+              x1={0}
+              y1={(obj.height * objScale) / 2}
+              x2={obj.width * objScale}
+              y2={(obj.height * objScale) / 2}
+              stroke="#60a5fa"
+              strokeWidth={commonProps.strokeWidth * 0.7}
+            />
+            <line
+              x1={(obj.width * objScale) / 2}
+              y1={0}
+              x2={(obj.width * objScale) / 2}
+              y2={obj.height * objScale}
+              stroke="#60a5fa"
+              strokeWidth={commonProps.strokeWidth * 0.7}
+            />
+          </>
+        );
+      } else {
+        /* Default rect rendering */ objectVisual = (
+          <rect
+            x="0"
+            y="0"
+            width={Math.max(1, obj.width * objScale)}
+            height={Math.max(1, obj.height * objScale)}
+            fill={objectColors[obj.type] || objectColors.default}
+            {...commonProps}
+          />
+        );
+      }
+
+      return (
+        <g
+          key={obj.id}
+          transform={groupTransform}
+          onMouseDown={(e) => handleMouseDownOnObject(e, obj.id)}
+        >
+          {objectVisual}
+          {isOverlapping && !isLocked && (
+            <rect
+              x="0"
+              y="0"
+              width={Math.max(1, obj.width * objScale)}
+              height={Math.max(1, obj.height * objScale)}
+              fill={OVERLAP_HIGHLIGHT_COLOR}
+              stroke="red"
+              strokeWidth={commonProps.strokeWidth * 0.5}
+              pointerEvents="none"
+            />
+          )}
+          {isSelected && !isLocked && renderSelectionExtras(obj, objScale)}
+          {obj.label && isSelected && !isLocked && (
+            <text
+              x={(obj.width * objScale) / 2}
+              y={obj.height * objScale + 12 / (objScale / INITIAL_PPM)}
+              fontSize={`${10 / (objScale / INITIAL_PPM)}px`}
+              textAnchor="middle"
+              fill="#333"
+              style={{ pointerEvents: "none" }}
+            >
+              {" "}
+              {obj.label}{" "}
+            </text>
+          )}
+        </g>
+      );
+    });
+  }, [
+    objects,
+    selectedObjectIds,
+    lockedObjectIds,
+    modifierKeys.shift,
+    overlappingObjectIds,
+    viewTransform.scale,
+    draggingState,
+    resizingState,
+    handleMouseDownOnObject,
+    renderSelectionExtras,
+    INITIAL_PPM,
+  ]);
+
+  const renderSnapGuidesFn = useCallback(() => {
+    if (!activeSnapLines || activeSnapLines.length === 0) return null;
+    const { scale } = viewTransform;
+    return activeSnapLines.map((line, index) => {
+      const scaledVal = line.val * scale;
+      const scaledStart = line.start * scale;
+      const scaledEnd = line.end * scale;
+      const strokeWidth = Math.max(1, 1 / (scale / INITIAL_PPM));
+      const dashArray = `${3 / (scale / INITIAL_PPM)},${2 / (scale / INITIAL_PPM)}`;
+
+      if (line.type === "x") {
+        return (
+          <line
+            key={`snap-x-${index}`}
+            x1={scaledVal}
+            y1={scaledStart}
+            x2={scaledVal}
+            y2={scaledEnd}
+            stroke={SNAP_LINE_COLOR}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dashArray}
+            pointerEvents="none"
+          />
+        );
+      } else {
+        return (
+          <line
+            key={`snap-y-${index}`}
+            x1={scaledStart}
+            y1={scaledVal}
+            x2={scaledEnd}
+            y2={scaledVal}
+            stroke={SNAP_LINE_COLOR}
+            strokeWidth={strokeWidth}
+            strokeDasharray={dashArray}
+            pointerEvents="none"
+          />
+        );
+      }
+    });
+  }, [activeSnapLines, viewTransform.scale, INITIAL_PPM]);
+
+  const renderMarqueeFn = useCallback(() => {
+    if (!marqueeRect || !marqueeRect.active || !svgRef.current) return null;
+    const svgDomRect = svgRef.current.getBoundingClientRect();
+    if (svgDomRect.width === 0 || svgDomRect.height === 0) return null;
+    const x =
+      Math.min(marqueeRect.startScreenX, marqueeRect.currentScreenX) -
+      svgDomRect.left;
+    const y =
+      Math.min(marqueeRect.startScreenY, marqueeRect.currentScreenY) -
+      svgDomRect.top;
+    const width = Math.abs(
+      marqueeRect.startScreenX - marqueeRect.currentScreenX,
+    );
+    const height = Math.abs(
+      marqueeRect.startScreenY - marqueeRect.currentScreenY,
+    );
+    return (
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={MARQUEE_FILL_COLOR}
+        stroke={MARQUEE_STROKE_COLOR}
+        strokeWidth="1"
+        pointerEvents="none"
+      />
+    );
+  }, [marqueeRect]);
+
+  const objectTypesToAdd = [
+    { type: "wall", label: "Стена" },
+    { type: "panel", label: "Панель" },
+    { type: "window", label: "Окно" },
+    { type: "door", label: "Дверь" },
+    { type: "outlet", label: "Розетка" },
+    { type: "sofa", label: "Диван" },
+    { type: "table", label: "Стол" },
+    { type: "cabinet", label: "Шкаф" },
+    { type: "bed", label: "Кровать" },
+    { type: "toilet", label: "Туалет" },
+  ];
+  const configuratorInterface = {
+    addObject: (type, x, y, width, height, data) => {
+      const nO = createObject(type, x, y, width, height, data);
+      setObjects((p) => [...p, nO], true);
+      setSelectedObjectIds([nO.id]);
+      return nO;
+    },
+    updateObject: (id, updates) => {
+      setObjects(
+        (p) => p.map((o) => (o.id === id ? { ...o, ...updates } : o)),
+        true,
+      );
+    },
+    deleteObject: (id) => {
+      setObjects((p) => p.filter((o) => o.id !== id), true);
+      setSelectedObjectIds((p) => p.filter((sId) => sId !== id));
+    },
+    getObjects: () => objectsRef.current,
+    getSelectedObjectIds: () => selectedObjectIds,
+    setSelectedObjectIds,
+    screenToWorld,
+    viewTransform,
+  };
+
+  return (
+    <div
+      ref={mainContainerRef}
+      className="w-full h-full flex flex-col select-none outline-none"
+      tabIndex={0}
+    >
+      <div className="p-2 bg-gray-800 text-white border-b border-gray-700 flex justify-between items-center flex-shrink-0">
+        <div>
+          <h1 className="text-lg font-semibold">Конфигуратор ({activeMode})</h1>
+          <p className="text-xs text-gray-400">
+            Space+Drag:Pan. Drag:Marquee. Shift+Click:Multi-select.
+            Ctrl/Cmd+C/V/Z/Y. Alt:Grid Snap. Ctrl:Object Snap. Del/Esc.
+            L:Lock/Unlock (Shift+Click locked item to select).
+          </p>
+        </div>
+        <div className="flex space-x-1 overflow-x-auto pb-1">
+          {" "}
+          {/* Allow horizontal scroll for buttons */}
+          {objectTypesToAdd.map((item) => (
+            <button
+              key={item.type}
+              onClick={() => {
+                setAddingObjectType(item.type);
+                setSelectedObjectIds([]);
+              }}
+              title={`Добавить ${item.label}`}
+              className={`px-2 py-1 text-xs sm:px-3 sm:py-1.5 sm:text-sm rounded whitespace-nowrap hover:bg-blue-600 transition-colors ${addingObjectType === item.type ? "bg-blue-700 ring-2 ring-blue-400" : "bg-blue-500"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-grow overflow-hidden">
+        <div className="flex-grow relative bg-gray-200">
+          <svg
+            ref={svgRef}
+            width="100%"
+            height="100%"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            onMouseDown={handleMouseDownOnCanvas}
+            className={`block bg-white ${addingObjectType ? "cursor-crosshair" : isPanningWithSpace ? "cursor-grabbing" : modifierKeys.spacebar ? "cursor-grab" : "cursor-default"}`}
+          >
+            {renderGridFn()}
+            <g transform={`translate(${viewTransform.x}, ${viewTransform.y})`}>
+              {renderObjects()}
+              {renderSnapGuidesFn()}
+            </g>
+            {renderMarqueeFn()}
+          </svg>
+          {addingObjectType && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-300 text-black px-3 py-1.5 rounded shadow-lg text-xs z-10 pointer-events-none">
+              Клик для добавления "
+              {objectTypesToAdd.find((o) => o.type === addingObjectType)?.label}
+              ". ESC для отмены.
+            </div>
+          )}
+          {renderModeSpecificUI && (
+            <div className="absolute top-2 left-2 p-0 z-20">
+              {renderModeSpecificUI(configuratorInterface)}
+            </div>
+          )}
+        </div>
+
+        <div className="w-64 bg-gray-50 border-l border-gray-300 p-3 overflow-y-auto flex-shrink-0">
+          <h2 className="text-md font-semibold mb-3 border-b pb-2">Свойства</h2>
+          {primarySelectedObject ? (
+            <div>
+              <p className="text-xs text-gray-500 mb-1">
+                ID: {primarySelectedObject.id}{" "}
+                {primarySelectedObject.label
+                  ? `(${primarySelectedObject.label})`
+                  : ""}
+              </p>
+              <p className="text-sm font-medium mb-2 capitalize">
+                Тип: {primarySelectedObject.type}
+                {lockedObjectIds.includes(primarySelectedObject.id) && (
+                  <span className="ml-2 text-orange-500 text-xs font-normal">
+                    (Locked)
+                  </span>
+                )}
+              </p>
+              <PropertyInput
+                label="X (м):"
+                value={primarySelectedObject.x.toFixed(3)}
+                onChange={(e) =>
+                  updateSelectedObjectProperty("x", e.target.value)
+                }
+                disabled={
+                  lockedObjectIds.includes(primarySelectedObject.id) &&
+                  !modifierKeys.shift
+                }
+              />
+              <PropertyInput
+                label="Y (м):"
+                value={primarySelectedObject.y.toFixed(3)}
+                onChange={(e) =>
+                  updateSelectedObjectProperty("y", e.target.value)
+                }
+                disabled={
+                  lockedObjectIds.includes(primarySelectedObject.id) &&
+                  !modifierKeys.shift
+                }
+              />
+              <PropertyInput
+                label={
+                  primarySelectedObject.type === "door" ||
+                  primarySelectedObject.type === "window"
+                    ? "Длина (м):"
+                    : "Ширина (м):"
+                }
+                value={primarySelectedObject.width.toFixed(3)}
+                min="0.01"
+                onChange={(e) =>
+                  updateSelectedObjectProperty("width", e.target.value)
+                }
+                disabled={
+                  lockedObjectIds.includes(primarySelectedObject.id) &&
+                  !modifierKeys.shift
+                }
+              />
+              <PropertyInput
+                label={
+                  primarySelectedObject.type === "door" ||
+                  primarySelectedObject.type === "window" ||
+                  primarySelectedObject.type === "wall"
+                    ? "Толщина (м):"
+                    : "Высота (м):"
+                }
+                value={primarySelectedObject.height.toFixed(3)}
+                min="0.01"
+                onChange={(e) =>
+                  updateSelectedObjectProperty("height", e.target.value)
+                }
+                disabled={
+                  lockedObjectIds.includes(primarySelectedObject.id) &&
+                  !modifierKeys.shift
+                }
+              />
+              <PropertyInput
+                label="Вращение (°):"
+                type="number"
+                value={primarySelectedObject.rotation || 0}
+                step="1"
+                min="-360"
+                max="360"
+                onChange={(e) =>
+                  updateSelectedObjectProperty("rotation", e.target.value)
+                }
+                disabled={
+                  lockedObjectIds.includes(primarySelectedObject.id) &&
+                  !modifierKeys.shift
+                }
+              />
+              {primarySelectedObject.type === "door" && (
+                <>
+                  <PropertyInput label="Открыта:">
+                    <button
+                      onClick={() =>
+                        updateSelectedObjectProperty(
+                          "isOpen",
+                          !primarySelectedObject.isOpen,
+                        )
+                      }
+                      className={`w-full p-1 border border-gray-300 rounded text-sm bg-white hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 ${lockedObjectIds.includes(primarySelectedObject.id) && !modifierKeys.shift ? "cursor-not-allowed opacity-50" : ""}`}
+                      disabled={
+                        lockedObjectIds.includes(primarySelectedObject.id) &&
+                        !modifierKeys.shift
+                      }
+                    >
+                      {primarySelectedObject.isOpen
+                        ? "Да (Закрыть)"
+                        : "Нет (Открыть)"}
+                    </button>
+                  </PropertyInput>
+                  <PropertyInput
+                    label="Угол откр. (°):"
+                    type="number"
+                    value={primarySelectedObject.openingAngle || 90}
+                    step="1"
+                    min="0"
+                    max="170"
+                    onChange={(e) =>
+                      updateSelectedObjectProperty(
+                        "openingAngle",
+                        e.target.value,
+                      )
+                    }
+                    disabled={
+                      (lockedObjectIds.includes(primarySelectedObject.id) &&
+                        !modifierKeys.shift) ||
+                      !primarySelectedObject.isOpen
+                    }
+                    title={
+                      !primarySelectedObject.isOpen
+                        ? "Сначала откройте дверь"
+                        : ""
+                    }
+                  />
+                  <PropertyInput label="Петли:">
+                    <select
+                      value={primarySelectedObject.hingeSide || "left"}
+                      onChange={(e) =>
+                        updateSelectedObjectProperty(
+                          "hingeSide",
+                          e.target.value,
+                        )
+                      }
+                      className={`w-full p-1 border border-gray-300 rounded text-sm ${lockedObjectIds.includes(primarySelectedObject.id) && !modifierKeys.shift ? "bg-gray-100 cursor-not-allowed" : "bg-white focus:ring-1 focus:ring-blue-500 outline-none"}`}
+                      disabled={
+                        lockedObjectIds.includes(primarySelectedObject.id) &&
+                        !modifierKeys.shift
+                      }
+                    >
+                      <option value="left">Слева</option>
+                      <option value="right">Справа</option>
+                    </select>
+                  </PropertyInput>
+                  <PropertyInput label="Направление откр.:">
+                    <select
+                      value={primarySelectedObject.openingDirection || "inward"}
+                      onChange={(e) =>
+                        updateSelectedObjectProperty(
+                          "openingDirection",
+                          e.target.value,
+                        )
+                      }
+                      className={`w-full p-1 border border-gray-300 rounded text-sm ${lockedObjectIds.includes(primarySelectedObject.id) && !modifierKeys.shift ? "bg-gray-100 cursor-not-allowed" : "bg-white focus:ring-1 focus:ring-blue-500 outline-none"}`}
+                      disabled={
+                        lockedObjectIds.includes(primarySelectedObject.id) &&
+                        !modifierKeys.shift
+                      }
+                    >
+                      <option value="inward">Внутрь</option>
+                      <option value="outward">Наружу</option>
+                    </select>
+                  </PropertyInput>
+                </>
+              )}
+              <button
+                onClick={() => {
+                  if (
+                    lockedObjectIds.includes(primarySelectedObject.id) &&
+                    !modifierKeys.shift
+                  )
+                    return;
+                  setObjects(
+                    (p) =>
+                      p.filter((obj) => obj.id !== primarySelectedObject.id),
+                    true,
+                  );
+                  setSelectedObjectIds((ids) =>
+                    ids.filter((id) => id !== primarySelectedObject.id),
+                  );
+                }}
+                className={`mt-4 w-full text-white text-sm py-1.5 rounded ${lockedObjectIds.includes(primarySelectedObject.id) && !modifierKeys.shift ? "bg-red-300 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"}`}
+                disabled={
+                  lockedObjectIds.includes(primarySelectedObject.id) &&
+                  !modifierKeys.shift &&
+                  primarySelectedObject
+                }
+              >
+                Удалить выбранный
+              </button>
+            </div>
+          ) : selectedObjectIds.length > 1 ? (
+            <p className="text-sm text-gray-500">
+              Выбрано несколько объектов ({selectedObjectIds.length} шт).
+              {selectedObjectIds.some((id) => lockedObjectIds.includes(id)) && (
+                <span className="ml-1 text-xs text-orange-500">
+                  (есть заблокированные)
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500">Ничего не выбрано.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="p-1 bg-gray-100 border-t text-xs text-gray-700 flex justify-between">
+        <span>
+          {selectedObjectIds.length === 1 && primarySelectedObject
+            ? `Выбран: ${primarySelectedObject.type} ${primarySelectedObject.label ? `(${primarySelectedObject.label})` : `(ID: ${primarySelectedObject.id})`}${lockedObjectIds.includes(primarySelectedObject.id) ? " [Locked]" : ""}`
+            : selectedObjectIds.length > 1
+              ? `${selectedObjectIds.length} объектов выбрано`
+              : "Ничего не выбрано"}
+        </span>
+        <span>
+          Undo: {history.undo.length}, Redo: {history.redo.length}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+Configurator.propTypes = {
+  activeMode: PropTypes.oneOf(Object.values(MODES)),
+  setProjectInfoData: PropTypes.func,
+  renderModeSpecificUI: PropTypes.func,
+};
+
+PropertyInput.propTypes = {
+  label: PropTypes.string.isRequired,
+  type: PropTypes.string,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  onChange: PropTypes.func.isRequired,
+  step: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  children: PropTypes.node,
+  disabled: PropTypes.bool,
+};
+
+export default Configurator;
+
+
+==== src\components\Configurator\ElementRenderer.jsx ====
+// src/components/Configurator/ElementRenderer.jsx
+import React from 'react';
+import PropTypes from 'prop-types';
+import {
+    RENDER_SCALE,
+    DOOR_WIDTH_MM,
+    DOUBLE_DOOR_WIDTH_MM,
+    DEFAULT_WINDOW_WIDTH_MM,
+    DOOR_LEAF_THICKNESS_PX,
+    DOOR_HANDLE_SIZE_PX,
+    DOOR_HANDLE_OFFSET_FROM_EDGE_PX,
+} from './constants'; // Path is correct (same directory)
+
+const MIN_ELEMENT_SIZE_PX = 5;
+
+const renderDoorInElementRenderer = (element, wallThicknessPx, elementStrokeWidth, doorArcStrokeWidth, baseGroupProps) => {
+    const isDouble = element.type?.includes('podwójne');
+    const doorWidthMm = element.width || (isDouble ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
+    const W_px = doorWidthMm * RENDER_SCALE;
+    const T_px = DOOR_LEAF_THICKNESS_PX;
+
+    if (!isFinite(W_px) || W_px <= 0) {
+        console.warn("[ElementRenderer] Invalid door width_px for element:", element, W_px);
+        return null;
+    }
+    
+    let leafRotationDeg = 0;
+    let arcStartX = 0, arcStartY = 0;
+    let arcEndX = 0, arcEndY = 0;
+    let arcSweepFlag = 0;
+    let handlePosOnLeafX = 0;
+
+    if (element.openingSide === 'left') {
+        arcStartX = W_px;
+        handlePosOnLeafX = W_px - DOOR_HANDLE_OFFSET_FROM_EDGE_PX;
+        if (element.openingDirection === 'inward') {
+            leafRotationDeg = 90;
+            arcEndX = 0; arcEndY = W_px;
+            arcSweepFlag = 0;
+        } else {
+            leafRotationDeg = -90;
+            arcEndX = 0; arcEndY = -W_px;
+            arcSweepFlag = 1;
+        }
+    } else {
+        arcStartX = -W_px;
+        handlePosOnLeafX = -W_px + DOOR_HANDLE_OFFSET_FROM_EDGE_PX;
+        if (element.openingDirection === 'inward') {
+            leafRotationDeg = -90;
+            arcEndX = 0; arcEndY = W_px;
+            arcSweepFlag = 1;
+        } else {
+            leafRotationDeg = 90;
+            arcEndX = 0; arcEndY = -W_px;
+            arcSweepFlag = 0;
+        }
+    }
+
+    const leafRectProps = {
+        x: element.openingSide === 'right' ? -W_px : 0,
+        y: -T_px / 2,
+        width: W_px,
+        height: T_px,
+        fill: element.isOpen ? "url(#doorTexturePattern)" : "#E5E7EB",
+        stroke: "#6B7280",
+        strokeWidth: elementStrokeWidth * 0.8,
+        rx: 1, ry: 1,
+    };
+
+    if (!element.isOpen) {
+        return (
+            <g {...baseGroupProps}>
+                <rect {...leafRectProps} />
+                {isDouble && (
+                    <line
+                        x1={element.openingSide === 'right' ? -W_px / 2 : W_px / 2} y1={-T_px / 2}
+                        x2={element.openingSide === 'right' ? -W_px / 2 : W_px / 2} y2={T_px / 2}
+                        stroke="#6B7280" strokeWidth={elementStrokeWidth * 0.6}
+                    />
+                )}
+                 <circle cx={handlePosOnLeafX} cy="0" r={DOOR_HANDLE_SIZE_PX / 2.5} fill="#A0AEC0" />
+            </g>
+        );
+    }
+
+    return (
+        <g {...baseGroupProps}>
+            <g transform={`rotate(${leafRotationDeg})`}>
+                <rect {...leafRectProps} />
+                <circle cx={handlePosOnLeafX} cy="0" r={DOOR_HANDLE_SIZE_PX / 2} fill="#6b7280" />
+            </g>
+            {W_px > 0 && (
+                <path
+                    d={`M ${arcStartX} ${arcStartY} A ${W_px} ${W_px} 0 0 ${arcSweepFlag} ${arcEndX} ${arcEndY}`}
+                    fill="none"
+                    stroke="#9ca3af"
+                    strokeWidth={doorArcStrokeWidth}
+                    strokeDasharray="3 2"
+                />
+            )}
+        </g>
+    );
+};
+
+const renderWindowInElementRenderer = (element, wallThicknessPx, elementStrokeWidth, baseGroupProps) => {
+    const windowWidthMm = element.width || element.dimensions?.widthMm || DEFAULT_WINDOW_WIDTH_MM;
+    const widthPx = windowWidthMm * RENDER_SCALE;
+
+    const rectProps = {
+        x: -widthPx / 2,
+        y: -wallThicknessPx / 2,
+        width: widthPx,
+        height: wallThicknessPx,
+        fill: "#bfdbfe",
+        stroke: "#60a5fa",
+        strokeWidth: elementStrokeWidth * 0.7,
+        rx: 1, ry: 1,
+    };
+
+    if (!isFinite(widthPx) || !isFinite(wallThicknessPx) || widthPx <= 0 || wallThicknessPx <= 0) {
+        console.warn("[ElementRenderer] Invalid window dimensions/wall thickness:", element, widthPx, wallThicknessPx);
+        return null;
+    }
+
+    return (
+        <g {...baseGroupProps}>
+            <rect {...rectProps} />
+            <line x1={0} y1={-wallThicknessPx/2} x2={0} y2={wallThicknessPx/2} stroke="#60a5fa" strokeWidth={elementStrokeWidth * 0.4} />
+            <line x1={-widthPx/2} y1={0} x2={widthPx/2} y2={0} stroke="#60a5fa" strokeWidth={elementStrokeWidth * 0.4} />
+        </g>
+    );
+};
+
+const renderOtherElementInElementRenderer = (element, wallThicknessPx, elementStrokeWidth, baseGroupProps) => {
+    const widthPx = element.dimensions?.widthPx || MIN_ELEMENT_SIZE_PX;
+    const heightPx = element.dimensions?.heightPx || wallThicknessPx || MIN_ELEMENT_SIZE_PX;
+    const size = Math.max(widthPx, heightPx, MIN_ELEMENT_SIZE_PX);
+    return (
+        <g {...baseGroupProps}>
+            <rect x={-size / 2} y={-size / 2} width={size} height={size} fill="#a0aec0" stroke="#718096" strokeWidth={elementStrokeWidth * 0.4} />
+        </g>
+    );
+};
+
+
+export const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick, onMouseDown }) => {
+    let errorReason = null;
+    if (!element || !element.id) errorReason = "element or element.id is missing";
+    else if (!element.position || typeof element.position.x !== 'number' || typeof element.position.y !== 'number' || !isFinite(element.position.x) || !isFinite(element.position.y)) errorReason = "element.position is invalid";
+    else if (element.type !== 'container' && (element.type.includes('Okno')) && (!wallThicknessPx || wallThicknessPx <= 0 || !isFinite(wallThicknessPx))) {
+        errorReason = "wallThicknessPx is invalid for window";
+    }
+
+
+    if (errorReason) {
+        console.warn(`[ElementRenderer] Invalid props: ${errorReason}`, { element, wallThicknessPx });
+        return null;
+    }
+
+    const elementStrokeWidth = 0.7;
+    const doorArcStrokeWidth = 0.4;
+
+    const style = {
+        position: 'absolute',
+        left: `${element.position.x}px`,
+        top: `${element.position.y}px`,
+        zIndex: isSelected ? 10 : 5,
+        cursor: element.type === 'container' ? 'grab' : (onClick ? 'pointer' : 'default'),
+        outline: isSelected ? '2px solid #4A90E2' : 'none',
+        outlineOffset: '2px',
+        pointerEvents: 'none',
+    };
+
+    const contentTransform = `rotate(${element.rotation || 0})`;
+
+    const baseGroupProps = {
+        "data-module-id": element.parentContainerId || element.moduleId || element.id.split('-')[0],
+        "data-element-id": element.id,
+        "data-interactive": "true",
+        onClick: onClick ? (e) => { e.stopPropagation(); onClick(e); } : undefined,
+        onMouseDown: onMouseDown ? (e) => { e.stopPropagation(); onMouseDown(e); } : undefined,
+        style: { pointerEvents: 'auto' },
+        transform: contentTransform,
+    };
+
+    let renderedElementContent = null;
+    const elementTypeNormalized = element.type.toLowerCase();
+
+    if (elementTypeNormalized === 'container') {
+        return (<div style={style} {...baseGroupProps} title={`Container ${element.id.substring(0, 4)}`}></div>);
+    } else if (elementTypeNormalized.includes('drzwi')) {
+        renderedElementContent = renderDoorInElementRenderer(element, wallThicknessPx, elementStrokeWidth, doorArcStrokeWidth, baseGroupProps);
+    } else if (elementTypeNormalized.includes('okno')) {
+        renderedElementContent = renderWindowInElementRenderer(element, wallThicknessPx, elementStrokeWidth, baseGroupProps);
+    } else {
+        renderedElementContent = renderOtherElementInElementRenderer(element, wallThicknessPx || MIN_ELEMENT_SIZE_PX, elementStrokeWidth, baseGroupProps);
+    }
+    
+
+    const svgPadding = 20;
+    let maxExtent = 0;
+
+    if (elementTypeNormalized.includes('drzwi')) {
+        const doorWidthMm = element.width || (elementTypeNormalized.includes('podwójne') ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
+        const W_px = doorWidthMm * RENDER_SCALE;
+        maxExtent = W_px + DOOR_LEAF_THICKNESS_PX + svgPadding;
+    } else if (elementTypeNormalized.includes('okno')) {
+        const windowWidthMm = element.width || element.dimensions?.widthMm || DEFAULT_WINDOW_WIDTH_MM;
+        maxExtent = (windowWidthMm * RENDER_SCALE) / 2 + (wallThicknessPx || 0) / 2 + svgPadding;
+    } else {
+        maxExtent = (element.dimensions?.widthPx || MIN_ELEMENT_SIZE_PX) / 2 + svgPadding;
+    }
+    
+    const svgViewBoxSize = Math.max(MIN_ELEMENT_SIZE_PX + svgPadding*2, maxExtent * 2);
+
+    const viewBoxX = -svgViewBoxSize / 2;
+    const viewBoxY = -svgViewBoxSize / 2;
+    const svgRenderWidth = svgViewBoxSize;
+    const svgRenderHeight = svgViewBoxSize;
+
+    if (!isFinite(viewBoxX + viewBoxY + svgRenderWidth + svgRenderHeight) || svgRenderWidth <= 0 || svgRenderHeight <= 0) {
+        console.warn("[ElementRenderer] Invalid SVG viewBox calculated:", { viewBoxX, viewBoxY, svgRenderWidth, svgRenderHeight }, element);
+        return null;
+    }
+
+    return (
+        <svg
+            style={style}
+            width={svgRenderWidth}
+            height={svgRenderHeight}
+            viewBox={`${viewBoxX} ${viewBoxY} ${svgRenderWidth} ${svgRenderHeight}`}
+            overflow="visible"
+        >
+            {renderedElementContent}
+        </svg>
+    );
+};
+
+ElementRenderer.propTypes = {
+    element: PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        type: PropTypes.string.isRequired,
+        position: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }).isRequired,
+        dimensions: PropTypes.shape({ widthPx: PropTypes.number, heightPx: PropTypes.number, widthMm: PropTypes.number }),
+        rotation: PropTypes.number,
+        parentContainerId: PropTypes.string,
+        moduleId: PropTypes.string,
+        isOpen: PropTypes.bool,
+        openingSide: PropTypes.oneOf(['left', 'right']),
+        openingDirection: PropTypes.oneOf(['inward', 'outward']),
+        width: PropTypes.number,
+    }).isRequired,
+    wallThicknessPx: PropTypes.number,
+    isSelected: PropTypes.bool.isRequired,
+    onClick: PropTypes.func,
+    onMouseDown: PropTypes.func,
+};
+
+==== src\components\Configurator\HelpPanel.jsx ====
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaQuestionCircle, FaTimes } from 'react-icons/fa';
+
+const HelpPanel = () => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const helpContent = {
+        modular: [
+            {
+                title: 'Створення модуля',
+                content: 'Натисніть на кнопку "Додати модуль" або використовуйте комбінацію клавіш Ctrl + M'
+            },
+            {
+                title: 'Переміщення модуля',
+                content: 'Перетягніть модуль за його центр або використовуйте стрілки на клавіатурі'
+            },
+            {
+                title: 'Зміна розміру',
+                content: 'Перетягніть кутовий маркер модуля для зміни його розміру'
+            },
+            {
+                title: 'Поворот модуля',
+                content: 'Використовуйте кнопку повороту або комбінацію клавіш Ctrl + R'
+            }
+        ],
+        frame: [
+            {
+                title: 'Створення каркасу',
+                content: 'Виберіть тип каркасу та вкажіть його розміри'
+            },
+            {
+                title: 'Додавання елементів',
+                content: 'Перетягніть елементи з панелі інструментів на каркас'
+            }
+        ],
+        frameless: [
+            {
+                title: 'Створення стін',
+                content: 'Натисніть на кнопку "Додати стіну" та вкажіть її параметри'
+            },
+            {
+                title: 'З\'єднання стін',
+                content: 'Перетягніть кінець стіни до іншої стіни для створення з\'єднання'
+            }
+        ]
+    };
+
+    return (
+        <>
+            <button
+                onClick={() => setIsOpen(true)}
+                className="fixed bottom-4 left-4 p-3 bg-white rounded-full shadow-lg text-gray-600 hover:text-gray-900 transition-colors"
+                title="Довідка"
+            >
+                <FaQuestionCircle className="w-6 h-6" />
+            </button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-semibold text-gray-800">
+                                    Довідка
+                                </h2>
+                                <button
+                                    onClick={() => setIsOpen(false)}
+                                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                                >
+                                    <FaTimes className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                {Object.entries(helpContent).map(([mode, tips]) => (
+                                    <div key={mode} className="space-y-4">
+                                        <h3 className="text-lg font-medium text-gray-800 capitalize">
+                                            {mode === 'modular' ? 'Модульний режим' :
+                                             mode === 'frame' ? 'Каркасний режим' :
+                                             'Безкаркасний режим'}
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {tips.map((tip, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="bg-gray-50 rounded-lg p-4"
+                                                >
+                                                    <h4 className="font-medium text-gray-800 mb-1">
+                                                        {tip.title}
+                                                    </h4>
+                                                    <p className="text-gray-600">
+                                                        {tip.content}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
+    );
+};
+
+export default HelpPanel; 
+
+==== src\components\Configurator\modes\FramelessMode.jsx ====
+import React from "react";
+
+const FramelessMode = ({ addObject }) => {
+  // Placeholder: Tools for Frameless Mode
+  const handleAddWallSegment = () => {
+    if (addObject) {
+      addObject("panel", 1, 8, 3, 0.15, {
+        type: "wall_segment",
+        name: "Concrete Wall",
+      });
+      // alert("Wall segment added (example)");
+    } else {
+      // alert("Add object function not available.");
+    }
+  };
+  return (
+    <div className="bg-gray-100 p-2 rounded shadow-md">
+      <h3 className="text-sm font-semibold mb-2 text-gray-700">
+        Frameless Tools
+      </h3>
+      <button
+        onClick={handleAddWallSegment}
+        className="px-3 py-1.5 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-colors"
+      >
+        Добавить Сегмент Стены
+      </button>
+      <p className="text-xs text-gray-500 mt-2">
+        Безкаркасный режим в разработке.
+      </p>
+    </div>
+  );
+};
+
+export default FramelessMode;
+
+
+==== src\components\Configurator\modes\FrameMode.jsx ====
+import React from "react";
+
+const FrameMode = ({ addObject }) => {
+  // Placeholder: Tools for Frame Mode would go here
+  // These tools would call `addObject` or other functions passed from Configurator
+  const handleAddFrameElement = () => {
+    if (addObject) {
+      addObject("panel", 5, 5, 2, 0.2, { type: "beam", name: "Steel Beam" });
+      // alert("Frame element added (example)");
+    } else {
+      // alert("Add object function not available.");
+    }
+  };
+
+  return (
+    <div className="bg-gray-100 p-2 rounded shadow-md">
+      <h3 className="text-sm font-semibold mb-2 text-gray-700">Frame Tools</h3>
+      <button
+        onClick={handleAddFrameElement}
+        className="px-3 py-1.5 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600 transition-colors"
+      >
+        Добавить Каркасный Элемент
+      </button>
+      <p className="text-xs text-gray-500 mt-2">
+        Каркасный режим в разработке.
+      </p>
+    </div>
+  );
+};
+
+export default FrameMode;
+
+
+==== src\components\Configurator\modes\ModularMode.jsx ====
+import React from "react";
+import { FaCube, FaPlusSquare } from "react-icons/fa";
+import { toast } from "react-toastify"; // Make sure react-toastify is installed and configured in App
+import "react-toastify/dist/ReactToastify.css";
+
+// These constants would ideally come from a shared config or be passed as props
+const MODULE_WIDTH_METERS = 6;
+const MODULE_DEPTH_METERS = 2.4; // Typical module depth
+const WALL_THICKNESS_M = 0.15; // Consistent with Configurator's typical wall objects
+const PANEL_SIZE_M = 1.15; // Standard panel size
+
+const ModularMode = ({
+  addObject,
+  getObjects,
+  screenToWorld,
+  viewTransform,
+}) => {
+  const handleAddModule = () => {
+    if (!addObject) {
+      toast.error("Add object function not available.");
+      return;
+    }
+    // Attempt to place the new module not overlapping existing ones.
+    // This is a very basic placement strategy.
+    const existingObjects = getObjects ? getObjects() : [];
+    let newX = 1; // Start at 1m
+    let newY = 1; // Start at 1m
+
+    if (existingObjects.length > 0) {
+      const lastObject = existingObjects[existingObjects.length - 1];
+      newX = lastObject.x + lastObject.width + 1; // Place 1m to the right of the last object
+      newY = lastObject.y;
+    }
+
+    // A module could be represented as a group of panels or a single "module" object
+    // For simplicity, let's add a single large "panel" representing the module footprint.
+    const moduleObj = addObject(
+      "panel", // Or a new 'module' type if defined with special rendering
+      newX,
+      newY,
+      MODULE_WIDTH_METERS,
+      MODULE_DEPTH_METERS,
+      { name: "Standard Module" },
+    );
+    if (moduleObj) {
+      toast.success(`Модуль ${moduleObj.id} добавлен!`);
+    }
+  };
+
+  const handleAddInternalWall = () => {
+    if (!addObject) {
+      toast.error("Add object function not available.");
+      return;
+    }
+    // Example: Add a wall in the center of the view (if canvas is centered at 0,0)
+    // Or, ideally, use mouse position from an event if this was a canvas click.
+    // For a toolbar button, we need a default placement strategy.
+    const { x: worldMouseX, y: worldMouseY } = screenToWorld
+      ? screenToWorld(window.innerWidth / 2, window.innerHeight / 2)
+      : { x: 2, y: 2 };
+
+    const wallObj = addObject(
+      "wall", // Assuming 'wall' type has distinct rendering
+      worldMouseX - PANEL_SIZE_M / 2, // Center the wall
+      worldMouseY - WALL_THICKNESS_M / 2,
+      PANEL_SIZE_M, // Wall length of one panel
+      WALL_THICKNESS_M, // Wall thickness
+      { name: "Internal Wall" },
+    );
+    if (wallObj) {
+      toast.success(`Внутренняя стена ${wallObj.id} добавлена!`);
+    }
+  };
+
+  return (
+    <div className="bg-gray-100 p-2 rounded shadow-md">
+      <h3 className="text-sm font-semibold mb-2 text-gray-700">
+        Modular Tools
+      </h3>
+      <div className="flex flex-col space-y-2">
+        <button
+          onClick={handleAddModule}
+          className="flex items-center justify-center px-3 py-1.5 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+          title="Добавить стандартный модуль (6x2.4м)"
+        >
+          <FaCube className="mr-2" /> Добавить Модуль
+        </button>
+        <button
+          onClick={handleAddInternalWall}
+          className="flex items-center justify-center px-3 py-1.5 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+          title="Добавить внутреннюю стену"
+        >
+          <FaPlusSquare className="mr-2" /> Добавить Стену
+        </button>
+        {/* More modular-specific tools can go here */}
+      </div>
+    </div>
+  );
+};
+
+export default ModularMode;
+
+
+==== src\components\Configurator\ProjectInfo.jsx ====
+import React from 'react';
+import { motion } from 'framer-motion';
+
+const ProjectInfo = ({ area = 0, cost = 0, elements = [] }) => {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 w-80"
+        >
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Інформація про проект
+            </h3>
+            
+            <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Загальна площа:</span>
+                    <span className="font-medium text-gray-800">{area.toFixed(2)} м²</span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Орієнтовна вартість:</span>
+                    <span className="font-medium text-gray-800">{cost.toLocaleString('uk-UA')} грн</span>
+                </div>
+                
+                {elements.length > 0 && (
+                    <div className="pt-3 border-t border-gray-200">
+                        <h4 className="text-sm font-medium text-gray-600 mb-2">
+                            Елементи проекту:
+                        </h4>
+                        <div className="space-y-2">
+                            {elements.map((element, index) => (
+                                <div key={index} className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-600">{element.name}</span>
+                                    <span className="text-gray-800">{element.count} шт.</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </motion.div>
+    );
+};
+
+export default ProjectInfo; 
+
+==== src\index.css ====
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add any global styles below */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+} 
+
+==== src\index.js ====
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css'; // Assuming you have global styles here
+import App from './App';
+import reportWebVitals from './reportWebVitals'; // Optional: for performance monitoring
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+    <App />
+
+);
+
+
+
+==== src\reportWebVitals.js ====
+// src/reportWebVitals.js
+const reportWebVitals = onPerfEntry => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals; 
+
+==== tailwind.config.js ====
+// ========================================================================
+// FILE: tailwind.config.js
+// ========================================================================
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./public/index.html",
+    "./src/**/*.{js,jsx,ts,tsx}", // Сканируем все JS/JSX/TS/TSX файлы в src
+  ],
+  theme: {
+    extend: {
+      // Основная палитра
+      colors: {
+        "dark-bg": "#121212", // Еще темнее фон для контраста
+        "card-bg": "#1E1E1E", // Фон карточек и элементов UI
+        "primary-blue": "#007BFF", // Основной акцентный синий
+        "gradient-blue": "#00C4FF", // Вторичный синий для градиентов
+        "hover-blue": "#0056b3", // Синий для hover эффектов
+        // Расширение стандартных цветов Tailwind
+        gray: {
+          900: "#111827", // Используется для фона, если dark-bg не задан
+          800: "#1F2937", // Темно-серый для элементов UI
+          700: "#374151", // Серый для границ, фона инпутов
+          600: "#4B5563", // Серый для текста, границ
+          500: "#6B7280", // Серый для второстепенного текста, иконок
+          400: "#9CA3AF", // Светло-серый для текста
+          300: "#D1D5DB", // Еще светлее
+          200: "#E5E7EB", // Почти белый
+          100: "#F3F4F6", // Очень светлый
+        },
+        // Можно добавить другие акцентные цвета
+        // 'accent-green': '#10B981',
+        // 'accent-red': '#EF4444',
+        // 'accent-yellow': '#F59E0B',
+      },
+      // Шрифты
+      fontFamily: {
+        sans: [
+          "Inter",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "Roboto",
+          '"Helvetica Neue"',
+          "Arial",
+          '"Noto Sans"',
+          "sans-serif",
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+          '"Segoe UI Symbol"',
+          '"Noto Color Emoji"',
+        ],
+        // Можно добавить моноширинный шрифт
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          '"Liberation Mono"',
+          '"Courier New"',
+          "monospace",
+        ],
+      },
+      // Анимации
+      animation: {
+        // spin уже есть по умолчанию в Tailwind v3+
+        "fade-in": "fadeIn 0.5s ease-out forwards",
+        "slide-up": "slideUp 0.5s ease-out forwards",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideUp: {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      // Тени
+      boxShadow: {
+        md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "2xl": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+        "inner-md": "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+        "blue-glow-sm":
+          "0 1px 3px 0 rgba(0, 123, 255, 0.1), 0 1px 2px -1px rgba(0, 123, 255, 0.1)",
+        "blue-glow-md":
+          "0 4px 6px -1px rgba(0, 123, 255, 0.1), 0 2px 4px -2px rgba(0, 123, 255, 0.1)",
+        "blue-glow-lg":
+          "0 10px 15px -3px rgba(0, 123, 255, 0.1), 0 4px 6px -4px rgba(0, 123, 255, 0.1)",
+      },
+    },
+  },
+  plugins: [
+    // Официальные плагины Tailwind
+    require("@tailwindcss/forms"), // Стили для элементов форм по умолчанию
+    require("@tailwindcss/typography"), // Стили для прозы (например, из Markdown)
+    require("@tailwindcss/aspect-ratio"), // Для соотношения сторон
+    require("@tailwindcss/line-clamp"), // Для обрезки текста по количеству строк
+  ],
+  // variants в Tailwind v3+ используются реже, предпочтительнее модификаторы (hover:, focus:, group-hover:)
+  // Но если нужны специфичные варианты:
+  variants: {
+    extend: {
+      // Пример:
+      backgroundColor: ["active"],
+      opacity: ["disabled"],
+      cursor: ["disabled"],
+    },
+  },
+};
+

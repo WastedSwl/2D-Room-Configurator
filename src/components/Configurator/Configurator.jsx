@@ -1,256 +1,286 @@
 // src/components/Configurator/Configurator.jsx
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaExpand, FaCompress, FaUndo, FaSave, FaDownload } from 'react-icons/fa';
-import ModularMode from './modes/ModularMode';
-import FrameMode from './modes/FrameMode';
-import FramelessMode from './modes/FramelessMode';
-import ProjectInfo from './ProjectInfo';
-import HelpPanel from './HelpPanel';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import PropTypes from "prop-types";
+import { MODES, DEFAULT_MODE } from "./appConstants";
+import { OBJECT_TYPES_TO_ADD } from "./configuratorConstants";
 
-const Configurator = () => {
-    const [mode, setMode] = useState('modular'); // 'modular' | 'frame' | 'frameless'
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [floor, setFloor] = useState(1);
-    const [showModeChangeWarning, setShowModeChangeWarning] = useState(false);
-    const [pendingMode, setPendingMode] = useState(null);
-    const [projectData, setProjectData] = useState({
-        area: 0,
-        cost: 0,
-        elements: []
-    });
+import useConfiguratorState from "./hooks/useConfiguratorState";
+import useObjectManagement from "./hooks/useObjectManagement";
+import useViewTransform from "./hooks/useViewTransform";
+import useModifierKeys from "./hooks/useModifierKeys";
+import useMouseInteractions from "./hooks/useMouseInteractions";
+import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 
-    const handleModeChange = (newMode) => {
-        if (mode !== newMode) {
-            setPendingMode(newMode);
-            setShowModeChangeWarning(true);
-        }
-    };
+import ConfiguratorToolbar from "./toolbar/ConfiguratorToolbar";
+import SvgCanvas from "./canvas/SvgCanvas";
+import PropertiesPanel from "./sidebar/PropertiesPanel";
+import StatusBar from "./statusbar/StatusBar";
 
-    const confirmModeChange = () => {
-        setMode(pendingMode);
-        setShowModeChangeWarning(false);
-        setPendingMode(null);
-        // Reset project data when changing modes
-        setProjectData({
-            area: 0,
-            cost: 0,
-            elements: []
-        });
-    };
+// Import mode components
+import ModularMode from "./modes/ModularMode";
+import FramelessMode from "./modes/FramelessMode";
+import FrameMode from "./modes/FrameMode";
 
-    const cancelModeChange = () => {
-        setShowModeChangeWarning(false);
-        setPendingMode(null);
-    };
+import { getInitialObjects } from "./hooks/useObjectManagement";
 
-    const toggleFullscreen = () => {
-        setIsFullscreen(!isFullscreen);
-    };
+const Configurator = ({
+  activeMode: activeModeProp,
+  setProjectInfoData: setProjectInfoDataProp,
+  renderModeSpecificUI: renderModeSpecificUIProp,
+}) => {
+  const [activeMode, setActiveMode] = useState(
+    activeModeProp !== undefined ? activeModeProp : DEFAULT_MODE
+  );
+  const setProjectInfoDataExt = setProjectInfoDataProp || (() => {});
+  const renderModeSpecificUI = renderModeSpecificUIProp || (() => null);
 
-    const handleReset = () => {
-        // TODO: Implement reset functionality
-        setProjectData({
-            area: 0,
-            cost: 0,
-            elements: []
-        });
-    };
+  const svgRef = useRef(null);
+  const mainContainerRef = useRef(null);
 
-    const handleSave = () => {
-        // TODO: Implement save functionality
-        console.log('Saving project...', projectData);
-    };
+  // ---- Hooks ----
+  const {
+    objects,
+    objectsRef,
+    setObjects,
+    selectedObjectIds,
+    setSelectedObjectIds,
+    lockedObjectIds,
+    setLockedObjectIds,
+    history,
+    setHistory,
+    handleUndo,
+    handleRedo,
+    primarySelectedObject,
+    copiedObjectsData,
+    setCopiedObjectsData,
+    overlappingObjectIds,
+    setOverlappingObjectIds,
+  } = useConfiguratorState(setProjectInfoDataExt, activeMode);
 
-    const handleDownload = () => {
-        // TODO: Implement download functionality
-        console.log('Downloading project...', projectData);
-    };
+  const modifierKeys = useModifierKeys(mainContainerRef, svgRef);
 
-    return (
-        <div className={`relative ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : 'min-h-screen bg-gray-50'}`}>
-            {/* Top Navigation Bar */}
-            <nav className="bg-white shadow-sm border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16">
-                        <div className="flex items-center space-x-4">
-                            {/* Mode Selection */}
-                            <div className="flex space-x-2">
-                                <button
-                                    onClick={() => handleModeChange('modular')}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                                        ${mode === 'modular' 
-                                            ? 'bg-blue-600 text-white' 
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                                >
-                                    Модульний
-                                </button>
-                                <button
-                                    onClick={() => handleModeChange('frame')}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                                        ${mode === 'frame' 
-                                            ? 'bg-blue-600 text-white' 
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                                >
-                                    Каркасний
-                                </button>
-                                <button
-                                    onClick={() => handleModeChange('frameless')}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                                        ${mode === 'frameless' 
-                                            ? 'bg-blue-600 text-white' 
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                                >
-                                    Безкаркасний
-                                </button>
-                            </div>
+  const {
+    addObject,
+    updateObject,
+    deleteObjectById,
+    updateSelectedObjectProperty,
+    addAndSelectObject,
+    defaultObjectSizes,
+  } = useObjectManagement(
+    setObjects,
+    selectedObjectIds,
+    lockedObjectIds,
+    modifierKeys,
+  );
 
-                            {/* Floor Selection */}
-                            <div className="flex items-center space-x-2">
-                                <span className="text-sm text-gray-600">Поверх:</span>
-                                <div className="flex space-x-1">
-                                    {[1, 2, 3].map((f) => (
-                                        <button
-                                            key={f}
-                                            onClick={() => setFloor(f)}
-                                            className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors
-                                                ${floor === f 
-                                                    ? 'bg-blue-600 text-white' 
-                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                                        >
-                                            {f}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
+  const { viewTransform, setViewTransform, screenToWorld, screenToWorldRect } =
+    useViewTransform(svgRef);
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center space-x-4">
-                            <button
-                                onClick={handleReset}
-                                className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
-                                title="Скасувати зміни"
-                            >
-                                <FaUndo className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
-                                title="Зберегти проект"
-                            >
-                                <FaSave className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={handleDownload}
-                                className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
-                                title="Завантажити проект"
-                            >
-                                <FaDownload className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={toggleFullscreen}
-                                className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
-                                title={isFullscreen ? "Вийти з повноекранного режиму" : "Повноекранний режим"}
-                            >
-                                {isFullscreen ? (
-                                    <FaCompress className="w-5 h-5" />
-                                ) : (
-                                    <FaExpand className="w-5 h-5" />
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+  const [addingObjectType, setAddingObjectType] = useState(null);
 
-            {/* Main Content */}
-            <main className="flex-1">
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={mode}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.2 }}
-                        className="h-[calc(100vh-4rem)]"
-                    >
-                        {mode === 'modular' && (
-                            <ModularMode
-                                projectData={projectData}
-                                setProjectData={setProjectData}
-                                floor={floor}
-                            />
-                        )}
-                        {mode === 'frame' && (
-                            <FrameMode
-                                projectData={projectData}
-                                setProjectData={setProjectData}
-                                floor={floor}
-                            />
-                        )}
-                        {mode === 'frameless' && (
-                            <FramelessMode
-                                projectData={projectData}
-                                setProjectData={setProjectData}
-                                floor={floor}
-                            />
-                        )}
-                    </motion.div>
-                </AnimatePresence>
-            </main>
+  const mouseInteractions = useMouseInteractions({
+    objectsRef,
+    setObjects,
+    setObjectsState: setObjects,
+    selectedObjectIds,
+    setSelectedObjectIds,
+    lockedObjectIds,
+    setHistory,
+    viewTransform,
+    screenToWorld,
+    screenToWorldRect,
+    modifierKeys,
+    addingObjectType,
+    setAddingObjectType,
+    addAndSelectObject,
+    mainContainerRef,
+    svgRef,
+    setOverlappingObjectIdsProp: setOverlappingObjectIds,
+  });
 
-            {/* Project Info Panel */}
-            <ProjectInfo
-                area={projectData.area}
-                cost={projectData.cost}
-                elements={projectData.elements}
-            />
+  useKeyboardShortcuts({
+    mainContainerRef,
+    selectedObjectIds,
+    setSelectedObjectIds,
+    lockedObjectIds,
+    setLockedObjectIds,
+    objectsRef,
+    setObjects,
+    handleUndo,
+    handleRedo,
+    copiedObjectsData,
+    setCopiedObjectsData,
+    addingObjectType,
+    setAddingObjectType,
+    marqueeRectActive: mouseInteractions.marqueeRect.active,
+    resizingStateActive: !!mouseInteractions.resizingState,
+  });
 
-            {/* Help Panel */}
-            <HelpPanel />
+  useEffect(() => {
+    mainContainerRef.current?.focus();
+  }, []);
 
-            {/* Mode Change Warning Modal */}
-            <AnimatePresence>
-                {showModeChangeWarning && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
-                        >
-                            <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                Зміна режиму
-                            </h3>
-                            <p className="text-gray-600 mb-6">
-                                При зміні режиму всі поточні зміни будуть втрачені. Ви впевнені, що хочете продовжити?
-                            </p>
-                            <div className="flex justify-end space-x-4">
-                                <button
-                                    onClick={cancelModeChange}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                                >
-                                    Скасувати
-                                </button>
-                                <button
-                                    onClick={confirmModeChange}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                                >
-                                    Продовжити
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+  const handleStartAddObject = useCallback(
+    (type) => {
+      setAddingObjectType(type);
+      setSelectedObjectIds([]); // Clear selection when starting to add
+    },
+    [setSelectedObjectIds],
+  );
+
+  const handleDeleteSelectedObjectInPanel = useCallback(() => {
+    if (
+      primarySelectedObject &&
+      (!lockedObjectIds.includes(primarySelectedObject.id) ||
+        modifierKeys.shift)
+    ) {
+      deleteObjectById(primarySelectedObject.id);
+      setSelectedObjectIds((ids) =>
+        ids.filter((id) => id !== primarySelectedObject.id),
+      );
+    }
+  }, [
+    primarySelectedObject,
+    lockedObjectIds,
+    modifierKeys.shift,
+    deleteObjectById,
+    setSelectedObjectIds,
+  ]);
+
+  // Возвращает стартовые объекты для режима
+  function getInitialObjectsForMode(mode) {
+    if (mode === MODES.FRAMELESS) return getInitialObjects();
+    // Для модульного и каркасного — пусто
+    return [];
+  }
+
+  const handleModeChange = useCallback((newMode) => {
+    if (newMode === activeMode) return;
+    // Show confirmation dialog if there are unsaved changes
+    if (objects.length > 0) {
+      const confirmed = window.confirm(
+        "При смене режима все несохраненные изменения будут потеряны. Продолжить?"
+      );
+      if (!confirmed) return;
+    }
+    // Clear all objects and reset state
+    setObjects(getInitialObjectsForMode(newMode));
+    setSelectedObjectIds([]);
+    setLockedObjectIds([]);
+    setHistory({ undo: [], redo: [] }); // Initialize history properly
+    setAddingObjectType(null);
+    // Set new mode
+    setActiveMode(newMode);
+  }, [activeMode, objects.length, setObjects, setSelectedObjectIds, setLockedObjectIds, setHistory]);
+
+  // Interface for mode-specific UI
+  const configuratorInterface = {
+    addObject,
+    updateObject,
+    deleteObject: deleteObjectById,
+    getObjects: () => objectsRef.current,
+    getSelectedObjectIds: () => selectedObjectIds,
+    setSelectedObjectIds,
+    screenToWorld,
+    viewTransform,
+    svgRef,
+  };
+
+  // Render the appropriate mode component
+  const renderModeComponent = () => {
+    switch (activeMode) {
+      case MODES.MODULAR:
+        return <ModularMode {...configuratorInterface} />;
+      case MODES.FRAMELESS:
+        return <FramelessMode {...configuratorInterface} />;
+      case MODES.FRAMED:
+        return <FrameMode {...configuratorInterface} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div
+      ref={mainContainerRef}
+      className="w-full h-full flex flex-col select-none outline-none"
+      tabIndex={0} // Make div focusable
+    >
+      <ConfiguratorToolbar
+        activeModeName={activeMode}
+        addingObjectType={addingObjectType}
+        onStartAddObject={handleStartAddObject}
+        onModeChange={handleModeChange}
+      />
+
+      <div className="flex flex-grow overflow-hidden">
+        <div className="flex-grow relative bg-gray-200">
+          <SvgCanvas
+            svgRef={svgRef}
+            viewTransform={viewTransform}
+            setViewTransform={setViewTransform} // For panning
+            objects={objects}
+            selectedObjectIds={selectedObjectIds}
+            lockedObjectIds={lockedObjectIds}
+            overlappingObjectIds={overlappingObjectIds}
+            activeSnapLines={mouseInteractions.activeSnapLines}
+            marqueeRect={mouseInteractions.marqueeRect}
+            modifierKeys={modifierKeys}
+            addingObjectType={addingObjectType}
+            isPanningWithSpace={mouseInteractions.isPanningWithSpace}
+            draggingState={mouseInteractions.draggingState}
+            resizingState={mouseInteractions.resizingState}
+            handleMouseMove={mouseInteractions.handleMouseMove}
+            handleMouseUp={mouseInteractions.handleMouseUp}
+            handleMouseLeave={mouseInteractions.handleMouseLeave}
+            handleMouseDownOnCanvas={mouseInteractions.handleMouseDownOnCanvas}
+            handleMouseDownOnObject={mouseInteractions.handleMouseDownOnObject}
+            handleMouseDownOnResizeHandle={
+              mouseInteractions.handleMouseDownOnResizeHandle
+            }
+          />
+          {addingObjectType && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-300 text-black px-3 py-1.5 rounded shadow-lg text-xs z-10 pointer-events-none">
+              Клик для добавления "
+              {
+                OBJECT_TYPES_TO_ADD.find((o) => o.type === addingObjectType)
+                  ?.label
+              }
+              ". ESC для отмены.
+            </div>
+          )}
+          {renderModeComponent()}
+          {renderModeSpecificUI && (
+            <div className="absolute top-2 left-2 p-0 z-20">
+              {renderModeSpecificUI(configuratorInterface)}
+            </div>
+          )}
         </div>
-    );
+
+        <PropertiesPanel
+          primarySelectedObject={primarySelectedObject}
+          selectedObjectIds={selectedObjectIds}
+          lockedObjectIds={lockedObjectIds}
+          modifierKeys={modifierKeys}
+          updateSelectedObjectProperty={updateSelectedObjectProperty}
+          deleteSelectedObject={handleDeleteSelectedObjectInPanel}
+        />
+      </div>
+
+      <StatusBar
+        selectedObjectIds={selectedObjectIds}
+        primarySelectedObject={primarySelectedObject}
+        lockedObjectIds={lockedObjectIds}
+        history={history}
+      />
+    </div>
+  );
 };
 
-export default Configurator; 
+Configurator.propTypes = {
+  activeMode: PropTypes.oneOf(Object.values(MODES)),
+  setProjectInfoData: PropTypes.func,
+  renderModeSpecificUI: PropTypes.func,
+};
+
+export default Configurator;
