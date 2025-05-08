@@ -9,6 +9,7 @@ const PropertiesPanel = ({
   modifierKeys,
   updateSelectedObjectProperty,
   deleteSelectedObject, // Assumes a function to delete the primary selected object
+  activeMode, // новый проп
 }) => {
   if (!primarySelectedObject && selectedObjectIds.length === 0) {
     return (
@@ -57,47 +58,55 @@ const PropertiesPanel = ({
               </span>
             )}
           </p>
-          <PropertyInput
-            label="X (м):"
-            value={primarySelectedObject.x.toFixed(3)}
-            onChange={(e) => updateSelectedObjectProperty("x", e.target.value)}
-            disabled={isLockedAndCantEdit}
-          />
-          <PropertyInput
-            label="Y (м):"
-            value={primarySelectedObject.y.toFixed(3)}
-            onChange={(e) => updateSelectedObjectProperty("y", e.target.value)}
-            disabled={isLockedAndCantEdit}
-          />
-          <PropertyInput
-            label={
-              primarySelectedObject.type === "door" ||
-              primarySelectedObject.type === "window"
-                ? "Длина (м):"
-                : "Ширина (м):"
-            }
-            value={primarySelectedObject.width.toFixed(3)}
-            min="0.01"
-            onChange={(e) =>
-              updateSelectedObjectProperty("width", e.target.value)
-            }
-            disabled={isLockedAndCantEdit}
-          />
-          <PropertyInput
-            label={
-              primarySelectedObject.type === "door" ||
-              primarySelectedObject.type === "window" ||
-              primarySelectedObject.type === "wall"
-                ? "Толщина (м):"
-                : "Высота (м):"
-            }
-            value={primarySelectedObject.height.toFixed(3)}
-            min="0.01"
-            onChange={(e) =>
-              updateSelectedObjectProperty("height", e.target.value)
-            }
-            disabled={isLockedAndCantEdit}
-          />
+          {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
+            <PropertyInput
+              label="X (м):"
+              value={primarySelectedObject.x.toFixed(3)}
+              onChange={(e) => updateSelectedObjectProperty("x", e.target.value)}
+              disabled={isLockedAndCantEdit}
+            />
+          )}
+          {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
+            <PropertyInput
+              label="Y (м):"
+              value={primarySelectedObject.y.toFixed(3)}
+              onChange={(e) => updateSelectedObjectProperty("y", e.target.value)}
+              disabled={isLockedAndCantEdit}
+            />
+          )}
+          {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
+            <PropertyInput
+              label={
+                primarySelectedObject.type === "door" ||
+                primarySelectedObject.type === "window"
+                  ? "Длина (м):"
+                  : "Ширина (м):"
+              }
+              value={primarySelectedObject.width.toFixed(3)}
+              min="0.01"
+              onChange={(e) =>
+                updateSelectedObjectProperty("width", e.target.value)
+              }
+              disabled={isLockedAndCantEdit}
+            />
+          )}
+          {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
+            <PropertyInput
+              label={
+                primarySelectedObject.type === "door" ||
+                primarySelectedObject.type === "window" ||
+                primarySelectedObject.type === "wall"
+                  ? "Толщина (м):"
+                  : "Высота (м):"
+              }
+              value={primarySelectedObject.height.toFixed(3)}
+              min="0.01"
+              onChange={(e) =>
+                updateSelectedObjectProperty("height", e.target.value)
+              }
+              disabled={isLockedAndCantEdit}
+            />
+          )}
           <PropertyInput
             label="Вращение (°):"
             type="number"

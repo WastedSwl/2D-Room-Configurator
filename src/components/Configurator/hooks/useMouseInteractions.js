@@ -129,13 +129,13 @@ const useMouseInteractions = ({
   const handleMouseDownOnResizeHandle = useCallback(
     (e, objectId, handleType) => {
       e.stopPropagation();
+      const obj = objectsRef.current.find((o) => o.id === objectId);
+      if (!obj) return;
+      if (obj.type === "module") return;
       const objectIsLocked = lockedObjectIds.includes(objectId);
       if (objectIsLocked && !modifierKeys.shift) return;
 
       mainContainerRef.current?.focus();
-      const obj = objectsRef.current.find((o) => o.id === objectId);
-      if (!obj) return;
-
       setResizingState({
         objectId,
         handleType,
@@ -267,6 +267,8 @@ const useMouseInteractions = ({
           startScreenY,
           originalObject,
         } = resizingState;
+        const obj = objectsRef.current.find((o) => o.id === objectId);
+        if (obj && obj.type === "module") return;
         const scale = viewTransform.scale;
         const dxScreen = e.clientX - startScreenX;
         const dyScreen = e.clientY - startScreenY;

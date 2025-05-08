@@ -111,18 +111,6 @@ const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
     }
   }
 
-  finalGridLines.push(
-    <circle
-      key="origin"
-      cx={viewX}
-      cy={viewY}
-      r={Math.max(1, 3 / (scale / INITIAL_PPM))}
-      fill={ORIGIN_POINT_COLOR}
-      stroke="black"
-      strokeWidth={Math.max(0.1, 0.5 / (scale / INITIAL_PPM))}
-    />,
-  );
-
   return <g id="grid">{finalGridLines}</g>;
 };
 

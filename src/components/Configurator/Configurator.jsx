@@ -264,6 +264,7 @@ const Configurator = ({
           modifierKeys={modifierKeys}
           updateSelectedObjectProperty={updateSelectedObjectProperty}
           deleteSelectedObject={handleDeleteSelectedObjectInPanel}
+          activeMode={activeMode}
         />
       </div>
 

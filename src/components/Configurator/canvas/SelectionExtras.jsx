@@ -45,33 +45,35 @@ const SelectionExtras = ({
     0.5 * uiScaleFactor,
   );
 
-  OBBHandlesDef.forEach((h) => {
-    handles.push(
-      <rect
-        key={`handle-${h.type}`}
-        data-resize-handle="true"
-        // Позиционируем маркеры в координатах объекта (которые уже умножены на scale)
-        // а их размер задаем в SVG единицах, которые компенсируют scale
-        x={h.x * scale - handleSizeSVG / 2}
-        y={h.y * scale - handleSizeSVG / 2}
-        width={handleSizeSVG}
-        height={handleSizeSVG}
-        fill={RESIZE_HANDLE_COLOR}
-        stroke="white"
-        strokeWidth={handleStrokeWidthSVG}
-        style={{
-          cursor: canInteractWithHandles
-            ? getResizeCursorForHandle(h.type, obj.rotation || 0)
-            : "default",
-        }}
-        onMouseDown={(e) => {
-          if (canInteractWithHandles)
-            onResizeHandleMouseDown(e, obj.id, h.type);
-          else e.stopPropagation();
-        }}
-      />,
-    );
-  });
+  if (obj.type !== "module") {
+    OBBHandlesDef.forEach((h) => {
+      handles.push(
+        <rect
+          key={`handle-${h.type}`}
+          data-resize-handle="true"
+          // Позиционируем маркеры в координатах объекта (которые уже умножены на scale)
+          // а их размер задаем в SVG единицах, которые компенсируют scale
+          x={h.x * scale - handleSizeSVG / 2}
+          y={h.y * scale - handleSizeSVG / 2}
+          width={handleSizeSVG}
+          height={handleSizeSVG}
+          fill={RESIZE_HANDLE_COLOR}
+          stroke="white"
+          strokeWidth={handleStrokeWidthSVG}
+          style={{
+            cursor: canInteractWithHandles
+              ? getResizeCursorForHandle(h.type, obj.rotation || 0)
+              : "default",
+          }}
+          onMouseDown={(e) => {
+            if (canInteractWithHandles)
+              onResizeHandleMouseDown(e, obj.id, h.type);
+            else e.stopPropagation();
+          }}
+        />,
+      );
+    });
+  }
 
   const midPointXObjScaled = (obj.width / 2) * scale; // Центральная точка объекта в экранных SVG координатах (относительно группы объекта)
   const midPointYObjScaled = (obj.height / 2) * scale;
