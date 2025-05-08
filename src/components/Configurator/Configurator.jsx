@@ -21,26 +21,27 @@ import ModularMode from "./modes/ModularMode";
 import FramelessMode from "./modes/FramelessMode";
 import FrameMode from "./modes/FrameMode";
 
-import { getInitialObjects } from "./hooks/useObjectManagement";
+import { getInitialObjects } from "./hooks/useObjectManagement"; // Это нормально, если getInitialObjects статична
 
 const Configurator = ({
   activeMode: activeModeProp,
   setProjectInfoData: setProjectInfoDataProp,
   renderModeSpecificUI: renderModeSpecificUIProp,
 }) => {
-  const [activeMode, setActiveMode] = useState(
+  const [activeModeInternal, setActiveModeInternal] = useState(
     activeModeProp !== undefined ? activeModeProp : DEFAULT_MODE
   );
   const setProjectInfoDataExt = setProjectInfoDataProp || (() => {});
-  const renderModeSpecificUI = renderModeSpecificUIProp || (() => null);
+  const renderModeSpecificUIExt = renderModeSpecificUIProp || (() => null);
 
   const svgRef = useRef(null);
   const mainContainerRef = useRef(null);
 
   // ---- Hooks ----
+  // 1. useConfiguratorState должен быть первым, так как он предоставляет objectsRef
   const {
     objects,
-    objectsRef,
+    objectsRef, // Этот objectsRef инициализируется в useConfiguratorState
     setObjects,
     selectedObjectIds,
     setSelectedObjectIds,
@@ -55,10 +56,11 @@ const Configurator = ({
     setCopiedObjectsData,
     overlappingObjectIds,
     setOverlappingObjectIds,
-  } = useConfiguratorState(setProjectInfoDataExt, activeMode);
+  } = useConfiguratorState(setProjectInfoDataExt, activeModeInternal);
 
   const modifierKeys = useModifierKeys(mainContainerRef, svgRef);
 
+  // 2. useObjectManagement зависит от setObjects и objectsRef из useConfiguratorState
   const {
     addObject,
     updateObject,
@@ -71,17 +73,19 @@ const Configurator = ({
     selectedObjectIds,
     lockedObjectIds,
     modifierKeys,
+    objectsRef // Передаем objectsRef напрямую. Его .current будет актуальным.
   );
 
   const { viewTransform, setViewTransform, screenToWorld, screenToWorldRect } =
     useViewTransform(svgRef);
 
   const [addingObjectType, setAddingObjectType] = useState(null);
+  const [addingCorridorMode, setAddingCorridorMode] = useState(false);
 
   const mouseInteractions = useMouseInteractions({
-    objectsRef,
-    setObjects,
-    setObjectsState: setObjects,
+    objectsRef, // Передаем objectsRef
+    setObjects, // setObjects (с логикой истории)
+    setObjectsState: setObjects, // Для mouseMove, где история не нужна при каждом шаге
     selectedObjectIds,
     setSelectedObjectIds,
     lockedObjectIds,
@@ -96,6 +100,7 @@ const Configurator = ({
     mainContainerRef,
     svgRef,
     setOverlappingObjectIdsProp: setOverlappingObjectIds,
+    activeMode: activeModeInternal,
   });
 
   useKeyboardShortcuts({
@@ -104,7 +109,7 @@ const Configurator = ({
     setSelectedObjectIds,
     lockedObjectIds,
     setLockedObjectIds,
-    objectsRef,
+    objectsRef, // Передаем objectsRef
     setObjects,
     handleUndo,
     handleRedo,
@@ -119,11 +124,21 @@ const Configurator = ({
   useEffect(() => {
     mainContainerRef.current?.focus();
   }, []);
+  
+  // Если activeModeProp меняется извне, обновляем внутренний стейт
+  useEffect(() => {
+    if (activeModeProp !== undefined && activeModeProp !== activeModeInternal) {
+        // Здесь можно добавить логику смены режима, если это необходимо
+        // пока просто синхронизируем
+        setActiveModeInternal(activeModeProp);
+    }
+  }, [activeModeProp, activeModeInternal]);
+
 
   const handleStartAddObject = useCallback(
     (type) => {
       setAddingObjectType(type);
-      setSelectedObjectIds([]); // Clear selection when starting to add
+      setSelectedObjectIds([]); 
     },
     [setSelectedObjectIds],
   );
@@ -147,38 +162,65 @@ const Configurator = ({
     setSelectedObjectIds,
   ]);
 
-  // Возвращает стартовые объекты для режима
+  const handleAddCorridor = useCallback((corridorData) => {
+    const blockSize = 1; 
+    const corridorThickness = 0.2; 
+
+    const isVertical = corridorData.orientation === 'vertical';
+    let finalX, finalY, corridorWidth, corridorHeight;
+
+    if (isVertical) {
+      corridorWidth = corridorThickness;
+      corridorHeight = blockSize;
+      finalX = corridorData.x - corridorThickness / 2; 
+      finalY = corridorData.y;
+    } else { 
+      corridorWidth = blockSize;
+      corridorHeight = corridorThickness;
+      finalX = corridorData.x;
+      finalY = corridorData.y - corridorThickness / 2; 
+    }
+
+    addObject(
+      'corridor',
+      finalX,
+      finalY,
+      corridorWidth,
+      corridorHeight,
+      { 
+        orientation: corridorData.orientation, 
+        parentId: corridorData.parentId,
+      }
+    );
+    setAddingCorridorMode(false);
+  }, [addObject]);
+
   function getInitialObjectsForMode(mode) {
     if (mode === MODES.FRAMELESS) return getInitialObjects();
-    // Для модульного и каркасного — пусто
     return [];
   }
 
   const handleModeChange = useCallback((newMode) => {
-    if (newMode === activeMode) return;
-    // Show confirmation dialog if there are unsaved changes
-    if (objects.length > 0) {
+    if (newMode === activeModeInternal) return;
+    if (objects.length > 0) { // objects из useConfiguratorState
       const confirmed = window.confirm(
         "При смене режима все несохраненные изменения будут потеряны. Продолжить?"
       );
       if (!confirmed) return;
     }
-    // Clear all objects and reset state
     setObjects(getInitialObjectsForMode(newMode));
     setSelectedObjectIds([]);
     setLockedObjectIds([]);
-    setHistory({ undo: [], redo: [] }); // Initialize history properly
+    setHistory({ undo: [], redo: [] }); 
     setAddingObjectType(null);
-    // Set new mode
-    setActiveMode(newMode);
-  }, [activeMode, objects.length, setObjects, setSelectedObjectIds, setLockedObjectIds, setHistory]);
+    setActiveModeInternal(newMode);
+  }, [activeModeInternal, objects, setObjects, setSelectedObjectIds, setLockedObjectIds, setHistory]);
 
-  // Interface for mode-specific UI
   const configuratorInterface = {
     addObject,
     updateObject,
     deleteObject: deleteObjectById,
-    getObjects: () => objectsRef.current,
+    getObjects: () => objectsRef.current, // Используем objectsRef.current
     getSelectedObjectIds: () => selectedObjectIds,
     setSelectedObjectIds,
     screenToWorld,
@@ -186,9 +228,8 @@ const Configurator = ({
     svgRef,
   };
 
-  // Render the appropriate mode component
   const renderModeComponent = () => {
-    switch (activeMode) {
+    switch (activeModeInternal) {
       case MODES.MODULAR:
         return <ModularMode {...configuratorInterface} />;
       case MODES.FRAMELESS:
@@ -204,10 +245,10 @@ const Configurator = ({
     <div
       ref={mainContainerRef}
       className="w-full h-full flex flex-col select-none outline-none"
-      tabIndex={0} // Make div focusable
+      tabIndex={0} 
     >
       <ConfiguratorToolbar
-        activeModeName={activeMode}
+        activeModeName={activeModeInternal}
         addingObjectType={addingObjectType}
         onStartAddObject={handleStartAddObject}
         onModeChange={handleModeChange}
@@ -215,11 +256,30 @@ const Configurator = ({
 
       <div className="flex flex-grow overflow-hidden">
         <div className="flex-grow relative bg-gray-200">
+          {false && activeModeInternal === 'modular' && primarySelectedObject && primarySelectedObject.type === 'module' && !addingCorridorMode && (
+            <button
+              className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-4 py-2 rounded shadow z-30 hover:bg-indigo-700"
+              onClick={() => setAddingCorridorMode(true)}
+            >
+              Добавить коридор
+            </button>
+          )}
+          {addingCorridorMode && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-indigo-100 text-indigo-900 px-4 py-2 rounded shadow z-30">
+              Кликните по линии внутри модуля для размещения коридора
+              <button
+                className="ml-4 text-indigo-700 underline"
+                onClick={() => setAddingCorridorMode(false)}
+              >
+                Отмена
+              </button>
+            </div>
+          )}
           <SvgCanvas
             svgRef={svgRef}
             viewTransform={viewTransform}
-            setViewTransform={setViewTransform} // For panning
-            objects={objects}
+            setViewTransform={setViewTransform} 
+            objects={objects} // objects из useConfiguratorState
             selectedObjectIds={selectedObjectIds}
             lockedObjectIds={lockedObjectIds}
             overlappingObjectIds={overlappingObjectIds}
@@ -238,6 +298,9 @@ const Configurator = ({
             handleMouseDownOnResizeHandle={
               mouseInteractions.handleMouseDownOnResizeHandle
             }
+            onAddObject={addObject} // из useObjectManagement
+            addingCorridorMode={addingCorridorMode}
+            onAddCorridor={handleAddCorridor}
           />
           {addingObjectType && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-300 text-black px-3 py-1.5 rounded shadow-lg text-xs z-10 pointer-events-none">
@@ -250,9 +313,9 @@ const Configurator = ({
             </div>
           )}
           {renderModeComponent()}
-          {renderModeSpecificUI && (
+          {renderModeSpecificUIExt && (
             <div className="absolute top-2 left-2 p-0 z-20">
-              {renderModeSpecificUI(configuratorInterface)}
+              {renderModeSpecificUIExt(configuratorInterface)}
             </div>
           )}
         </div>
@@ -264,7 +327,7 @@ const Configurator = ({
           modifierKeys={modifierKeys}
           updateSelectedObjectProperty={updateSelectedObjectProperty}
           deleteSelectedObject={handleDeleteSelectedObjectInPanel}
-          activeMode={activeMode}
+          activeMode={activeModeInternal}
         />
       </div>
 

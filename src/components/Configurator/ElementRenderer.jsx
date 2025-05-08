@@ -1,257 +1,220 @@
-// src/components/Configurator/ElementRenderer.jsx
+// components/Configurator/ElementRenderer.jsx
 import React from 'react';
-import PropTypes from 'prop-types';
+import PropTypes from 'prop-types'; // Добавим PropTypes для лучшей проверки компонента
 import {
     RENDER_SCALE,
-    DOOR_WIDTH_MM,
-    DOUBLE_DOOR_WIDTH_MM,
-    DEFAULT_WINDOW_WIDTH_MM,
     DOOR_LEAF_THICKNESS_PX,
     DOOR_HANDLE_SIZE_PX,
     DOOR_HANDLE_OFFSET_FROM_EDGE_PX,
-} from './constants'; // Path is correct (same directory)
+} from './constants'; // Предполагается, что appConstants.js переименован в constants.js или наоборот
 
-const MIN_ELEMENT_SIZE_PX = 5;
+const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
+    const {
+        id,
+        type,
+        position, // { x, y } - hinge position for doors, center for windows
+        rotation, // degrees (0, 90, 180, -90) - overall rotation of the element
+        width: elementWidthMm, // Specific width of the element in mm
+        isOpen,
+        openingSide, // 'left' or 'right'
+        openingDirection, // 'inward' or 'outward'
+        moduleId, // For data attributes
+    } = element;
 
-const renderDoorInElementRenderer = (element, wallThicknessPx, elementStrokeWidth, doorArcStrokeWidth, baseGroupProps) => {
-    const isDouble = element.type?.includes('podwójne');
-    const doorWidthMm = element.width || (isDouble ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
-    const W_px = doorWidthMm * RENDER_SCALE;
-    const T_px = DOOR_LEAF_THICKNESS_PX;
-
-    if (!isFinite(W_px) || W_px <= 0) {
-        console.warn("[ElementRenderer] Invalid door width_px for element:", element, W_px);
+    // Проверка на наличие необходимых свойств
+    if (!id || !type || !position || typeof position.x !== 'number' || typeof position.y !== 'number' || typeof rotation !== 'number' || typeof elementWidthMm !== 'number') {
+        console.warn('[ElementRenderer] Missing or invalid core element properties:', element);
         return null;
     }
     
-    let leafRotationDeg = 0;
-    let arcStartX = 0, arcStartY = 0;
-    let arcEndX = 0, arcEndY = 0;
-    let arcSweepFlag = 0;
-    let handlePosOnLeafX = 0;
+    const elementTypeNormalized = type.toLowerCase();
+    const elementWidthPx = elementWidthMm * RENDER_SCALE;
 
-    if (element.openingSide === 'left') {
-        arcStartX = W_px;
-        handlePosOnLeafX = W_px - DOOR_HANDLE_OFFSET_FROM_EDGE_PX;
-        if (element.openingDirection === 'inward') {
-            leafRotationDeg = 90;
-            arcEndX = 0; arcEndY = W_px;
-            arcSweepFlag = 0;
-        } else {
-            leafRotationDeg = -90;
-            arcEndX = 0; arcEndY = -W_px;
-            arcSweepFlag = 1;
-        }
-    } else {
-        arcStartX = -W_px;
-        handlePosOnLeafX = -W_px + DOOR_HANDLE_OFFSET_FROM_EDGE_PX;
-        if (element.openingDirection === 'inward') {
-            leafRotationDeg = -90;
-            arcEndX = 0; arcEndY = W_px;
-            arcSweepFlag = 1;
-        } else {
-            leafRotationDeg = 90;
-            arcEndX = 0; arcEndY = -W_px;
-            arcSweepFlag = 0;
-        }
+    if (elementWidthPx <= 0) {
+        console.warn('[ElementRenderer] Invalid elementWidthPx:', elementWidthPx, 'for element:', element);
+        return null;
     }
 
-    const leafRectProps = {
-        x: element.openingSide === 'right' ? -W_px : 0,
-        y: -T_px / 2,
-        width: W_px,
-        height: T_px,
-        fill: element.isOpen ? "url(#doorTexturePattern)" : "#E5E7EB",
-        stroke: "#6B7280",
-        strokeWidth: elementStrokeWidth * 0.8,
-        rx: 1, ry: 1,
+
+    const groupTransform = `translate(${position.x.toFixed(3)}, ${position.y.toFixed(3)}) rotate(${rotation.toFixed(3)})`;
+
+    const handleClick = (e) => {
+        e.stopPropagation(); 
+        if (onClick) {
+            onClick(element, e); // Передаем сам элемент и событие
+        }
     };
 
-    if (!element.isOpen) {
+    const gProps = {
+        'data-module-id': moduleId,
+        'data-element-id': id,
+        'data-interactive': 'true',
+        // className: `cursor-pointer element-group ${isSelected ? 'selected-element-highlight' : ''}`, // Класс для стилизации через CSS, если нужно
+        style: { 
+            cursor: onClick ? 'pointer' : 'default',
+            outline: isSelected ? '1px dashed #007bff' : 'none', // Пример подсветки выбранного элемента
+            outlineOffset: '2px', // Отступ для outline
+        },
+        onClick: handleClick,
+        transform: groupTransform,
+    };
+
+
+    if (elementTypeNormalized.includes('drzwi')) {
+        const doorLeafWidthPx = elementWidthPx;
+        const doorLeafThicknessPx = DOOR_LEAF_THICKNESS_PX;
+
+        let swingAngleDeg = 0; // Угол поворота в градусах
+        if (isOpen) {
+            if (openingDirection === 'inward') {
+                swingAngleDeg = (openingSide === 'left') ? 90 : -90;
+            } else { // outward
+                swingAngleDeg = (openingSide === 'left') ? -90 : 90;
+            }
+        }
+
+        // Путь для дверного полотна. Петля в локальных (0,0).
+        const leafPath = openingSide === 'left'
+            ? `M 0 ${-doorLeafThicknessPx / 2} L ${doorLeafWidthPx} ${-doorLeafThicknessPx / 2} L ${doorLeafWidthPx} ${doorLeafThicknessPx / 2} L 0 ${doorLeafThicknessPx / 2} Z`
+            : `M 0 ${-doorLeafThicknessPx / 2} L ${-doorLeafWidthPx} ${-doorLeafThicknessPx / 2} L ${-doorLeafWidthPx} ${doorLeafThicknessPx / 2} L 0 ${doorLeafThicknessPx / 2} Z`;
+        
+        // Позиция ручки (относительно полотна, до его поворота)
+        const handleOffsetFromEdge = DOOR_HANDLE_OFFSET_FROM_EDGE_PX; // Более понятное имя
+        const handleRadius = DOOR_HANDLE_SIZE_PX / 2;
+        const handleCenterX = openingSide === 'left'
+            ? doorLeafWidthPx - handleOffsetFromEdge - handleRadius
+            : -doorLeafWidthPx + handleOffsetFromEdge + handleRadius;
+        const handleCenterY = 0; 
+
+        // Параметры дуги открывания
+        let arcPathD = "";
+        if (isOpen) {
+            const radius = doorLeafWidthPx;
+            const startX = 0; // Петля
+            const startY = 0;
+
+            // Конечная точка дуги
+            const endX_arc = radius * Math.cos(swingAngleDeg * Math.PI / 180);
+            const endY_arc = radius * Math.sin(swingAngleDeg * Math.PI / 180);
+            
+            // Флаги для SVG path arc
+            // large-arc-flag всегда 0 для <= 90 градусов
+            // sweep-flag: 0 = против часовой, 1 = по часовой
+            let sweepFlag;
+            if (openingSide === 'left') {
+                sweepFlag = (openingDirection === 'inward') ? 1 : 0; // Inward (+90 deg) -> clockwise, Outward (-90 deg) -> counter-clockwise
+            } else { // openingSide === 'right'
+                sweepFlag = (openingDirection === 'inward') ? 0 : 1; // Inward (-90 deg) -> counter-clockwise, Outward (+90 deg) -> clockwise
+            }
+
+            // Координаты для прямой линии от петли до края закрытой двери
+            const lineToX = (openingSide === 'left') ? doorLeafWidthPx : -doorLeafWidthPx;
+
+            arcPathD = `M ${startX} ${startY} L ${lineToX} ${startY} A ${radius} ${radius} 0 0 ${sweepFlag} ${endX_arc} ${endY_arc}`;
+        }
+
         return (
-            <g {...baseGroupProps}>
-                <rect {...leafRectProps} />
-                {isDouble && (
-                    <line
-                        x1={element.openingSide === 'right' ? -W_px / 2 : W_px / 2} y1={-T_px / 2}
-                        x2={element.openingSide === 'right' ? -W_px / 2 : W_px / 2} y2={T_px / 2}
-                        stroke="#6B7280" strokeWidth={elementStrokeWidth * 0.6}
+            <g {...gProps}>
+                {/* Дверное полотно - трансформируется на swingAngleDeg */}
+                <g transform={`rotate(${swingAngleDeg})`}>
+                    <path
+                        d={leafPath}
+                        fill={isSelected ? "rgba(75, 125, 230, 0.5)" : "rgba(160, 120, 80, 0.6)"} 
+                        stroke={isSelected ? "#3B82F6" : "#6D513D"}
+                        strokeWidth="0.5" 
+                    />
+                    {/* Ручка двери - отображается всегда, вращается с полотном */}
+                    <circle
+                        cx={handleCenterX}
+                        cy={handleCenterY}
+                        r={handleRadius}
+                        fill={isOpen ? "#A0A0A0" : "#808080"} // Разный цвет для открытой/закрытой
+                        stroke="#505050"
+                        strokeWidth="0.2"
+                    />
+                </g>
+                {/* Дуга для визуализации открывания (только когда открыта) */}
+                {isOpen && (
+                    <path
+                        d={arcPathD}
+                        fill="none"
+                        stroke={isSelected ? "#3B82F6" : "#A0A0A0"}
+                        strokeWidth="0.3" 
+                        strokeDasharray="1.5,1.5" 
                     />
                 )}
-                 <circle cx={handlePosOnLeafX} cy="0" r={DOOR_HANDLE_SIZE_PX / 2.5} fill="#A0AEC0" />
+            </g>
+        );
+
+    } else if (elementTypeNormalized.includes('okno')) {
+        if (typeof wallThicknessPx !== 'number' || wallThicknessPx <= 0) {
+            console.warn('[ElementRenderer] Invalid wallThicknessPx for window:', wallThicknessPx, 'for element:', element);
+            return ( // Можно вернуть заглушку или null
+                <g {...gProps}>
+                    <text x="0" y="0" fontSize="3" fill="red">Invalid Wall</text>
+                </g>
+            );
+        }
+        const windowDrawWidthPx = elementWidthPx; 
+        
+        return (
+            <g {...gProps}>
+                {/* Стекло окна */}
+                <rect
+                    x={-windowDrawWidthPx / 2}
+                    y={-wallThicknessPx / 2}
+                    width={windowDrawWidthPx}
+                    height={wallThicknessPx}
+                    fill={isSelected ? "rgba(135, 206, 250, 0.6)" : "rgba(173, 216, 230, 0.5)"} 
+                    stroke={isSelected ? "#3B82F6" : "#708090"} 
+                    strokeWidth="0.5" 
+                />
+                {/* Центральная линия рамы (вертикальная) */}
+                <line
+                    x1="0" y1={-wallThicknessPx / 2}
+                    x2="0" y2={wallThicknessPx / 2}
+                    stroke={isSelected ? "#FFFFFF" : "#B0C4DE"} 
+                    strokeWidth="0.3" 
+                />
+                 {/* Центральная линия рамы (горизонтальная) */}
+                <line
+                    x1={-windowDrawWidthPx / 2} y1="0"
+                    x2={windowDrawWidthPx / 2} y2="0"
+                    stroke={isSelected ? "#FFFFFF" : "#B0C4DE"} 
+                    strokeWidth="0.3" 
+                />
             </g>
         );
     }
 
-    return (
-        <g {...baseGroupProps}>
-            <g transform={`rotate(${leafRotationDeg})`}>
-                <rect {...leafRectProps} />
-                <circle cx={handlePosOnLeafX} cy="0" r={DOOR_HANDLE_SIZE_PX / 2} fill="#6b7280" />
-            </g>
-            {W_px > 0 && (
-                <path
-                    d={`M ${arcStartX} ${arcStartY} A ${W_px} ${W_px} 0 0 ${arcSweepFlag} ${arcEndX} ${arcEndY}`}
-                    fill="none"
-                    stroke="#9ca3af"
-                    strokeWidth={doorArcStrokeWidth}
-                    strokeDasharray="3 2"
-                />
-            )}
-        </g>
-    );
-};
-
-const renderWindowInElementRenderer = (element, wallThicknessPx, elementStrokeWidth, baseGroupProps) => {
-    const windowWidthMm = element.width || element.dimensions?.widthMm || DEFAULT_WINDOW_WIDTH_MM;
-    const widthPx = windowWidthMm * RENDER_SCALE;
-
-    const rectProps = {
-        x: -widthPx / 2,
-        y: -wallThicknessPx / 2,
-        width: widthPx,
-        height: wallThicknessPx,
-        fill: "#bfdbfe",
-        stroke: "#60a5fa",
-        strokeWidth: elementStrokeWidth * 0.7,
-        rx: 1, ry: 1,
-    };
-
-    if (!isFinite(widthPx) || !isFinite(wallThicknessPx) || widthPx <= 0 || wallThicknessPx <= 0) {
-        console.warn("[ElementRenderer] Invalid window dimensions/wall thickness:", element, widthPx, wallThicknessPx);
-        return null;
-    }
-
-    return (
-        <g {...baseGroupProps}>
-            <rect {...rectProps} />
-            <line x1={0} y1={-wallThicknessPx/2} x2={0} y2={wallThicknessPx/2} stroke="#60a5fa" strokeWidth={elementStrokeWidth * 0.4} />
-            <line x1={-widthPx/2} y1={0} x2={widthPx/2} y2={0} stroke="#60a5fa" strokeWidth={elementStrokeWidth * 0.4} />
-        </g>
-    );
-};
-
-const renderOtherElementInElementRenderer = (element, wallThicknessPx, elementStrokeWidth, baseGroupProps) => {
-    const widthPx = element.dimensions?.widthPx || MIN_ELEMENT_SIZE_PX;
-    const heightPx = element.dimensions?.heightPx || wallThicknessPx || MIN_ELEMENT_SIZE_PX;
-    const size = Math.max(widthPx, heightPx, MIN_ELEMENT_SIZE_PX);
-    return (
-        <g {...baseGroupProps}>
-            <rect x={-size / 2} y={-size / 2} width={size} height={size} fill="#a0aec0" stroke="#718096" strokeWidth={elementStrokeWidth * 0.4} />
-        </g>
-    );
-};
-
-
-export const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick, onMouseDown }) => {
-    let errorReason = null;
-    if (!element || !element.id) errorReason = "element or element.id is missing";
-    else if (!element.position || typeof element.position.x !== 'number' || typeof element.position.y !== 'number' || !isFinite(element.position.x) || !isFinite(element.position.y)) errorReason = "element.position is invalid";
-    else if (element.type !== 'container' && (element.type.includes('Okno')) && (!wallThicknessPx || wallThicknessPx <= 0 || !isFinite(wallThicknessPx))) {
-        errorReason = "wallThicknessPx is invalid for window";
-    }
-
-
-    if (errorReason) {
-        console.warn(`[ElementRenderer] Invalid props: ${errorReason}`, { element, wallThicknessPx });
-        return null;
-    }
-
-    const elementStrokeWidth = 0.7;
-    const doorArcStrokeWidth = 0.4;
-
-    const style = {
-        position: 'absolute',
-        left: `${element.position.x}px`,
-        top: `${element.position.y}px`,
-        zIndex: isSelected ? 10 : 5,
-        cursor: element.type === 'container' ? 'grab' : (onClick ? 'pointer' : 'default'),
-        outline: isSelected ? '2px solid #4A90E2' : 'none',
-        outlineOffset: '2px',
-        pointerEvents: 'none',
-    };
-
-    const contentTransform = `rotate(${element.rotation || 0})`;
-
-    const baseGroupProps = {
-        "data-module-id": element.parentContainerId || element.moduleId || element.id.split('-')[0],
-        "data-element-id": element.id,
-        "data-interactive": "true",
-        onClick: onClick ? (e) => { e.stopPropagation(); onClick(e); } : undefined,
-        onMouseDown: onMouseDown ? (e) => { e.stopPropagation(); onMouseDown(e); } : undefined,
-        style: { pointerEvents: 'auto' },
-        transform: contentTransform,
-    };
-
-    let renderedElementContent = null;
-    const elementTypeNormalized = element.type.toLowerCase();
-
-    if (elementTypeNormalized === 'container') {
-        return (<div style={style} {...baseGroupProps} title={`Container ${element.id.substring(0, 4)}`}></div>);
-    } else if (elementTypeNormalized.includes('drzwi')) {
-        renderedElementContent = renderDoorInElementRenderer(element, wallThicknessPx, elementStrokeWidth, doorArcStrokeWidth, baseGroupProps);
-    } else if (elementTypeNormalized.includes('okno')) {
-        renderedElementContent = renderWindowInElementRenderer(element, wallThicknessPx, elementStrokeWidth, baseGroupProps);
-    } else {
-        renderedElementContent = renderOtherElementInElementRenderer(element, wallThicknessPx || MIN_ELEMENT_SIZE_PX, elementStrokeWidth, baseGroupProps);
-    }
-    
-
-    const svgPadding = 20;
-    let maxExtent = 0;
-
-    if (elementTypeNormalized.includes('drzwi')) {
-        const doorWidthMm = element.width || (elementTypeNormalized.includes('podwójne') ? DOUBLE_DOOR_WIDTH_MM : DOOR_WIDTH_MM);
-        const W_px = doorWidthMm * RENDER_SCALE;
-        maxExtent = W_px + DOOR_LEAF_THICKNESS_PX + svgPadding;
-    } else if (elementTypeNormalized.includes('okno')) {
-        const windowWidthMm = element.width || element.dimensions?.widthMm || DEFAULT_WINDOW_WIDTH_MM;
-        maxExtent = (windowWidthMm * RENDER_SCALE) / 2 + (wallThicknessPx || 0) / 2 + svgPadding;
-    } else {
-        maxExtent = (element.dimensions?.widthPx || MIN_ELEMENT_SIZE_PX) / 2 + svgPadding;
-    }
-    
-    const svgViewBoxSize = Math.max(MIN_ELEMENT_SIZE_PX + svgPadding*2, maxExtent * 2);
-
-    const viewBoxX = -svgViewBoxSize / 2;
-    const viewBoxY = -svgViewBoxSize / 2;
-    const svgRenderWidth = svgViewBoxSize;
-    const svgRenderHeight = svgViewBoxSize;
-
-    if (!isFinite(viewBoxX + viewBoxY + svgRenderWidth + svgRenderHeight) || svgRenderWidth <= 0 || svgRenderHeight <= 0) {
-        console.warn("[ElementRenderer] Invalid SVG viewBox calculated:", { viewBoxX, viewBoxY, svgRenderWidth, svgRenderHeight }, element);
-        return null;
-    }
-
-    return (
-        <svg
-            style={style}
-            width={svgRenderWidth}
-            height={svgRenderHeight}
-            viewBox={`${viewBoxX} ${viewBoxY} ${svgRenderWidth} ${svgRenderHeight}`}
-            overflow="visible"
-        >
-            {renderedElementContent}
-        </svg>
-    );
+    // console.warn(`ElementRenderer: Unsupported element type: ${type}`);
+    return null; 
 };
 
 ElementRenderer.propTypes = {
     element: PropTypes.shape({
         id: PropTypes.string.isRequired,
         type: PropTypes.string.isRequired,
-        position: PropTypes.shape({ x: PropTypes.number, y: PropTypes.number }).isRequired,
-        dimensions: PropTypes.shape({ widthPx: PropTypes.number, heightPx: PropTypes.number, widthMm: PropTypes.number }),
-        rotation: PropTypes.number,
-        parentContainerId: PropTypes.string,
-        moduleId: PropTypes.string,
+        position: PropTypes.shape({
+            x: PropTypes.number.isRequired,
+            y: PropTypes.number.isRequired,
+        }).isRequired,
+        rotation: PropTypes.number.isRequired,
+        width: PropTypes.number.isRequired, // 'width' from element object is elementWidthMm
         isOpen: PropTypes.bool,
         openingSide: PropTypes.oneOf(['left', 'right']),
         openingDirection: PropTypes.oneOf(['inward', 'outward']),
-        width: PropTypes.number,
+        moduleId: PropTypes.string,
     }).isRequired,
-    wallThicknessPx: PropTypes.number,
-    isSelected: PropTypes.bool.isRequired,
+    wallThicknessPx: PropTypes.number, // Required for windows
+    isSelected: PropTypes.bool,
     onClick: PropTypes.func,
-    onMouseDown: PropTypes.func,
 };
+
+ElementRenderer.defaultProps = {
+    isSelected: false,
+    onClick: null,
+    wallThicknessPx: 0, // Default to 0, but windows should have a valid one
+};
+
+export default ElementRenderer;

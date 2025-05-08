@@ -1,6 +1,14 @@
 // src/components/Configurator/canvas/OutletVisual.jsx
 import React from "react";
-import { objectColors } from "../configuratorConstants";
+import {
+    ARCH_BLACK,
+    ARCH_STROKE_MEDIUM,
+    ARCH_STROKE_THIN,
+    ARCH_WHITE,
+    ARCH_SELECT_BLUE,
+    ARCH_OUTLET_FILL,
+    ARCH_OUTLET_STROKE,
+} from "../configuratorConstants";
 
 const OutletVisual = ({
   obj,
@@ -8,24 +16,28 @@ const OutletVisual = ({
   commonProps,
   rotationCenterXScaled,
   rotationCenterYScaled,
+  isSelected
 }) => {
-  // For outlets, width and height are typically the same (diameter of the circle)
-  // The object's width is used for the radius.
-  // rotationCenterXScaled and rotationCenterYScaled are already (obj.width * scale) / 2 etc.
-  // so the cx and cy should be these values if the <g> transform handles the obj.x, obj.y
 
-  const radius = Math.max(
-    1,
-    (obj.width * scale) / 2 - parseFloat(commonProps.strokeWidth || 0) / 2,
-  );
+  const baseSize = Math.max(1, obj.width * scale);
+  const baseStroke = ARCH_OUTLET_STROKE || ARCH_BLACK;
+  const strokeWidth = isSelected ? ARCH_STROKE_MEDIUM : ARCH_STROKE_THIN;
+  const size = Math.max(0.5, baseSize - strokeWidth);
+
+  const x = rotationCenterXScaled - size / 2;
+  const y = rotationCenterYScaled - size / 2;
 
   return (
-    <circle
-      cx={rotationCenterXScaled} // Center of the group, which is (width/2, height/2)
-      cy={rotationCenterYScaled}
-      r={radius}
-      fill={objectColors[obj.type] || objectColors.default}
-      {...commonProps}
+    <rect
+        x={x}
+        y={y}
+        width={size}
+        height={size}
+        fill={ARCH_OUTLET_FILL}
+        stroke={isSelected ? ARCH_SELECT_BLUE : baseStroke}
+        strokeWidth={strokeWidth}
+        style={commonProps.style}
+        data-object-id={commonProps['data-object-id']}
     />
   );
 };

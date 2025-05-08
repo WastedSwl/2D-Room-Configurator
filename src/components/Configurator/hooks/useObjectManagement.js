@@ -1,11 +1,17 @@
-// src/components/Configurator/hooks/useObjectManagement.js
 import { useCallback } from "react";
+import { toast } from 'react-toastify'; 
 import {
   WALL_THICKNESS_M,
   DOOR_WIDTH_M as APP_DOOR_WIDTH_M,
   WINDOW_WIDTH_M as APP_WINDOW_WIDTH_M,
 } from "../appConstants";
 import { defaultObjectSizes } from "../configuratorConstants";
+import {
+    getAABB,
+    checkAABBIntersection,
+    getDoorLeafCorners,
+    isDoorLeafColliding
+} from "../configuratorUtils";
 
 let objectIdCounter = 0;
 const getNextId = () => `obj-${objectIdCounter++}`;
@@ -33,13 +39,14 @@ export const createObject = (type, x, y, width, height, data = {}) => {
 };
 
 export const getInitialObjects = () => {
-  objectIdCounter = 0;
+  objectIdCounter = 0; // Reset counter when generating initial objects
   const initialObjects = [];
   const WT = WALL_THICKNESS_M;
-
   const houseWidthOuter = 6;
   const houseDepthOuter = 3.5;
+  const gap = 0.1;
 
+  // --- Outer Walls ---
   initialObjects.push(
     createObject("wall", 0, 0, houseWidthOuter, WT, { label: "Верхняя стена" }),
   );
@@ -64,16 +71,19 @@ export const getInitialObjects = () => {
     ),
   );
 
+  // --- Main Door ---
   const mainDoorWidth = APP_DOOR_WIDTH_M;
   initialObjects.push(
     createObject("door", 1.0, houseDepthOuter - WT, mainDoorWidth, WT, {
       hingeSide: "left",
       openingDirection: "inward",
       isOpen: false,
+      openingAngle: 0,
       label: "Входная дверь",
     }),
   );
 
+  // --- Main Window ---
   const mainWindowWidth = APP_WINDOW_WIDTH_M;
   initialObjects.push(
     createObject(
@@ -86,7 +96,7 @@ export const getInitialObjects = () => {
     ),
   );
 
-  const gap = 0.1;
+  // --- Living Room Furniture ---
   const sofaWidth = 1.8;
   const sofaDepth = 0.8;
   initialObjects.push(
@@ -107,6 +117,7 @@ export const getInitialObjects = () => {
     ),
   );
 
+  // --- Bedroom Furniture ---
   const bedWidth = 1.5;
   const bedDepth = 2.0;
   const bedX = houseWidthOuter - WT - gap - bedWidth;
@@ -127,6 +138,7 @@ export const getInitialObjects = () => {
     ),
   );
 
+  // --- Bathroom Walls & Door ---
   const bathroomWidthInner = 1.5;
   const bathroomDepthInner = 1.8;
   const bathroomOuterWallX =
@@ -189,10 +201,13 @@ export const getInitialObjects = () => {
         hingeSide: "right",
         openingDirection: "inward",
         isOpen: false,
+        openingAngle: 0,
         label: "Дверь в ванную",
       },
     ),
   );
+  // --- Bathroom Fixtures ---
+  // <<<--- ИСПРАВЛЕННОЕ МЕСТОПОЛОЖЕНИЕ const ---<<<
   const toiletWidth = 0.4;
   const toiletDepth = 0.7;
   initialObjects.push(
@@ -209,17 +224,19 @@ export const getInitialObjects = () => {
   return initialObjects;
 };
 
+
 const useObjectManagement = (
   setObjects,
   selectedObjectIds,
   lockedObjectIds,
   modifierKeys,
+  objectsRef // Используем objectsRef напрямую
 ) => {
   const addObject = useCallback(
     (type, x, y, width, height, data) => {
       const newObject = createObject(type, x, y, width, height, data);
       setObjects((prev) => [...prev, newObject], true);
-      return newObject; // Return for potential immediate selection
+      return newObject;
     },
     [setObjects],
   );
@@ -237,7 +254,10 @@ const useObjectManagement = (
 
   const deleteObjectById = useCallback(
     (id) => {
-      setObjects((prev) => prev.filter((obj) => obj.id !== id), true);
+      setObjects((prev) =>
+        prev.filter(
+          (obj) => obj.id !== id && obj.parentId !== id
+        ), true);
     },
     [setObjects],
   );
@@ -246,27 +266,123 @@ const useObjectManagement = (
     (property, value) => {
       if (selectedObjectIds.length !== 1) return;
       const targetId = selectedObjectIds[0];
+      
+      if (!objectsRef || !objectsRef.current) {
+        console.error("useObjectManagement: objectsRef or objectsRef.current is undefined.");
+        return;
+      }
+      const currentObjects = objectsRef.current; 
+
+      const objToUpdate = currentObjects.find(obj => obj.id === targetId);
+
+      if (!objToUpdate) return;
 
       const objectIsLocked = lockedObjectIds.includes(targetId);
       if (objectIsLocked && !modifierKeys.shift) {
+        toast.warn(`Объект ${objToUpdate.label || objToUpdate.id} заблокирован.`);
         return;
       }
 
-      const numValue = parseFloat(value);
-      let parsedValue = isNaN(numValue) ? value : numValue;
-      if (property === "isOpen") {
-        parsedValue = value === "true" || value === true;
+      let parsedValue = value;
+      if (typeof objToUpdate[property] === 'number' && property !== 'rotation') { 
+          const numVal = parseFloat(value);
+          if (isNaN(numVal)) {
+              toast.error(`Неверный формат числа для ${property}: ${value}`);
+              return;
+          }
+          parsedValue = numVal;
+      } else if (typeof objToUpdate[property] === 'boolean') {
+          parsedValue = typeof value === 'string' ? value.toLowerCase() === "true" : Boolean(value);
       }
 
-      setObjects(
-        (prev) =>
-          prev.map((obj) =>
-            obj.id === targetId ? { ...obj, [property]: parsedValue } : obj,
-          ),
-        true,
-      );
+
+      if (objToUpdate.type === "door" && (property === "isOpen" || property === "openingAngle")) {
+        let newIsOpen = objToUpdate.isOpen;
+        let newOpeningAngle = objToUpdate.openingAngle; 
+
+        if (property === "isOpen") {
+          newIsOpen = parsedValue;
+          if (newIsOpen) { 
+            newOpeningAngle = (objToUpdate.openingAngle > 0) ? objToUpdate.openingAngle : 90; 
+          } else { 
+            newOpeningAngle = 0;
+          }
+        } else { 
+          const potentialAngle = parseFloat(parsedValue); // Убедимся, что это число
+          if (isNaN(potentialAngle)) {
+              toast.error(`Неверный угол: ${value}`);
+              return;
+          }
+          newOpeningAngle = potentialAngle;
+          if (newOpeningAngle <= 0) {
+            newIsOpen = false;
+            newOpeningAngle = 0; 
+          } else {
+            newIsOpen = true;
+          }
+        }
+        
+        let finalAngle = newOpeningAngle;
+        let finalIsOpen = newIsOpen;
+
+        if (finalIsOpen && finalAngle > 0) {
+          const MAX_DOOR_ANGLE = 170; 
+          const MIN_DOOR_ANGLE_STEP = 1; 
+          let targetAngle = Math.min(Math.max(finalAngle, 0), MAX_DOOR_ANGLE);
+          
+          let resolvedAngle = 0; 
+          let canOpenAtAll = false;
+
+          for (let angleCheck = targetAngle; angleCheck >= MIN_DOOR_ANGLE_STEP; angleCheck -= 1) { 
+            if (!isDoorLeafColliding(objToUpdate, angleCheck, currentObjects)) {
+              resolvedAngle = angleCheck;
+              canOpenAtAll = true;
+              break;
+            }
+          }
+          
+          if (canOpenAtAll) {
+            finalAngle = resolvedAngle;
+             if (targetAngle > finalAngle && property === "openingAngle") {
+                 toast.info(`Дверь '${objToUpdate.label || targetId}' открыта до ${finalAngle.toFixed(0)}° из-за препятствия.`); 
+             } else if (targetAngle > finalAngle && property === "isOpen") {
+                 toast.info(`Дверь '${objToUpdate.label || targetId}' открыта до ${finalAngle.toFixed(0)}° из-за препятствия.`);
+             }
+          } else { 
+            const msg = `Дверь '${objToUpdate.label || targetId}' не может открыться (${targetAngle.toFixed(0)}°) из-за столкновения.`;
+            console.warn(msg);
+            toast.warn(msg); 
+            finalAngle = 0;
+            finalIsOpen = false;
+          }
+        } else { 
+            finalAngle = 0;
+            finalIsOpen = false;
+        }
+        
+        if (objToUpdate.isOpen !== finalIsOpen || objToUpdate.openingAngle !== finalAngle) {
+            setObjects(
+              (prev) =>
+                prev.map((obj) =>
+                  obj.id === targetId ? { ...obj, isOpen: finalIsOpen, openingAngle: finalAngle } : obj,
+                ),
+              true,
+            );
+        }
+        return; 
+      }
+
+      if (objToUpdate[property] !== parsedValue) {
+          setObjects(
+            (prev) =>
+              prev.map((obj) =>
+                obj.id === targetId ? { ...obj, [property]: parsedValue } : obj,
+              ),
+            true,
+          );
+      }
     },
-    [selectedObjectIds, lockedObjectIds, modifierKeys.shift, setObjects],
+    [selectedObjectIds, objectsRef, lockedObjectIds, modifierKeys.shift, setObjects], 
   );
 
   const addAndSelectObject = useCallback(
@@ -280,7 +396,7 @@ const useObjectManagement = (
         defaultSize.height,
       );
       setObjects((prev) => [...prev, newObject], true);
-      return newObject.id; // Return ID for selection
+      return newObject.id;
     },
     [setObjects],
   );
@@ -293,7 +409,7 @@ const useObjectManagement = (
     deleteObjectById,
     updateSelectedObjectProperty,
     addAndSelectObject,
-    defaultObjectSizes, // Export for use in addingObjectType logic
+    defaultObjectSizes,
   };
 };
 

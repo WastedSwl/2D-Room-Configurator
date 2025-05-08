@@ -26,6 +26,9 @@ const SvgCanvas = ({
   handleMouseDownOnCanvas,
   handleMouseDownOnObject,
   handleMouseDownOnResizeHandle,
+  onAddObject,
+  onAddCorridor,
+  addingCorridorMode,
 }) => {
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
 
@@ -111,6 +114,9 @@ const SvgCanvas = ({
           handleMouseDownOnResizeHandle={handleMouseDownOnResizeHandle}
           draggingState={draggingState}
           resizingState={resizingState}
+          onAddObject={onAddObject}
+          onAddCorridor={onAddCorridor}
+          addingCorridorMode={addingCorridorMode}
         />
         <SnapGuides
           activeSnapLines={activeSnapLines}

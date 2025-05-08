@@ -13,6 +13,9 @@ const ObjectRendererGroup = ({
   handleMouseDownOnResizeHandle,
   draggingState,
   resizingState,
+  onAddObject,
+  addingCorridorMode,
+  onAddCorridor,
 }) => {
   return (
     <>
@@ -31,6 +34,10 @@ const ObjectRendererGroup = ({
             onResizeHandleMouseDown={handleMouseDownOnResizeHandle}
             draggingState={draggingState}
             resizingState={resizingState}
+            onAddObject={onAddObject}
+            addingCorridorMode={addingCorridorMode}
+            onAddCorridor={onAddCorridor}
+            objects={objects}
           />
         );
       })}

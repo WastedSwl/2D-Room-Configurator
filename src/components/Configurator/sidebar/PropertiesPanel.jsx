@@ -63,7 +63,7 @@ const PropertiesPanel = ({
               label="X (м):"
               value={primarySelectedObject.x.toFixed(3)}
               onChange={(e) => updateSelectedObjectProperty("x", e.target.value)}
-              disabled={isLockedAndCantEdit}
+              disabled={isLockedAndCantEdit || activeMode === 'modular'}
             />
           )}
           {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
@@ -71,7 +71,7 @@ const PropertiesPanel = ({
               label="Y (м):"
               value={primarySelectedObject.y.toFixed(3)}
               onChange={(e) => updateSelectedObjectProperty("y", e.target.value)}
-              disabled={isLockedAndCantEdit}
+              disabled={isLockedAndCantEdit || activeMode === 'modular'}
             />
           )}
           {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
@@ -87,7 +87,7 @@ const PropertiesPanel = ({
               onChange={(e) =>
                 updateSelectedObjectProperty("width", e.target.value)
               }
-              disabled={isLockedAndCantEdit}
+              disabled={isLockedAndCantEdit || activeMode === 'modular'}
             />
           )}
           {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
@@ -104,7 +104,7 @@ const PropertiesPanel = ({
               onChange={(e) =>
                 updateSelectedObjectProperty("height", e.target.value)
               }
-              disabled={isLockedAndCantEdit}
+              disabled={isLockedAndCantEdit || activeMode === 'modular'}
             />
           )}
           <PropertyInput
@@ -117,7 +117,7 @@ const PropertiesPanel = ({
             onChange={(e) =>
               updateSelectedObjectProperty("rotation", e.target.value)
             }
-            disabled={isLockedAndCantEdit}
+            disabled={isLockedAndCantEdit || activeMode === 'modular'}
           />
           {primarySelectedObject.type === "door" && (
             <>

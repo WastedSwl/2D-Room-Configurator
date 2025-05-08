@@ -35,42 +35,14 @@ const ModuleThumb = ({ width = 60, height = 32 }) => (
 // Все шаблоны одного размера 6x2м
 const MODULE_TEMPLATES = [
   {
-    code: 'MB20',
-    name: 'Контейнер офисный стандарт',
+    code: 'DEFAULT',
+    name: 'Стандартный модуль',
     type: 'module',
     width: 6,
     height: 2,
     config: {},
     thumb: <ModuleThumb />,
-  },
-  {
-    code: 'MB20K',
-    name: 'Контейнер офисный с коридором',
-    type: 'module',
-    width: 6,
-    height: 2,
-    config: { corridor: true },
-    thumb: <ModuleThumb />,
-  },
-  {
-    code: 'MB20-25',
-    name: 'Контейнер офисный с ванной',
-    type: 'module',
-    width: 6,
-    height: 2,
-    config: { bathroom: true },
-    thumb: <ModuleThumb />,
-  },
-  {
-    code: 'MB20-26',
-    name: 'Контейнер офисный с ванной и душем',
-    type: 'module',
-    width: 6,
-    height: 2,
-    config: { bathroom: true, shower: true },
-    thumb: <ModuleThumb />,
-  },
-  // ...добавьте другие шаблоны по необходимости
+  }
 ];
 
 // Функция перевода мировых координат в экранные
@@ -136,6 +108,17 @@ const ModularMode = ({
     );
     setShowTemplates(false);
   };
+
+  const moduleTypes = [
+    {
+      id: 'default',
+      name: 'Default Module',
+      code: 'DEFAULT',
+      width: 6,
+      height: 2,
+      type: 'module'
+    }
+  ];
 
   return (
     <>

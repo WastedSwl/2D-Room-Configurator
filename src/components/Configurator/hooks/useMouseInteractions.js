@@ -26,6 +26,7 @@ const useMouseInteractions = ({
   mainContainerRef,
   svgRef,
   setOverlappingObjectIdsProp, // Renamed to avoid conflict
+  activeMode, // новый проп
 }) => {
   const [draggingState, setDraggingState] = useState(null);
   const [resizingState, setResizingState] = useState(null);
@@ -92,6 +93,11 @@ const useMouseInteractions = ({
           : [clickedObjectId];
       setSelectedObjectIds(newSelectedIds);
 
+      if (activeMode === 'modular') {
+        setDraggingState(null); // Запретить drag, но разрешить выделение
+        return;
+      }
+
       if (
         newSelectedIds.length > 0 &&
         (!objectIsLocked || modifierKeys.shift)
@@ -123,11 +129,13 @@ const useMouseInteractions = ({
       setSelectedObjectIds,
       objectsRef,
       mainContainerRef,
+      activeMode,
     ],
   );
 
   const handleMouseDownOnResizeHandle = useCallback(
     (e, objectId, handleType) => {
+      if (activeMode === 'modular') return; // Запретить resize
       e.stopPropagation();
       const obj = objectsRef.current.find((o) => o.id === objectId);
       if (!obj) return;
@@ -146,7 +154,7 @@ const useMouseInteractions = ({
       });
       setDraggingState(null); // Ensure no conflict with dragging
     },
-    [lockedObjectIds, modifierKeys.shift, objectsRef, mainContainerRef],
+    [lockedObjectIds, modifierKeys.shift, objectsRef, mainContainerRef, activeMode],
   );
 
   const handleMouseDownOnCanvas = useCallback(
