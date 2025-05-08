@@ -108,6 +108,20 @@ const ObjectVisual = ({
     specificVisual = (
       <MB20_25Visual width={obj.width} height={obj.height} label={obj.label || "Nr 1 MB20-25"} />
     );
+  } else if (obj.type === "module" && !obj.corridor && !obj.bathroom && !obj.shower) {
+    // Если это стандартный модуль без особенностей — просто прямоугольник
+    specificVisual = (
+      <rect
+        x={0}
+        y={0}
+        width={obj.width * scale}
+        height={obj.height * scale}
+        fill="#e0e0e0"
+        stroke="#888"
+        strokeWidth={2 / scale}
+        rx={scale * 0.1}
+      />
+    );
   } else if (obj.type === "module") {
     specificVisual = (
       <MB20Visual width={obj.width} height={obj.height} label={obj.label || "Nr 1 MB20"} />
