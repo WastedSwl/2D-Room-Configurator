@@ -4,6 +4,7 @@ import DoorVisual from "./DoorVisual";
 import WindowVisual from "./WindowVisual";
 import OutletVisual from "./OutletVisual";
 import DefaultRectVisual from "./DefaultRectVisual";
+import WallVisual from "./WallVisual"; // Добавляем WallVisual
 
 import {
   objectColors,
@@ -88,21 +89,18 @@ const ObjectVisual = ({
   let baseStrokeWidthUnscaled = ARCH_STROKE_THIN;
   let corridorLineStrokeWidth = 1.5;
 
-  if (obj.type === 'wall' || obj.type === 'module') {
+  if (obj.type === 'module') { // Для модуля - базовые стили
       baseStrokeWidthUnscaled = ARCH_STROKE_MEDIUM;
-  } else if (obj.type === 'door' || obj.type === 'window') {
-       baseStrokeWidthUnscaled = ARCH_STROKE_THIN;
+  } else if (obj.type === 'door' || obj.type === 'window' || obj.type === 'outlet' || obj.type === 'wall') {
+      // Эти типы теперь имеют свои Visual компоненты, здесь стили не нужны
   } else if (obj.type === 'light_led' || obj.type === 'radiator' || obj.type === 'kitchen_unit') {
         baseStrokeWidthUnscaled = ARCH_STROKE_VERY_THIN;
-  } else if (obj.type === 'outlet') {
-      baseStrokeWidthUnscaled = ARCH_STROKE_THIN;
-      baseStroke = ARCH_BLACK;
   } else if (obj.type === 'corridor') {
       baseStroke = ARCH_CORRIDOR_STROKE;
   } else if (obj.type === 'module_placeholder') {
-      // No stroke defined here, handled by ModulePlaceholderVisual
-  } else {
-       baseStrokeWidthUnscaled = ARCH_STROKE_MEDIUM;
+      // Стиль для плейсхолдера задается в его компоненте
+  } else { // Для мебели и прочего
+       baseStrokeWidthUnscaled = ARCH_STROKE_THIN; // Тоньше для мебели
        baseStroke = objectColors[obj.type] || ARCH_DARK_GRAY;
   }
 
@@ -111,8 +109,8 @@ const ObjectVisual = ({
   let finalObjectStrokeWidth;
   if (obj.type === 'corridor') {
     finalObjectStrokeWidth = corridorLineStrokeWidth;
-  } else if (obj.type === 'module_placeholder') {
-    finalObjectStrokeWidth = 0; 
+  } else if (obj.type === 'module_placeholder' || obj.type === 'wall' || obj.type === 'door' || obj.type === 'window' || obj.type === 'outlet') {
+    finalObjectStrokeWidth = 0; // Управляется внутри их Visual компонентов
   } else {
     finalObjectStrokeWidth = isSelected
      ? Math.max(0.5, ARCH_STROKE_MEDIUM / (scale / INITIAL_PPM))
@@ -120,8 +118,8 @@ const ObjectVisual = ({
   }
 
   const commonProps = {
-    stroke: finalStroke,
-    strokeWidth: finalObjectStrokeWidth,
+    stroke: finalStroke, // Этот stroke будет использоваться DefaultRectVisual, но не всегда другими
+    strokeWidth: finalObjectStrokeWidth, // Аналогично
     style: {
       cursor: (obj.clickable || obj.type === 'module_placeholder') ? "pointer" : "default",
     },
@@ -264,12 +262,14 @@ const ObjectVisual = ({
   let specificVisual;
   if (obj.type === "module_placeholder") {
     specificVisual = ( <ModulePlaceholderVisual obj={obj} scale={scale} commonProps={commonProps} /> );
+  } else if (obj.type === "wall") {
+    specificVisual = ( <WallVisual obj={obj} scale={scale} commonProps={commonProps} isSelected={isSelected} /> );
   } else if (obj.type === "door") {
     specificVisual = ( <DoorVisual obj={obj} scale={scale} commonProps={commonProps} isSelected={isSelected} /> );
   } else if (obj.type === "window") {
     specificVisual = ( <WindowVisual obj={obj} scale={scale} commonProps={commonProps} isSelected={isSelected} /> );
   } else if (obj.type === "outlet") {
-    specificVisual = ( <OutletVisual obj={obj} scale={scale} commonProps={commonProps} rotationCenterXScaled={rotationCenterXScaled} rotationCenterYScaled={rotationCenterYScaled} isSelected={isSelected} /> );
+    specificVisual = ( <OutletVisual obj={obj} scale={scale} commonProps={commonProps} isSelected={isSelected} /> );
   } else if (obj.type === "corridor") {
     const isVertical = obj.height > obj.width;
     const lengthScaled = isVertical ? obj.height * scale : obj.width * scale;
@@ -294,48 +294,37 @@ const ObjectVisual = ({
                 height={isVertical ? lengthScaled : logicalThicknessForClick}
                 fill="transparent"
             />
-            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth} />
+            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={commonProps.stroke} strokeWidth={finalObjectStrokeWidth} />
         </g>
     );
 
   } else if (obj.type === "module" && !obj.corridor && !obj.bathroom && !obj.shower) {
     const moduleWidth = obj.width * scale;
     const moduleHeight = obj.height * scale;
-    const wallThicknessM = 0.08;
-    const wallThicknessScaled = wallThicknessM * scale;
+    const wallThicknessM_module = 0.08; // Толщина стенки самого модуля
+    const wallThicknessScaled_module = wallThicknessM_module * scale;
     const blockSize = DEFAULT_PANEL_WIDTH_M; 
 
     const outerPath = `M 0 0 L ${moduleWidth.toFixed(2)} 0 L ${moduleWidth.toFixed(2)} ${moduleHeight.toFixed(2)} L 0 ${moduleHeight.toFixed(2)} Z`;
-    const innerPath = `M ${wallThicknessScaled.toFixed(2)} ${wallThicknessScaled.toFixed(2)} L ${(moduleWidth - wallThicknessScaled).toFixed(2)} ${wallThicknessScaled.toFixed(2)} L ${(moduleWidth - wallThicknessScaled).toFixed(2)} ${(moduleHeight - wallThicknessScaled).toFixed(2)} L ${wallThicknessScaled.toFixed(2)} ${(moduleHeight - wallThicknessScaled).toFixed(2)} Z`;
-
-    const studLines = [];
-    const studInterval = blockSize * scale;
-    for (let x = studInterval; x < moduleWidth - wallThicknessScaled; x += studInterval) {
-        studLines.push(<line key={`stud-t-${x}`} x1={x} y1={wallThicknessScaled} x2={x} y2={wallThicknessScaled + 5} stroke={ARCH_LIGHT_GRAY} strokeWidth={ARCH_STROKE_VERY_THIN} />);
-        studLines.push(<line key={`stud-b-${x}`} x1={x} y1={moduleHeight - wallThicknessScaled} x2={x} y2={moduleHeight - wallThicknessScaled - 5} stroke={ARCH_LIGHT_GRAY} strokeWidth={ARCH_STROKE_VERY_THIN} />);
-    }
-     for (let y = studInterval + wallThicknessScaled; y < moduleHeight - wallThicknessScaled; y += studInterval) {
-        studLines.push(<line key={`stud-l-${y}`} x1={wallThicknessScaled} y1={y} x2={wallThicknessScaled + 5} y2={y} stroke={ARCH_LIGHT_GRAY} strokeWidth={ARCH_STROKE_VERY_THIN} />);
-        studLines.push(<line key={`stud-r-${y}`} x1={moduleWidth - wallThicknessScaled} y1={y} x2={moduleWidth - wallThicknessScaled - 5} y2={y} stroke={ARCH_LIGHT_GRAY} strokeWidth={ARCH_STROKE_VERY_THIN} />);
-    }
+    const innerPath = `M ${wallThicknessScaled_module.toFixed(2)} ${wallThicknessScaled_module.toFixed(2)} L ${(moduleWidth - wallThicknessScaled_module).toFixed(2)} ${wallThicknessScaled_module.toFixed(2)} L ${(moduleWidth - wallThicknessScaled_module).toFixed(2)} ${(moduleHeight - wallThicknessScaled_module).toFixed(2)} L ${wallThicknessScaled_module.toFixed(2)} ${(moduleHeight - wallThicknessScaled_module).toFixed(2)} Z`;
 
     const interactionBlocks = [];
      for (let x_seg = 0; x_seg < obj.width; x_seg += blockSize) {
-        interactionBlocks.push({ x: x_seg * scale, y: 0, width: Math.min(blockSize, obj.width - x_seg) * scale, height: wallThicknessScaled, side: 'top', segmentIndex: Math.floor(x_seg / blockSize), origBlock: {x: x_seg, y: 0, width: Math.min(blockSize, obj.width - x_seg), height: wallThicknessM, side: 'top'} });
-        interactionBlocks.push({ x: x_seg * scale, y: moduleHeight - wallThicknessScaled, width: Math.min(blockSize, obj.width - x_seg) * scale, height: wallThicknessScaled, side: 'bottom', segmentIndex: Math.floor(x_seg / blockSize), origBlock: {x: x_seg, y: obj.height - wallThicknessM, width: Math.min(blockSize, obj.width - x_seg), height: wallThicknessM, side: 'bottom'} });
+        interactionBlocks.push({ x: x_seg * scale, y: 0, width: Math.min(blockSize, obj.width - x_seg) * scale, height: wallThicknessScaled_module, side: 'top', segmentIndex: Math.floor(x_seg / blockSize), origBlock: {x: x_seg, y: 0, width: Math.min(blockSize, obj.width - x_seg), height: wallThicknessM_module, side: 'top'} });
+        interactionBlocks.push({ x: x_seg * scale, y: moduleHeight - wallThicknessScaled_module, width: Math.min(blockSize, obj.width - x_seg) * scale, height: wallThicknessScaled_module, side: 'bottom', segmentIndex: Math.floor(x_seg / blockSize), origBlock: {x: x_seg, y: obj.height - wallThicknessM_module, width: Math.min(blockSize, obj.width - x_seg), height: wallThicknessM_module, side: 'bottom'} });
     }
-    for (let y_seg = wallThicknessM; y_seg < obj.height - wallThicknessM; y_seg += blockSize) {
-       interactionBlocks.push({ x: 0, y: y_seg * scale, width: wallThicknessScaled, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM) * scale, side: 'left', segmentIndex: Math.floor((y_seg - wallThicknessM) / blockSize), origBlock: {x: 0, y: y_seg, width: wallThicknessM, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM), side: 'left'} });
-       interactionBlocks.push({ x: moduleWidth - wallThicknessScaled, y: y_seg * scale, width: wallThicknessScaled, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM) * scale, side: 'right', segmentIndex: Math.floor((y_seg - wallThicknessM) / blockSize), origBlock: {x: obj.width - wallThicknessM, y: y_seg, width: wallThicknessM, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM), side: 'right'} });
+    for (let y_seg = wallThicknessM_module; y_seg < obj.height - wallThicknessM_module; y_seg += blockSize) {
+       interactionBlocks.push({ x: 0, y: y_seg * scale, width: wallThicknessScaled_module, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM_module) * scale, side: 'left', segmentIndex: Math.floor((y_seg - wallThicknessM_module) / blockSize), origBlock: {x: 0, y: y_seg, width: wallThicknessM_module, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM_module), side: 'left'} });
+       interactionBlocks.push({ x: moduleWidth - wallThicknessScaled_module, y: y_seg * scale, width: wallThicknessScaled_module, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM_module) * scale, side: 'right', segmentIndex: Math.floor((y_seg - wallThicknessM_module) / blockSize), origBlock: {x: obj.width - wallThicknessM_module, y: y_seg, width: wallThicknessM_module, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM_module), side: 'right'} });
     }
     
     let corridorPlaceholders = [];
     const existingCorridors = (window.__corridorObjectsCache = window.__corridorObjectsCache || []);
     if (Array.isArray(existingCorridors)) { existingCorridors.length = 0;}
     for (let i = 1; i < obj.width / blockSize; i++) { 
-      for (let j = 0; j < (obj.height - 2 * wallThicknessM) / blockSize; j++) { 
+      for (let j = 0; j < (obj.height - 2 * wallThicknessM_module) / blockSize; j++) { 
          const blockGridX = i * blockSize * scale; 
-         const blockGridY = (j * blockSize + wallThicknessM) * scale; 
+         const blockGridY = (j * blockSize + wallThicknessM_module) * scale; 
          const blockGridH = blockSize * scale;     
          const plusX = blockGridX;
          const plusY = blockGridY + blockGridH / 2;
@@ -344,7 +333,7 @@ const ObjectVisual = ({
          if (!corridorExists) {
            corridorPlaceholders.push(
              <g key={`corridor-vblock-${i}-${j}`}
-               onMouseEnter={() => setHoveredCorridor({ type: 'vertical', index: i, blockIndex: j, x: obj.x + i * blockSize, y: obj.y + j * blockSize + wallThicknessM, width: blockSize, height: blockSize, orientation: 'vertical', parentId: obj.id })}
+               onMouseEnter={() => setHoveredCorridor({ type: 'vertical', index: i, blockIndex: j, x: obj.x + i * blockSize, y: obj.y + j * blockSize + wallThicknessM_module, width: blockSize, height: blockSize, orientation: 'vertical', parentId: obj.id })}
                onMouseLeave={() => setHoveredCorridor(null)}
              >
                <rect x={blockGridX - 8} y={blockGridY} width={16} height={blockGridH} fill="transparent" style={{ cursor: 'pointer' }}/>
@@ -357,8 +346,8 @@ const ObjectVisual = ({
            );}
       }}
     for (let j = 1; j < obj.height / blockSize; j++) { 
-      for (let i = 0; i < (obj.width - 2 * wallThicknessM) / blockSize; i++) { 
-         const blockGridX = (i * blockSize + wallThicknessM) * scale;
+      for (let i = 0; i < (obj.width - 2 * wallThicknessM_module) / blockSize; i++) { 
+         const blockGridX = (i * blockSize + wallThicknessM_module) * scale;
          const blockGridY = j * blockSize * scale;
          const blockGridW = blockSize * scale;
          const plusX = blockGridX + blockGridW / 2;
@@ -368,7 +357,7 @@ const ObjectVisual = ({
           if (!corridorExists) {
            corridorPlaceholders.push(
              <g key={`corridor-hblock-${j}-${i}`}
-               onMouseEnter={() => setHoveredCorridor({ type: 'horizontal', index: j, blockIndex: i, x: obj.x + i * blockSize + wallThicknessM, y: obj.y + j * blockSize, width: blockSize, height: blockSize, orientation: 'horizontal', parentId: obj.id })}
+               onMouseEnter={() => setHoveredCorridor({ type: 'horizontal', index: j, blockIndex: i, x: obj.x + i * blockSize + wallThicknessM_module, y: obj.y + j * blockSize, width: blockSize, height: blockSize, orientation: 'horizontal', parentId: obj.id })}
                onMouseLeave={() => setHoveredCorridor(null)}
              >
                <rect x={blockGridX} y={blockGridY - 8} width={blockGridW} height={16} fill="transparent" style={{ cursor: 'pointer' }}/>
@@ -392,8 +381,8 @@ const ObjectVisual = ({
 
     specificVisual = (
       <>
-        <path d={outerPath} fill="none" stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth} />
-        <path d={innerPath} fill="none" stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth * 0.6} opacity={0.7} />
+        <path d={outerPath} fill="none" stroke={isSelected ? ARCH_SELECT_BLUE : ARCH_BLACK} strokeWidth={finalObjectStrokeWidth} />
+        <path d={innerPath} fill="none" stroke={isSelected ? ARCH_SELECT_BLUE : ARCH_BLACK} strokeWidth={finalObjectStrokeWidth * 0.7} opacity={0.8} />
         {interactionBlocks.map((block, index) => (
           occupiedSegments.has(`${block.origBlock.side}-${block.segmentIndex}`) ? null : (
             <rect key={`int-block-${index}`} x={block.x} y={block.y} width={block.width} height={block.height} fill="transparent" style={{ cursor: 'pointer' }} onClick={(e) => handleWallSegmentClick(e, block.origBlock, obj)} />
@@ -403,19 +392,17 @@ const ObjectVisual = ({
       </>
     );
   }
-  else if (obj.type === "module") {
+  else if (obj.type === "module") { // Модули, которые являются bathroom, shower, etc.
     specificVisual = ( <DefaultRectVisual obj={obj} scale={scale} commonProps={commonProps} /> );
   }
-  else {
+  else { // Мебель и другие объекты
     specificVisual = ( <DefaultRectVisual obj={obj} scale={scale} commonProps={commonProps} /> );
   }
 
   const handleMouseDownVisual = (e) => {
-    // console.log('ObjectVisual Clicked:', obj.id, obj.type);
     if (obj.type === "module_placeholder") {
         e.stopPropagation();
         if (typeof setSelectedObjectIds === 'function') {
-            // console.log('Calling setSelectedObjectIds with:', [obj.id]);
             setSelectedObjectIds([obj.id]); 
         } else {
             console.error("setSelectedObjectIds is not a function in ObjectVisual for placeholder");

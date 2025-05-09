@@ -1,4 +1,3 @@
-// src/components/Configurator/configuratorConstants.js
 import {
   DEFAULT_PANEL_WIDTH_M as APP_DEFAULT_PANEL_WIDTH_M,
   WALL_THICKNESS_M as APP_WALL_THICKNESS_M, 
@@ -11,24 +10,41 @@ import {
 
 
 const ARCH_BLACK = "#0F172A"; 
-const ARCH_DARK_GRAY = "#334155"; 
-const ARCH_MID_GRAY = "#64748B"; 
-const ARCH_LIGHT_GRAY = "#94A3B8"; 
-const ARCH_VERY_LIGHT_GRAY = "#CBD5E1"; 
-const ARCH_WHITE = "#F8FAFC"; 
+const ARCH_DARK_GRAY = "#334155"; // Slate 700
+const ARCH_MID_GRAY = "#64748B";   // Slate 500
+const ARCH_LIGHT_GRAY = "#94A3B8";  // Slate 400
+const ARCH_VERY_LIGHT_GRAY = "#CBD5E1"; // Slate 300
+const ARCH_WHITE = "#F8FAFC";         // Slate 50
 const ARCH_SELECT_BLUE = "rgba(59, 130, 246, 0.9)"; 
-const ARCH_CORRIDOR_STROKE = ARCH_DARK_GRAY;
+const ARCH_SELECT_BLUE_TRANSPARENT_FILL = "rgba(59, 130, 246, 0.15)"; // Для заливки выбранных стен/модулей
+
+const ARCH_CORRIDOR_STROKE = ARCH_MID_GRAY; // Коридоры чуть светлее стен
 const ARCH_INTERNAL_WALL_FILL = ARCH_WHITE; 
-const ARCH_DOOR_LEAF_FILL = ARCH_WHITE;
+const ARCH_DOOR_LEAF_FILL = ARCH_WHITE; // Полотно двери
+const ARCH_DOOR_FRAME_FILL = ARCH_VERY_LIGHT_GRAY; // Рама двери
 const ARCH_DOOR_STROKE = ARCH_BLACK;
-const ARCH_WINDOW_FRAME_STROKE = ARCH_BLACK;
-const ARCH_WINDOW_GLAZING_STROKE = ARCH_MID_GRAY;
+const ARCH_WINDOW_FRAME_STROKE = ARCH_BLACK; // Рама окна
+const ARCH_WINDOW_GLAZING_STROKE = ARCH_MID_GRAY; // Стекло
+const ARCH_WINDOW_FRAME_FILL = ARCH_VERY_LIGHT_GRAY; // Заливка рамы окна
 const ARCH_OUTLET_FILL = ARCH_WHITE;
 const ARCH_OUTLET_STROKE = ARCH_BLACK;
-const ARCH_HATCH_COLOR = ARCH_LIGHT_GRAY;
+const ARCH_HATCH_COLOR = ARCH_MID_GRAY; 
 const ARCH_FURNITURE_FILL_LIGHT = ARCH_WHITE;
 const ARCH_FURNITURE_FILL_MID = ARCH_VERY_LIGHT_GRAY;
-const ARCH_FURNITURE_STROKE = ARCH_DARK_GRAY;
+const ARCH_FURNITURE_STROKE = ARCH_MID_GRAY; // Мебель чуть светлее стен
+
+// Стены на темном фоне
+export const ARCH_WALL_OUTLINE_COLOR = ARCH_MID_GRAY;       // Обводка стен (светлее заливки)
+export const ARCH_WALL_FILL_COLOR = ARCH_DARK_GRAY;         // Заливка стен (темнее обводки, но светлее фона холста)
+
+// Стены модуля (если отличаются)
+export const ARCH_MODULE_WALL_OUTLINE_COLOR = ARCH_MID_GRAY; // Обводка стенок модуля
+export const ARCH_MODULE_WALL_FILL_COLOR = ARCH_DARK_GRAY;   // Заливка стенок модуля
+
+export const TEXT_LABEL_COLOR_DARK_THEME = ARCH_VERY_LIGHT_GRAY;
+export const TEXT_LABEL_BG_STROKE_DARK_THEME = "rgba(30, 41, 59, 0.7)"; // slate-800
+export const TEXT_LABEL_SELECTED_COLOR_DARK_THEME = ARCH_SELECT_BLUE;
+
 
 const ARCH_STROKE_THICK = 1.2;
 const ARCH_STROKE_MEDIUM = 0.8;
@@ -67,20 +83,20 @@ export const PREVIEW_LINE_STROKE_WIDTH = 2;
 
 export const objectColors = {
   panel: "rgba(203, 213, 225, 0.1)", 
-  window: ARCH_BLACK,
-  door: ARCH_BLACK,
-  outlet: ARCH_BLACK,
-  wall: "rgba(148, 163, 184, 0.15)", 
+  window: ARCH_WINDOW_FRAME_STROKE,
+  door: ARCH_DOOR_STROKE,
+  outlet: ARCH_OUTLET_STROKE,
+  wall: ARCH_WALL_OUTLINE_COLOR, 
   partition: ARCH_INTERNAL_WALL_FILL, 
   default: ARCH_MID_GRAY,
-  sofa: ARCH_WHITE,
-  table: ARCH_WHITE,
-  cabinet: ARCH_WHITE,
-  toilet: ARCH_WHITE,
-  bed: ARCH_WHITE,
+  sofa: ARCH_FURNITURE_STROKE, 
+  table: ARCH_FURNITURE_STROKE,
+  cabinet: ARCH_FURNITURE_STROKE,
+  toilet: ARCH_FURNITURE_STROKE, 
+  bed: ARCH_FURNITURE_STROKE,
   corridor: ARCH_CORRIDOR_STROKE,
-  light_led: ARCH_BLACK,
-  module: ARCH_WHITE,
+  light_led: ARCH_LIGHT_GRAY, // Цвет обводки для LED светильника
+  module: ARCH_MODULE_WALL_OUTLINE_COLOR,
   radiator: ARCH_LIGHT_GRAY,
   kitchen_unit: ARCH_MID_GRAY,
 };
@@ -89,7 +105,7 @@ export const defaultObjectSizes = {
   panel: { width: PANEL_SIZE_M, height: PANEL_SIZE_M },
   window: { width: APP_WINDOW_WIDTH_M, height: APP_WALL_THICKNESS_M },
   door: { width: APP_DOOR_WIDTH_M, height: APP_WALL_THICKNESS_M },
-  outlet: { width: 0.1, height: 0.1 },
+  outlet: { width: 0.12, height: 0.12 }, // Чуть больше для символа
   wall: { width: PANEL_SIZE_M, height: APP_WALL_THICKNESS_M }, 
   partition: { width: PANEL_SIZE_M, height: APP_WALL_THICKNESS_M }, 
   sofa: { width: 1.8, height: 0.8 },
@@ -97,15 +113,15 @@ export const defaultObjectSizes = {
   cabinet: { width: 0.8, height: 0.4 },
   toilet: { width: 0.4, height: 0.7 },
   bed: { width: 1.5, height: 2.0 },
-  corridor: { width: 1.0, height: 0.01 }, 
-  light_led: {width: 1.2, height: 0.15},
+  corridor: { width: 1.0, height: 0.02 }, // Чуть толще для видимости 
+  light_led: {width: 1.2, height: 0.05}, // Тоньше для LED
   module: { width: DEFAULT_MODULE_WIDTH_M, height: DEFAULT_MODULE_HEIGHT_M },
   radiator: { width: 0.8, height: 0.1 }, 
   kitchen_unit: { width: 1.5, height: 0.6 },
 };
 
 export const OBJECT_TYPES_TO_ADD = [
-  { type: "wall", label: "Стена (внеш.)" }, 
+  { type: "wall", label: "Стена" }, 
   { type: "window", label: "Окно" },
   { type: "door", label: "Дверь" },
   { type: "outlet", label: "Розетка" },
@@ -138,9 +154,11 @@ export {
     ARCH_STROKE_VERY_THIN,
     ARCH_CORRIDOR_STROKE,
     ARCH_DOOR_LEAF_FILL,
+    ARCH_DOOR_FRAME_FILL,
     ARCH_DOOR_STROKE,
     ARCH_WINDOW_FRAME_STROKE,
     ARCH_WINDOW_GLAZING_STROKE,
+    ARCH_WINDOW_FRAME_FILL,
     ARCH_FURNITURE_FILL_LIGHT,
     ARCH_FURNITURE_FILL_MID,
     ARCH_FURNITURE_STROKE,
@@ -148,4 +166,5 @@ export {
     ARCH_OUTLET_STROKE,
     ARCH_HATCH_COLOR,
     ARCH_INTERNAL_WALL_FILL,
+    ARCH_SELECT_BLUE_TRANSPARENT_FILL,
 };
