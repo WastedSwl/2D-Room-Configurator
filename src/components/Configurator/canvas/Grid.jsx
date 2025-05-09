@@ -1,4 +1,4 @@
-// src/components/Configurator/canvas/Grid.jsx
+
 import React from "react";
 import {
   GRID_LINE_COLOR,
@@ -8,8 +8,7 @@ import {
 } from "../configuratorConstants";
 
 const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
-  // Принимаем svgWidth, svgHeight
-  if (svgWidth === 0 || svgHeight === 0) return null; // Проверка здесь
+  if (svgWidth === 0 || svgHeight === 0) return null; 
 
   const { x: viewX, y: viewY, scale } = viewTransform;
   const finalGridLines = [];
@@ -20,8 +19,8 @@ const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
   const majorGridSizeScaled = majorGridSizeWorld * scale;
   const minorGridSizeScaled = (majorGridSizeWorld / minorGridDivisions) * scale;
 
-  const majorLineThreshold = 20;
-  const minorLineThreshold = 5;
+  const majorLineThreshold = 25; // Increased for less clutter at low zoom
+  const minorLineThreshold = 8; // Increased for less clutter at low zoom
 
   if (majorGridSizeScaled > majorLineThreshold) {
     const startOffsetX = viewX % majorGridSizeScaled;
@@ -34,7 +33,7 @@ const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
           x2={x}
           y2={svgHeight}
           stroke={GRID_BOLD_LINE_COLOR}
-          strokeWidth={0.5}
+          strokeWidth={viewTransform.scale > INITIAL_PPM * 0.5 ? 0.5 : 0.3} // Thinner if zoomed out
         />,
       );
     }
@@ -59,7 +58,7 @@ const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
               x2={x}
               y2={svgHeight}
               stroke={GRID_LINE_COLOR}
-              strokeWidth={0.25}
+              strokeWidth={viewTransform.scale > INITIAL_PPM * 0.5 ? 0.25 : 0.15} // Thinner if zoomed out
             />,
           );
         }
@@ -78,7 +77,7 @@ const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
           x2={svgWidth}
           y2={y}
           stroke={GRID_BOLD_LINE_COLOR}
-          strokeWidth={0.5}
+          strokeWidth={viewTransform.scale > INITIAL_PPM * 0.5 ? 0.5 : 0.3} // Thinner if zoomed out
         />,
       );
     }
@@ -103,7 +102,7 @@ const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
               x2={svgWidth}
               y2={y}
               stroke={GRID_LINE_COLOR}
-              strokeWidth={0.25}
+              strokeWidth={viewTransform.scale > INITIAL_PPM * 0.5 ? 0.25 : 0.15} // Thinner if zoomed out
             />,
           );
         }

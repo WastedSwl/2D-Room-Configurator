@@ -1,4 +1,3 @@
-// src/components/Configurator/common/PropertyInput.jsx
 import React from "react";
 import PropTypes from "prop-types";
 
@@ -13,14 +12,14 @@ const PropertyInput = ({
   ...props
 }) => (
   <div className="mb-2">
-    <label className="block text-xs text-gray-600 mb-1">{label}</label>
+    <label className="block text-xs text-gray-400 mb-1">{label}</label>
     {children || (
       <input
         type={type}
         value={value}
         onChange={onChange}
-        step={step}
-        className={`w-full p-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
+        step={type === 'number' ? step : undefined}
+        className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 focus:ring-1 focus:ring-primary-blue focus:border-primary-blue outline-none placeholder-gray-400 ${disabled ? "bg-gray-800 cursor-not-allowed opacity-60" : ""}`}
         disabled={disabled}
         {...props}
       />
@@ -31,12 +30,12 @@ const PropertyInput = ({
 PropertyInput.propTypes = {
   label: PropTypes.string.isRequired,
   type: PropTypes.string,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.bool]).isRequired,
   onChange: PropTypes.func.isRequired,
   step: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   children: PropTypes.node,
   disabled: PropTypes.bool,
-  min: PropTypes.string, // Added missing prop types
+  min: PropTypes.string, 
   max: PropTypes.string,
   title: PropTypes.string,
 };

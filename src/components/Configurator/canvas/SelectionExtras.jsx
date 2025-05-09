@@ -1,4 +1,3 @@
-// src/components/Configurator/canvas/SelectionExtras.jsx
 import React from "react";
 import {
   RESIZE_HANDLE_SIZE_PX,
@@ -18,9 +17,6 @@ const SelectionExtras = ({
   const handles = [];
   const dimensionTexts = [];
 
-  // Коэффициент, который помогает сохранить визуальный размер элементов интерфейса
-  // относительно начального масштаба. Когда scale увеличивается (приближение),
-  // 1 / (scale / INITIAL_PPM) уменьшается, компенсируя увеличение scale.
   const uiScaleFactor = INITIAL_PPM / scale;
 
   const OBBHandlesDef = [
@@ -34,8 +30,7 @@ const SelectionExtras = ({
     { type: "br", x: obj.width, y: obj.height },
   ];
 
-  const handleSizeBase = RESIZE_HANDLE_SIZE_PX; // Базовый размер в пикселях
-  // Размер маркера в SVG единицах, который будет выглядеть как handleSizeBase пикселей на экране
+  const handleSizeBase = RESIZE_HANDLE_SIZE_PX; 
   const handleSizeSVG = Math.max(
     4 * uiScaleFactor,
     handleSizeBase * uiScaleFactor,
@@ -45,57 +40,54 @@ const SelectionExtras = ({
     0.5 * uiScaleFactor,
   );
 
-  if (obj.type !== "module") {
-    OBBHandlesDef.forEach((h) => {
-      handles.push(
-        <rect
-          key={`handle-${h.type}`}
-          data-resize-handle="true"
-          // Позиционируем маркеры в координатах объекта (которые уже умножены на scale)
-          // а их размер задаем в SVG единицах, которые компенсируют scale
-          x={h.x * scale - handleSizeSVG / 2}
-          y={h.y * scale - handleSizeSVG / 2}
-          width={handleSizeSVG}
-          height={handleSizeSVG}
-          fill={RESIZE_HANDLE_COLOR}
-          stroke="white"
-          strokeWidth={handleStrokeWidthSVG}
-          style={{
-            cursor: canInteractWithHandles
-              ? getResizeCursorForHandle(h.type, obj.rotation || 0)
-              : "default",
-          }}
-          onMouseDown={(e) => {
-            if (canInteractWithHandles)
-              onResizeHandleMouseDown(e, obj.id, h.type);
-            else e.stopPropagation();
-          }}
-        />,
-      );
-    });
-  }
 
-  const midPointXObjScaled = (obj.width / 2) * scale; // Центральная точка объекта в экранных SVG координатах (относительно группы объекта)
+  OBBHandlesDef.forEach((h) => {
+    handles.push(
+      <rect
+        key={`handle-${h.type}`}
+        data-resize-handle="true"
+        x={h.x * scale - handleSizeSVG / 2}
+        y={h.y * scale - handleSizeSVG / 2}
+        width={handleSizeSVG}
+        height={handleSizeSVG}
+        fill={RESIZE_HANDLE_COLOR}
+        stroke="white"
+        strokeWidth={handleStrokeWidthSVG}
+        style={{
+          cursor: canInteractWithHandles
+            ? getResizeCursorForHandle(h.type, obj.rotation || 0)
+            : "default",
+        }}
+        onMouseDown={(e) => {
+          if (canInteractWithHandles)
+            onResizeHandleMouseDown(e, obj.id, h.type);
+          else e.stopPropagation();
+        }}
+      />,
+    );
+  });
+  
+
+  const midPointXObjScaled = (obj.width / 2) * scale; 
   const midPointYObjScaled = (obj.height / 2) * scale;
 
-  const textOffsetBase = 15; // Базовый отступ в пикселях
-  const textOffsetSVG = textOffsetBase * uiScaleFactor; // Отступ в SVG единицах
+  const textOffsetBase = 15; 
+  const textOffsetSVG = textOffsetBase * uiScaleFactor; 
 
-  const fontSizeBase = 10; // Базовый размер шрифта в пикселях
-  const fontSizeSVG = Math.max(6 * uiScaleFactor, fontSizeBase * uiScaleFactor); // Размер шрифта в SVG единицах
+  const fontSizeBase = 10; 
+  const fontSizeSVG = Math.max(6 * uiScaleFactor, fontSizeBase * uiScaleFactor); 
 
-  const strokeBgWidthBase = 3; // Базовая толщина обводки фона
+  const strokeBgWidthBase = 3; 
   const strokeBgWidthSVG = Math.max(
     1 * uiScaleFactor,
     strokeBgWidthBase * uiScaleFactor,
   );
 
-  // Позиционируем текст относительно центра объекта, но с отступом в SVG единицах, компенсирующих scale
   dimensionTexts.push(
     <text
       key="dim-width"
-      x={midPointXObjScaled} // Центр по X объекта
-      y={0 - textOffsetSVG} // Выше объекта с отступом
+      x={midPointXObjScaled} 
+      y={0 - textOffsetSVG} 
       fontSize={`${fontSizeSVG}px`}
       textAnchor="middle"
       fill={DIMENSION_TEXT_COLOR}
@@ -113,12 +105,12 @@ const SelectionExtras = ({
   dimensionTexts.push(
     <text
       key="dim-height"
-      x={0 - textOffsetSVG} // Левее объекта с отступом
-      y={midPointYObjScaled} // Центр по Y объекта
+      x={0 - textOffsetSVG} 
+      y={midPointYObjScaled} 
       fontSize={`${fontSizeSVG}px`}
       textAnchor="middle"
       dominantBaseline="middle"
-      transform={`rotate(-90, ${0 - textOffsetSVG}, ${midPointYObjScaled})`} // Поворачиваем вокруг точки позиционирования
+      transform={`rotate(-90, ${0 - textOffsetSVG}, ${midPointYObjScaled})`} 
       fill={DIMENSION_TEXT_COLOR}
       style={{
         paintOrder: "stroke",

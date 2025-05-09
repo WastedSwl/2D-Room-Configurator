@@ -1,9 +1,9 @@
-// src/components/Configurator/canvas/SvgCanvas.jsx
-import React, { useState, useEffect, useCallback } from "react"; // Добавлен useState, useEffect, useCallback
+import React, { useState, useEffect, useCallback } from "react"; 
 import Grid from "./Grid";
 import ObjectRendererGroup from "./ObjectRendererGroup";
 import SnapGuides from "./SnapGuides";
 import MarqueeSelection from "./MarqueeSelection";
+import PreviewLine from "./PreviewLine"; 
 
 const SvgCanvas = ({
   svgRef,
@@ -11,6 +11,8 @@ const SvgCanvas = ({
   setViewTransform,
   objects,
   selectedObjectIds,
+  setSelectedObjectIds, // Добавлено для ObjectRendererGroup
+  updateObject, // Добавлено для ObjectRendererGroup
   lockedObjectIds,
   overlappingObjectIds,
   activeSnapLines,
@@ -19,7 +21,6 @@ const SvgCanvas = ({
   addingObjectType,
   isPanningWithSpace,
   draggingState,
-  resizingState,
   handleMouseMove,
   handleMouseUp,
   handleMouseLeave,
@@ -27,12 +28,14 @@ const SvgCanvas = ({
   handleMouseDownOnObject,
   handleMouseDownOnResizeHandle,
   onAddObject,
-  onAddCorridor,
-  addingCorridorMode,
+  onAddCorridor, 
+  addingCorridorMode, 
+  onExpansionPlatformClick, 
+  activeMode,
+  drawingLineState, 
 }) => {
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
 
-  // Обновление размеров SVG при изменении размера окна или контейнера
   useEffect(() => {
     const currentSvg = svgRef.current;
     if (!currentSvg) return;
@@ -46,7 +49,6 @@ const SvgCanvas = ({
 
     resizeObserver.observe(currentSvg);
 
-    // Первоначальная установка размеров
     const rect = currentSvg.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
       setSvgDimensions({ width: rect.width, height: rect.height });
@@ -74,28 +76,29 @@ const SvgCanvas = ({
     [isPanningWithSpace, draggingState, setViewTransform, handleMouseMove],
   );
 
+  let cursorClass = "cursor-default";
+  if (addingObjectType || (drawingLineState && drawingLineState.type) ) {
+      cursorClass = "cursor-crosshair";
+  } else if (isPanningWithSpace) {
+      cursorClass = "cursor-grabbing";
+  } else if (modifierKeys.spacebar) {
+      cursorClass = "cursor-grab";
+  }
+
+
   return (
     <svg
       ref={svgRef}
       width="100%"
       height="100%"
-      onMouseMove={localHandleMouseMove} // Используем localHandleMouseMove
+      onMouseMove={localHandleMouseMove} 
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDownOnCanvas}
-      className={`block bg-white ${
-        addingObjectType
-          ? "cursor-crosshair"
-          : isPanningWithSpace
-            ? "cursor-grabbing"
-            : modifierKeys.spacebar
-              ? "cursor-grab"
-              : "cursor-default"
-      }`}
+      className={`block ${cursorClass}`} 
     >
       {svgDimensions.width > 0 &&
-        svgDimensions.height >
-          0 /* Рендерим Grid только если есть размеры */ && (
+        svgDimensions.height > 0 && (
           <Grid
             viewTransform={viewTransform}
             svgWidth={svgDimensions.width}
@@ -111,21 +114,23 @@ const SvgCanvas = ({
           overlappingObjectIds={overlappingObjectIds}
           modifierKeys={modifierKeys}
           handleMouseDownOnObject={handleMouseDownOnObject}
-          handleMouseDownOnResizeHandle={handleMouseDownOnResizeHandle}
-          draggingState={draggingState}
-          resizingState={resizingState}
+          handleMouseDownOnResizeHandle={handleMouseDownOnResizeHandle} 
           onAddObject={onAddObject}
-          onAddCorridor={onAddCorridor}
-          addingCorridorMode={addingCorridorMode}
+          onAddCorridor={onAddCorridor} 
+          svgRef={svgRef}
+          activeMode={activeMode}
+          setSelectedObjectIds={setSelectedObjectIds}
+          updateObject={updateObject}
         />
         <SnapGuides
-          activeSnapLines={activeSnapLines}
+          activeSnapLines={activeSnapLines} 
           viewTransform={viewTransform}
         />
+        <PreviewLine drawingLineState={drawingLineState} viewTransform={viewTransform} />
       </g>
-      <MarqueeSelection marqueeRect={marqueeRect} svgRef={svgRef} />
+      <MarqueeSelection marqueeRect={marqueeRect} svgRef={svgRef} /> 
     </svg>
   );
 };
 
-export default SvgCanvas; // Не оборачиваем в React.memo, т.к. он принимает много колбэков и состояний
+export default SvgCanvas; 

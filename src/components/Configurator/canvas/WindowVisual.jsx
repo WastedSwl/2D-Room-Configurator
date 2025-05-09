@@ -1,4 +1,3 @@
-// src/components/Configurator/canvas/WindowVisual.jsx
 import React from "react";
 import {
     ARCH_BLACK,
@@ -40,7 +39,7 @@ const WindowVisual = ({ obj, scale, commonProps, isSelected }) => {
         x="0"
         y="0"
         width={widthScaled}
-        height={heightScaled}
+        height={heightScaled} // Removed commonProps from here as it has stroke
         fill="none"
         stroke={isSelected ? ARCH_SELECT_BLUE : ARCH_WINDOW_FRAME_STROKE}
         strokeWidth={frameStrokeWidth}

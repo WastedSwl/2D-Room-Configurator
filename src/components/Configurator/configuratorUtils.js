@@ -1,7 +1,5 @@
-// src/components/Configurator/configuratorUtils.js
 import { DOOR_LEAF_VISUAL_THICKNESS_M } from "./configuratorConstants";
 
-// ... (rotatePoint, getAABB, checkAABBIntersection, getResizeCursorForHandle - без изменений) ...
 export const rotatePoint = (point, angleRad, center) => {
   const s = Math.sin(angleRad);
   const c = Math.cos(angleRad);
@@ -161,42 +159,26 @@ export const isDoorLeafColliding = (doorObj, openingAngleDegrees, allOtherObject
     const doorLeafAABB = getAABBFromCorners(doorLeafWorldCorners);
 
     for (const otherObj of allOtherObjects) {
-        if (otherObj.id === doorObj.id) continue; // Don't collide with its own frame 
+        if (otherObj.id === doorObj.id) continue; 
         
-        // --- ДОБАВЛЕНА ПРОВЕРКА ---
-        // Если у двери есть parentId (т.е. она прикреплена к модулю)
-        // и ID другого объекта совпадает с parentId двери,
-        // то пропускаем проверку столкновения с этим родительским модулем.
         if (doorObj.parentId && otherObj.id === doorObj.parentId) {
             continue; 
         }
-        // --- КОНЕЦ ДОБАВЛЕННОЙ ПРОВЕРКИ ---
 
         const otherAABB = getAABB(otherObj); 
         
         if (checkAABBIntersection(doorLeafAABB, otherAABB)) {
-            // AABB check passed, now potentially more precise checks
-
-            // Handle door-door leaf collision
             if (otherObj.type === 'door' && otherObj.isOpen && otherObj.openingAngle > 0) {
                 const otherDoorLeafCorners = getDoorLeafCorners(otherObj, otherObj.openingAngle);
                 const otherDoorLeafAABB = getAABBFromCorners(otherDoorLeafCorners);
                 if (checkAABBIntersection(doorLeafAABB, otherDoorLeafAABB)) {
-                    // More precise check would go here (e.g., SAT)
-                    console.warn(`[Collision] Door ${doorObj.id} leaf vs Door ${otherObj.id} leaf`);
-                    return true; // Leaf-to-leaf collision detected by AABB for now
+                    return true; 
                 }
-                // Leaves don't collide based on AABB, but we already know this door's leaf AABB
-                // intersects the other door's overall AABB (frame+leaf), so return true.
-                // Or should we only return true on leaf-leaf? Let's stick to AABB vs AABB for now.
-                 console.warn(`[Collision] Door ${doorObj.id} leaf (angle ${openingAngleDegrees}) vs ${otherObj.type} ${otherObj.id} (Frame AABB)`);
-                 return true; // Collision with the other door object's bounding box
+                 return true; 
             } else {
-                // Collision with a non-door or a closed door object
-                 console.warn(`[Collision] Door ${doorObj.id} leaf (angle ${openingAngleDegrees}) vs ${otherObj.type} ${otherObj.id}`);
-                 return true; // AABB collision is sufficient for now
+                 return true; 
             }
         }
     }
-    return false; // No collisions detected
+    return false; 
 };

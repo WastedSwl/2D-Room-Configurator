@@ -4,7 +4,8 @@ import {
     ARCH_WHITE,
     ARCH_SELECT_BLUE,
     ARCH_STROKE_MEDIUM, // <-- Импорт
-    ARCH_STROKE_THIN,   // <-- Импорт
+    ARCH_STROKE_THIN, // <-- Импорт
+    ARCH_DARK_GRAY, // for text on white
     ARCH_STROKE_VERY_THIN, // <-- Импорт
 } from "../configuratorConstants";
 
@@ -14,13 +15,13 @@ const DefaultRectVisual = ({ obj, scale, commonProps }) => {
   const isSelected = commonProps.stroke === ARCH_SELECT_BLUE;
 
   let fill = ARCH_WHITE;
-  let stroke = ARCH_BLACK;
+  let stroke = ARCH_DARK_GRAY; // Use darker gray for better contrast on white fill than pure black
   // Use defined weights for stroke width based on selection and type
   let strokeWidth = isSelected ? ARCH_STROKE_MEDIUM : ARCH_STROKE_THIN;
 
   if (obj.type === "wall") {
-    fill = ARCH_WHITE; // Keep walls as outlines
-    strokeWidth = isSelected ? ARCH_STROKE_MEDIUM : ARCH_STROKE_MEDIUM; // Walls slightly thicker
+    fill = "rgba(200, 200, 200, 0.1)"; // Slightly visible fill for walls
+    strokeWidth = isSelected ? ARCH_STROKE_MEDIUM : ARCH_STROKE_THIN; 
   } else if (obj.type === 'light_led') {
       fill = ARCH_WHITE;
       strokeWidth = isSelected ? ARCH_STROKE_THIN : ARCH_STROKE_VERY_THIN;
@@ -49,8 +50,8 @@ const DefaultRectVisual = ({ obj, scale, commonProps }) => {
             y={heightScaled / 2}
             fontSize={`${Math.min(12, Math.max(6, heightScaled * 0.6))}px`}
             textAnchor="middle"
-            dominantBaseline="central"
-            fill={isSelected ? ARCH_SELECT_BLUE : ARCH_BLACK}
+            dominantBaseline="central" // Using dominant-baseline
+            fill={isSelected ? ARCH_SELECT_BLUE : ARCH_DARK_GRAY}
             style={{ pointerEvents: "none", fontVariantNumeric: "tabular-nums" }}
             stroke="none"
           >

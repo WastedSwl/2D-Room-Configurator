@@ -11,13 +11,10 @@ const MarqueeSelection = ({ marqueeRect, svgRef }) => {
   }
 
   const svgDomRect = svgRef.current.getBoundingClientRect();
-  // Если SVG еще не отрендерился с размерами, не рисовать
   if (svgDomRect.width === 0 || svgDomRect.height === 0) {
     return null;
   }
 
-  // marqueeRect содержит startScreenX/Y и currentScreenX/Y в экранных координатах
-  // Их нужно преобразовать в координаты относительно SVG элемента
   const x =
     Math.min(marqueeRect.startScreenX, marqueeRect.currentScreenX) -
     svgDomRect.left;
@@ -37,8 +34,8 @@ const MarqueeSelection = ({ marqueeRect, svgRef }) => {
       height={height}
       fill={MARQUEE_FILL_COLOR}
       stroke={MARQUEE_STROKE_COLOR}
-      strokeWidth="1" // Обычно фиксированная ширина для рамки выделения
-      pointerEvents="none" // Не должна перехватывать события
+      strokeWidth="1" 
+      pointerEvents="none" 
     />
   );
 };

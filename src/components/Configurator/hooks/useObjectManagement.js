@@ -4,17 +4,20 @@ import {
   WALL_THICKNESS_M,
   DOOR_WIDTH_M as APP_DOOR_WIDTH_M,
   WINDOW_WIDTH_M as APP_WINDOW_WIDTH_M,
+  DEFAULT_MODULE_WIDTH_M,
+  DEFAULT_MODULE_HEIGHT_M,
 } from "../appConstants";
 import { defaultObjectSizes } from "../configuratorConstants";
 import {
     getAABB,
     checkAABBIntersection,
     getDoorLeafCorners,
-    isDoorLeafColliding
+    isDoorLeafColliding,
+    rotatePoint,
 } from "../configuratorUtils";
 
 let objectIdCounter = 0;
-const getNextId = () => `obj-${objectIdCounter++}`;
+export const getNextId = () => `obj-${objectIdCounter++}`;
 
 export const createObject = (type, x, y, width, height, data = {}) => {
   const baseObj = {
@@ -35,18 +38,21 @@ export const createObject = (type, x, y, width, height, data = {}) => {
     baseObj.hingeSide = data.hingeSide || "left";
     baseObj.openingDirection = data.openingDirection || "inward";
   }
+  if (type === "module") {
+      baseObj.mirroredX = data.mirroredX || false;
+      baseObj.mirroredY = data.mirroredY || false;
+  }
   return baseObj;
 };
 
 export const getInitialObjects = () => {
-  objectIdCounter = 0; // Reset counter when generating initial objects
+  objectIdCounter = 0; 
   const initialObjects = [];
   const WT = WALL_THICKNESS_M;
   const houseWidthOuter = 6;
   const houseDepthOuter = 3.5;
   const gap = 0.1;
 
-  // --- Outer Walls ---
   initialObjects.push(
     createObject("wall", 0, 0, houseWidthOuter, WT, { label: "Верхняя стена" }),
   );
@@ -71,7 +77,6 @@ export const getInitialObjects = () => {
     ),
   );
 
-  // --- Main Door ---
   const mainDoorWidth = APP_DOOR_WIDTH_M;
   initialObjects.push(
     createObject("door", 1.0, houseDepthOuter - WT, mainDoorWidth, WT, {
@@ -83,7 +88,6 @@ export const getInitialObjects = () => {
     }),
   );
 
-  // --- Main Window ---
   const mainWindowWidth = APP_WINDOW_WIDTH_M;
   initialObjects.push(
     createObject(
@@ -96,7 +100,6 @@ export const getInitialObjects = () => {
     ),
   );
 
-  // --- Living Room Furniture ---
   const sofaWidth = 1.8;
   const sofaDepth = 0.8;
   initialObjects.push(
@@ -117,7 +120,6 @@ export const getInitialObjects = () => {
     ),
   );
 
-  // --- Bedroom Furniture ---
   const bedWidth = 1.5;
   const bedDepth = 2.0;
   const bedX = houseWidthOuter - WT - gap - bedWidth;
@@ -138,7 +140,6 @@ export const getInitialObjects = () => {
     ),
   );
 
-  // --- Bathroom Walls & Door ---
   const bathroomWidthInner = 1.5;
   const bathroomDepthInner = 1.8;
   const bathroomOuterWallX =
@@ -206,8 +207,6 @@ export const getInitialObjects = () => {
       },
     ),
   );
-  // --- Bathroom Fixtures ---
-  // <<<--- ИСПРАВЛЕННОЕ МЕСТОПОЛОЖЕНИЕ const ---<<<
   const toiletWidth = 0.4;
   const toiletDepth = 0.7;
   initialObjects.push(
@@ -230,27 +229,39 @@ const useObjectManagement = (
   selectedObjectIds,
   lockedObjectIds,
   modifierKeys,
-  objectsRef // Используем objectsRef напрямую
+  objectsRef,
+  activeMode,
 ) => {
   const addObject = useCallback(
-    (type, x, y, width, height, data) => {
+    (type, x, y, width, height, data, skipHistory = false) => {
       const newObject = createObject(type, x, y, width, height, data);
-      setObjects((prev) => [...prev, newObject], true);
+      setObjects((prev) => [...prev, newObject], !skipHistory);
       return newObject;
     },
     [setObjects],
   );
 
   const updateObject = useCallback(
-    (id, updates) => {
+    (id, updates, skipHistory = false) => {
       setObjects(
         (prev) =>
           prev.map((obj) => (obj.id === id ? { ...obj, ...updates } : obj)),
-        true,
+        !skipHistory,
       );
     },
     [setObjects],
   );
+  
+  const updateMultipleObjects = useCallback((updatesArray, saveToHistory = true) => {
+    setObjects(prevObjects => {
+        const updatedObjects = prevObjects.map(obj => {
+            const updateForThisObject = updatesArray.find(u => u.id === obj.id);
+            return updateForThisObject ? { ...obj, ...updateForThisObject.updates } : obj;
+        });
+        return updatedObjects;
+    }, saveToHistory);
+  }, [setObjects]);
+
 
   const deleteObjectById = useCallback(
     (id) => {
@@ -268,7 +279,6 @@ const useObjectManagement = (
       const targetId = selectedObjectIds[0];
       
       if (!objectsRef || !objectsRef.current) {
-        console.error("useObjectManagement: objectsRef or objectsRef.current is undefined.");
         return;
       }
       const currentObjects = objectsRef.current; 
@@ -308,7 +318,7 @@ const useObjectManagement = (
             newOpeningAngle = 0;
           }
         } else { 
-          const potentialAngle = parseFloat(parsedValue); // Убедимся, что это число
+          const potentialAngle = parseFloat(parsedValue); 
           if (isNaN(potentialAngle)) {
               toast.error(`Неверный угол: ${value}`);
               return;
@@ -350,7 +360,6 @@ const useObjectManagement = (
              }
           } else { 
             const msg = `Дверь '${objToUpdate.label || targetId}' не может открыться (${targetAngle.toFixed(0)}°) из-за столкновения.`;
-            console.warn(msg);
             toast.warn(msg); 
             finalAngle = 0;
             finalIsOpen = false;
@@ -401,6 +410,94 @@ const useObjectManagement = (
     [setObjects],
   );
 
+  const rotateModule180 = useCallback((moduleId) => {
+    const moduleToRotate = objectsRef.current.find(obj => obj.id === moduleId && obj.type === 'module');
+    if (!moduleToRotate) return;
+
+    const newRotation = (moduleToRotate.rotation + 180) % 360;
+    const childUpdates = [];
+    const moduleCenterX = moduleToRotate.x + moduleToRotate.width / 2;
+    const moduleCenterY = moduleToRotate.y + moduleToRotate.height / 2;
+
+    objectsRef.current.forEach(obj => {
+        if (obj.parentId === moduleId) {
+            const localX = obj.x - moduleToRotate.x;
+            const localY = obj.y - moduleToRotate.y;
+            
+            const rotatedLocalPoint = rotatePoint({x: localX, y: localY}, Math.PI, {x: moduleToRotate.width/2, y: moduleToRotate.height/2});
+            
+            const newChildX = moduleToRotate.x + (moduleToRotate.width - (rotatedLocalPoint.x + obj.width));
+            const newChildY = moduleToRotate.y + (moduleToRotate.height - (rotatedLocalPoint.y + obj.height));
+
+            const newChildRotation = (obj.rotation + 180) % 360;
+            
+            let newSide = obj.side;
+            if(obj.side === 'top') newSide = 'bottom';
+            else if(obj.side === 'bottom') newSide = 'top';
+            else if(obj.side === 'left') newSide = 'right';
+            else if(obj.side === 'right') newSide = 'left';
+
+            childUpdates.push({
+                id: obj.id,
+                updates: {
+                    x: newChildX,
+                    y: newChildY,
+                    rotation: newChildRotation,
+                    side: newSide,
+                }
+            });
+        }
+    });
+    updateMultipleObjects([{id: moduleId, updates: { rotation: newRotation }}, ...childUpdates], true);
+
+  }, [objectsRef, updateMultipleObjects]);
+
+  const mirrorModule = useCallback((moduleId, axis) => {
+    const moduleToMirror = objectsRef.current.find(obj => obj.id === moduleId && obj.type === 'module');
+    if (!moduleToMirror) return;
+
+    const childUpdates = [];
+    let moduleMirroredX = moduleToMirror.mirroredX;
+    let moduleMirroredY = moduleToMirror.mirroredY;
+
+    objectsRef.current.forEach(child => {
+        if (child.parentId === moduleId) {
+            let newChildX = child.x;
+            let newChildY = child.y;
+            let newChildRotation = child.rotation;
+            let newHingeSide = child.hingeSide;
+            let newSide = child.side;
+
+            const localX = child.x - moduleToMirror.x;
+            const localY = child.y - moduleToMirror.y;
+
+            if (axis === 'x') {
+                newChildX = moduleToMirror.x + (moduleToMirror.width - localX - child.width);
+                if (child.type === 'door') {
+                    newHingeSide = child.hingeSide === 'left' ? 'right' : 'left';
+                }
+                newChildRotation = (360 - child.rotation) % 360; 
+                if(child.side === 'left') newSide = 'right';
+                else if(child.side === 'right') newSide = 'left';
+                moduleMirroredX = !moduleToMirror.mirroredX;
+            } else if (axis === 'y') {
+                newChildY = moduleToMirror.y + (moduleToMirror.height - localY - child.height);
+                newChildRotation = (180 - child.rotation + 360) % 360;
+                if(child.side === 'top') newSide = 'bottom';
+                else if(child.side === 'bottom') newSide = 'top';
+                moduleMirroredY = !moduleToMirror.mirroredY;
+            }
+            
+            const updates = { x: newChildX, y: newChildY, rotation: newChildRotation, side: newSide };
+            if (child.type === 'door') updates.hingeSide = newHingeSide;
+            childUpdates.push({ id: child.id, updates });
+        }
+    });
+    updateMultipleObjects([{id: moduleId, updates: { mirroredX: moduleMirroredX, mirroredY: moduleMirroredY }}, ...childUpdates], true);
+
+  }, [objectsRef, updateMultipleObjects]);
+
+
   return {
     createObject,
     getInitialObjects,
@@ -410,6 +507,10 @@ const useObjectManagement = (
     updateSelectedObjectProperty,
     addAndSelectObject,
     defaultObjectSizes,
+    rotateModule180,
+    mirrorModule: mirrorModule,
+    mirrorModuleX: (moduleId) => mirrorModule(moduleId, 'x'),
+    mirrorModuleY: (moduleId) => mirrorModule(moduleId, 'y'),
   };
 };
 

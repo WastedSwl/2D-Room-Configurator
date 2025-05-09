@@ -2,8 +2,6 @@ import React from "react";
 import PropTypes from 'prop-types';
 
 const FrameMode = ({ addObject, getObjects }) => {
-  // Placeholder for Frame Mode
-  // This will be implemented later
   return null;
 };
 

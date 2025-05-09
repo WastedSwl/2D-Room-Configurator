@@ -1,4 +1,3 @@
-// src/components/Configurator/canvas/ObjectRendererGroup.jsx
 import React from "react";
 import ObjectVisual from "./ObjectVisual";
 
@@ -16,6 +15,11 @@ const ObjectRendererGroup = ({
   onAddObject,
   addingCorridorMode,
   onAddCorridor,
+  svgRef, 
+  onExpansionPlatformClick,
+  activeMode,
+  setSelectedObjectIds, // Добавлено для ObjectVisual
+  updateObject, // Добавлено для ObjectVisual, если нужен флаг isSelectedByClick
 }) => {
   return (
     <>
@@ -38,6 +42,12 @@ const ObjectRendererGroup = ({
             addingCorridorMode={addingCorridorMode}
             onAddCorridor={onAddCorridor}
             objects={objects}
+            viewTransform={viewTransform}
+            svgRef={svgRef}
+            onExpansionPlatformClick={onExpansionPlatformClick}
+            activeMode={activeMode}
+            setSelectedObjectIds={setSelectedObjectIds} 
+            updateObject={updateObject} 
           />
         );
       })}

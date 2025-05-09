@@ -35,8 +35,8 @@ function App() {
   // };
 
   return (
-    <div className="App h-screen flex flex-col">
-      <ToastContainer position="bottom-right" autoClose={3000} newestOnTop />
+    <div className="App h-screen flex flex-col bg-dark-bg text-gray-200">
+      <ToastContainer theme="dark" position="bottom-right" autoClose={3000} newestOnTop />
       <Configurator
       // activeMode={activeMode} // Передаем, если управляем из App
       // setProjectInfoData={setProjectInfoData} // Передаем, если управляем из App

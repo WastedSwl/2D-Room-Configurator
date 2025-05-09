@@ -27,6 +27,8 @@ module.exports = {
     "react/prop-types": "warn",
     "jsx-a11y/anchor-is-valid": "warn",
     "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    "react/no-unknown-property": "off", // specific for this project due to custom attributes
+    "react/no-unescaped-entities": "off", // for things like "don't"
   },
   settings: {
     react: {

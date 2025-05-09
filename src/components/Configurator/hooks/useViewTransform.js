@@ -1,27 +1,26 @@
-// src/components/Configurator/hooks/useViewTransform.js
 import { useState, useCallback, useEffect } from "react";
-import { INITIAL_PPM } from "../configuratorConstants";
+import { INITIAL_PPM, MIN_ZOOM_SCALE, MAX_ZOOM_SCALE } from "../configuratorConstants";
 
 const useViewTransform = (svgRef) => {
   const [viewTransform, setViewTransform] = useState({
     x: 80,
     y: 60,
-    scale: INITIAL_PPM * 0.6,
+    scale: INITIAL_PPM * 0.6, 
   });
   const [initialized, setInitialized] = useState(false);
 
-  // Центрируем мир по центру SVG при первом рендере
   useEffect(() => {
     if (initialized) return;
     const svg = svgRef.current;
     if (svg) {
       const rect = svg.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
-        setViewTransform((prev) => ({
-          ...prev,
-          x: rect.width / 2,
-          y: rect.height / 2,
-        }));
+        const initialScale = INITIAL_PPM * 0.6;
+        setViewTransform({
+          x: rect.width / 2, 
+          y: rect.height / 2, 
+          scale: initialScale,
+        });
         setInitialized(true);
       }
     }
@@ -59,7 +58,7 @@ const useViewTransform = (svgRef) => {
 
     const wheelHandler = (e) => {
       e.preventDefault();
-      const scaleAmount = 1.1;
+      const scaleAmount = 1.1; 
       const newScaleFactor = e.deltaY > 0 ? 1 / scaleAmount : scaleAmount;
 
       const svgRect = currentSvgElement.getBoundingClientRect();
@@ -71,7 +70,10 @@ const useViewTransform = (svgRef) => {
           (mouseX - prevTransform.x) / prevTransform.scale;
         const worldBeforeZoomY =
           (mouseY - prevTransform.y) / prevTransform.scale;
-        const newScale = prevTransform.scale * newScaleFactor;
+        
+        let newScale = prevTransform.scale * newScaleFactor;
+        newScale = Math.max(MIN_ZOOM_SCALE, Math.min(newScale, MAX_ZOOM_SCALE));
+
         const newViewX = mouseX - worldBeforeZoomX * newScale;
         const newViewY = mouseY - worldBeforeZoomY * newScale;
         return { x: newViewX, y: newViewY, scale: newScale };
@@ -84,7 +86,7 @@ const useViewTransform = (svgRef) => {
     return () => {
       currentSvgElement.removeEventListener("wheel", wheelHandler);
     };
-  }, [svgRef]);
+  }, [svgRef]); 
 
   return {
     viewTransform,

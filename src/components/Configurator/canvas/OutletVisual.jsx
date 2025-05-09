@@ -1,4 +1,3 @@
-// src/components/Configurator/canvas/OutletVisual.jsx
 import React from "react";
 import {
     ARCH_BLACK,

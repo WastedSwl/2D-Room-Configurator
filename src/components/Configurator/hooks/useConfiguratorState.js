@@ -7,14 +7,13 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
   const [objects, setObjectsState] = useState(() => {
     if (activeMode === 'modular') return [];
     if (activeMode === 'frameless') return getInitialObjects();
-    // Для других режимов по умолчанию пусто
     return [];
   });
   const [selectedObjectIds, setSelectedObjectIds] = useState([]);
   const [lockedObjectIds, setLockedObjectIds] = useState([]);
   const [history, setHistory] = useState({ undo: [], redo: [] });
-  const [copiedObjectsData, setCopiedObjectsData] = useState(null); // For copy/paste
-  const [overlappingObjectIds, setOverlappingObjectIds] = useState([]);
+  // const [copiedObjectsData, setCopiedObjectsData] = useState(null); // Disabled for static
+  const [overlappingObjectIds, setOverlappingObjectIds] = useState([]); // Keep for prop consistency
 
   const objectsRef = useRef(objects);
   useEffect(() => {
@@ -44,7 +43,6 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
             }));
           }
         }
-        // Update project info data
         let totalArea = 0;
         newState.forEach((obj) => {
           if (
@@ -53,7 +51,7 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
             typeof obj.height === "number" &&
             (obj.type === "panel" ||
               obj.type === "wall" ||
-              obj.type.match(/sofa|table|cabinet|toilet|bed/))
+              obj.type.match(/sofa|table|cabinet|toilet|bed|module/)) 
           ) {
             totalArea += obj.width * obj.height;
           }
@@ -74,9 +72,9 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
       if (prevHistory.undo.length > 0) {
         const stateToRestore = prevHistory.undo[0];
         const remainingUndo = prevHistory.undo.slice(1);
-        const currentStateForRedo = objectsRef.current; // Use ref for current state
-        setObjectsState(stateToRestore); // Directly set state, history handled by setObjects
-        setSelectedObjectIds([]); // Clear selection on undo
+        const currentStateForRedo = objectsRef.current; 
+        setObjectsState(stateToRestore); 
+        setSelectedObjectIds([]); 
         return {
           undo: remainingUndo,
           redo: [currentStateForRedo, ...prevHistory.redo].slice(
@@ -93,9 +91,9 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
     setHistory((prevHistory) => {
       if (prevHistory.redo.length > 0) {
         const [stateToRestore, ...remainingRedo] = prevHistory.redo;
-        const currentStateForUndo = objectsRef.current; // Use ref for current state
-        setObjectsState(stateToRestore); // Directly set state
-        setSelectedObjectIds([]); // Clear selection on redo
+        const currentStateForUndo = objectsRef.current; 
+        setObjectsState(stateToRestore); 
+        setSelectedObjectIds([]); 
         return {
           undo: [currentStateForUndo, ...prevHistory.undo].slice(
             0,
@@ -122,14 +120,14 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
     lockedObjectIds,
     setLockedObjectIds,
     history,
-    setHistory, // Expose for direct manipulation if needed (e.g. mouse up after drag)
+    setHistory, 
     handleUndo,
     handleRedo,
     primarySelectedObject,
-    copiedObjectsData,
-    setCopiedObjectsData,
-    overlappingObjectIds,
-    setOverlappingObjectIds,
+    // copiedObjectsData, // Disabled for static
+    // setCopiedObjectsData, // Disabled for static
+    overlappingObjectIds, // Keep for prop consistency
+    setOverlappingObjectIds, // Keep for prop consistency
   };
 };
 

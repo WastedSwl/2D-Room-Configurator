@@ -15,11 +15,13 @@
       + canvas
         - DefaultRectVisual.jsx
         - DoorVisual.jsx
+        - ExpansionPlatform.jsx
         - Grid.jsx
         - MarqueeSelection.jsx
         - ObjectRendererGroup.jsx
         - ObjectVisual.jsx
         - OutletVisual.jsx
+        - PreviewLine.jsx
         - SelectionExtras.jsx
         - SnapGuides.jsx
         - SvgCanvas.jsx
@@ -390,6 +392,7 @@ export default App;
 
 
 ==== src\components\Configurator\appConstants.js ====
+// src/components/Configurator/appConstants.js
 export const MODES = {
   MODULAR: "modular",
   FRAMELESS: "frameless",
@@ -399,51 +402,74 @@ export const MODES = {
 export const DEFAULT_MODE = MODES.MODULAR;
 
 export const DEFAULT_PANEL_WIDTH_M = 1.15;
+export const DEFAULT_MODULE_WIDTH_M = 6.0;
+export const DEFAULT_MODULE_HEIGHT_M = 2.4;
 export const DOOR_WIDTH_M = 0.9;
 export const WINDOW_WIDTH_M = 1.2;
 export const WALL_THICKNESS_M = 0.15;
-
+export const INTERNAL_ELEMENT_SNAP_GRID_SIZE = 0.05; // Snap grid for internal walls/corridors
 
 ==== src\components\Configurator\canvas\DefaultRectVisual.jsx ====
 import React from "react";
-import { 
-    objectColors, 
-    ARCH_WALL_FILL, 
-    ARCH_WALL_STROKE, 
-    ARCH_FURNITURE_STROKE 
+import {
+    ARCH_BLACK,
+    ARCH_WHITE,
+    ARCH_SELECT_BLUE,
+    ARCH_STROKE_MEDIUM, // <-- Импорт
+    ARCH_STROKE_THIN,   // <-- Импорт
+    ARCH_STROKE_VERY_THIN, // <-- Импорт
 } from "../configuratorConstants";
 
 const DefaultRectVisual = ({ obj, scale, commonProps }) => {
   const widthScaled = Math.max(1, obj.width * scale);
   const heightScaled = Math.max(1, obj.height * scale);
-  const isSelected = commonProps.stroke === "blue"; // Simple check based on current selection logic
+  const isSelected = commonProps.stroke === ARCH_SELECT_BLUE;
 
-  let fill = objectColors[obj.type] || objectColors.default;
-  let stroke = ARCH_FURNITURE_STROKE; // Default stroke for furniture-like things
-  let strokeWidth = isSelected ? 2 : 0.7; // Thinner base stroke
+  let fill = ARCH_WHITE;
+  let stroke = ARCH_BLACK;
+  // Use defined weights for stroke width based on selection and type
+  let strokeWidth = isSelected ? ARCH_STROKE_MEDIUM : ARCH_STROKE_THIN;
 
   if (obj.type === "wall") {
-    fill = ARCH_WALL_FILL;
-    stroke = ARCH_WALL_STROKE;
-    strokeWidth = isSelected ? 2 : 1; // Slightly thicker base stroke for walls
+    fill = ARCH_WHITE; // Keep walls as outlines
+    strokeWidth = isSelected ? ARCH_STROKE_MEDIUM : ARCH_STROKE_MEDIUM; // Walls slightly thicker
+  } else if (obj.type === 'light_led') {
+      fill = ARCH_WHITE;
+      strokeWidth = isSelected ? ARCH_STROKE_THIN : ARCH_STROKE_VERY_THIN;
   }
 
-  // Override stroke for selection
-  stroke = isSelected ? commonProps.stroke : stroke;
+  // Selection color override
+  stroke = isSelected ? ARCH_SELECT_BLUE : stroke;
 
   return (
-    <rect
-      x={0}
-      y={0}
-      width={widthScaled}
-      height={heightScaled}
-      fill={fill}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-      // Removed {...commonProps} to use calculated styles above
-      style={commonProps.style} // Keep cursor style
-      data-object-id={commonProps['data-object-id']} // Keep data attribute
-    />
+    <>
+      <rect
+        x={0}
+        y={0}
+        width={widthScaled}
+        height={heightScaled}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth} // Use calculated width
+        style={commonProps.style}
+        data-object-id={commonProps['data-object-id']}
+      />
+      {/* Text rendering for light_led */}
+      {obj.type === 'light_led' && obj.label && (
+          <text
+            x={widthScaled / 2}
+            y={heightScaled / 2}
+            fontSize={`${Math.min(12, Math.max(6, heightScaled * 0.6))}px`}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill={isSelected ? ARCH_SELECT_BLUE : ARCH_BLACK}
+            style={{ pointerEvents: "none", fontVariantNumeric: "tabular-nums" }}
+            stroke="none"
+          >
+              {obj.label}
+          </text>
+      )}
+     </>
   );
 };
 
@@ -452,16 +478,21 @@ export default React.memo(DefaultRectVisual);
 ==== src\components\Configurator\canvas\DoorVisual.jsx ====
 import React from "react";
 import {
-  ARCH_DOOR_LEAF_FILL,
-  ARCH_DOOR_STROKE,
+  ARCH_BLACK,
+  ARCH_MID_GRAY,
+  ARCH_WHITE,
+  ARCH_STROKE_MEDIUM,
+  ARCH_STROKE_THIN,
+  ARCH_STROKE_VERY_THIN,
+  ARCH_SELECT_BLUE,
   DOOR_LEAF_VISUAL_THICKNESS_M,
 } from "../configuratorConstants";
 
-const DoorVisual = ({ obj, scale, commonProps, isSelected, isLocked }) => {
+const DoorVisual = ({ obj, scale, commonProps, isSelected }) => {
   const frameW_s = obj.width * scale;
-  const frameT_s = obj.height * scale; 
-  const leafT_m = DOOR_LEAF_VISUAL_THICKNESS_M; // Use constant
-  const leafT_s = leafT_m * scale;
+  const frameT_s = obj.height * scale;
+  const leafT_m = DOOR_LEAF_VISUAL_THICKNESS_M;
+  const leafT_s = Math.max(1, leafT_m * scale);
 
   const pivotX_s = obj.hingeSide === "left" ? 0 : frameW_s;
   const pivotY_s = frameT_s / 2;
@@ -470,44 +501,59 @@ const DoorVisual = ({ obj, scale, commonProps, isSelected, isLocked }) => {
   if (obj.isOpen && obj.openingAngle !== 0) {
     let angle = obj.openingAngle;
     if (obj.openingDirection === "outward") angle *= -1;
-    finalRotationForSVG = obj.hingeSide === "left" ? angle : -angle;
+    finalRotationForSVG = (obj.hingeSide === "left" ? angle : -angle);
   }
 
   const arcRadius = frameW_s;
   const arcAngleRad = finalRotationForSVG * (Math.PI / 180);
-  const arcStartX = pivotX_s;
+  const arcStartX = pivotX_s; 
   const arcStartY = pivotY_s;
-  const arcEndX = pivotX_s + arcRadius * Math.cos(arcAngleRad);
-  const arcEndY = pivotY_s + arcRadius * Math.sin(arcAngleRad);
+  const arcEndX = pivotX_s + (obj.hingeSide === 'left' ? arcRadius * Math.cos(arcAngleRad) : -arcRadius * Math.cos(arcAngleRad));
+  const arcEndY = pivotY_s + (obj.hingeSide === 'left' ? arcRadius * Math.sin(arcAngleRad) : -arcRadius * Math.sin(arcAngleRad));
   const arcSweepFlag = finalRotationForSVG >= 0 ? 1 : 0;
 
-  const leafStrokeWidth = isSelected ? 1.5 : 0.7;
-  const arcStrokeWidth = isSelected ? 1 : 0.5;
+  const leafStrokeWidth = isSelected ? ARCH_STROKE_MEDIUM : ARCH_STROKE_THIN;
+  const arcStrokeWidth = isSelected ? ARCH_STROKE_THIN : ARCH_STROKE_VERY_THIN;
+  const handleStrokeWidth = ARCH_STROKE_VERY_THIN;
+
+  const handleSize = Math.max(3, 0.05 * scale); 
+  const handleOffset = handleSize * 0.5; 
+
+  const handleLocalX = (obj.hingeSide === 'left') 
+                       ? frameW_s - handleOffset - handleSize/2 
+                       : handleOffset + handleSize/2;          
+  const handleLocalY = pivotY_s; 
+
+  const handlePath = `M ${handleLocalX - handleSize/2} ${handleLocalY - handleSize/2} L ${handleLocalX + handleSize/2} ${handleLocalY - handleSize/2} L ${handleLocalX + handleSize/2} ${handleLocalY + handleSize/2}`;
 
   return (
     <>
-      {/* Door Leaf */}
       <g transform={`rotate(${finalRotationForSVG}, ${pivotX_s}, ${pivotY_s})`}>
         <rect
-          // Draw leaf centered on its thickness axis relative to pivot
-          x={obj.hingeSide === 'left' ? 0 : -frameW_s}
-          y={pivotY_s - leafT_s / 2}
-          width={frameW_s}
-          height={leafT_s}
-          fill={ARCH_DOOR_LEAF_FILL}
-          stroke={isSelected ? "blue" : ARCH_DOOR_STROKE}
+          x={0} 
+          y={pivotY_s - leafT_s / 2} 
+          width={frameW_s} 
+          height={leafT_s} 
+          fill={ARCH_WHITE} 
+          stroke={isSelected ? ARCH_SELECT_BLUE : ARCH_BLACK}
           strokeWidth={leafStrokeWidth}
         />
+         <path 
+             d={handlePath}
+             stroke={isSelected ? ARCH_SELECT_BLUE : ARCH_MID_GRAY}
+             strokeWidth={handleStrokeWidth}
+             fill="none"
+         />
       </g>
-      {/* Swing Arc */}
+
       {obj.isOpen && obj.openingAngle > 0 && (
         <path
           d={`M ${arcStartX} ${arcStartY} A ${arcRadius} ${arcRadius} 0 0 ${arcSweepFlag} ${arcEndX} ${arcEndY}`}
           fill="none"
-          stroke={isSelected ? "blue" : ARCH_DOOR_STROKE}
+          stroke={isSelected ? ARCH_SELECT_BLUE : ARCH_MID_GRAY} 
           strokeWidth={arcStrokeWidth}
-          strokeDasharray="3,2" // Standard dash for door swing
-          opacity={isSelected ? 1 : 0.7}
+          strokeDasharray="4,2" 
+          opacity={0.8} 
         />
       )}
     </>
@@ -516,7 +562,6 @@ const DoorVisual = ({ obj, scale, commonProps, isSelected, isLocked }) => {
 export default React.memo(DoorVisual);
 
 ==== src\components\Configurator\canvas\Grid.jsx ====
-// src/components/Configurator/canvas/Grid.jsx
 import React from "react";
 import {
   GRID_LINE_COLOR,
@@ -526,8 +571,7 @@ import {
 } from "../configuratorConstants";
 
 const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
-  // Принимаем svgWidth, svgHeight
-  if (svgWidth === 0 || svgHeight === 0) return null; // Проверка здесь
+  if (svgWidth === 0 || svgHeight === 0) return null; 
 
   const { x: viewX, y: viewY, scale } = viewTransform;
   const finalGridLines = [];
@@ -634,7 +678,6 @@ const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
 
 export default React.memo(Grid);
 
-
 ==== src\components\Configurator\canvas\MarqueeSelection.jsx ====
 // src/components/Configurator/canvas/MarqueeSelection.jsx
 import React from "react";
@@ -649,13 +692,10 @@ const MarqueeSelection = ({ marqueeRect, svgRef }) => {
   }
 
   const svgDomRect = svgRef.current.getBoundingClientRect();
-  // Если SVG еще не отрендерился с размерами, не рисовать
   if (svgDomRect.width === 0 || svgDomRect.height === 0) {
     return null;
   }
 
-  // marqueeRect содержит startScreenX/Y и currentScreenX/Y в экранных координатах
-  // Их нужно преобразовать в координаты относительно SVG элемента
   const x =
     Math.min(marqueeRect.startScreenX, marqueeRect.currentScreenX) -
     svgDomRect.left;
@@ -675,17 +715,15 @@ const MarqueeSelection = ({ marqueeRect, svgRef }) => {
       height={height}
       fill={MARQUEE_FILL_COLOR}
       stroke={MARQUEE_STROKE_COLOR}
-      strokeWidth="1" // Обычно фиксированная ширина для рамки выделения
-      pointerEvents="none" // Не должна перехватывать события
+      strokeWidth="1" 
+      pointerEvents="none" 
     />
   );
 };
 
 export default React.memo(MarqueeSelection);
 
-
 ==== src\components\Configurator\canvas\ObjectRendererGroup.jsx ====
-// src/components/Configurator/canvas/ObjectRendererGroup.jsx
 import React from "react";
 import ObjectVisual from "./ObjectVisual";
 
@@ -703,6 +741,9 @@ const ObjectRendererGroup = ({
   onAddObject,
   addingCorridorMode,
   onAddCorridor,
+  svgRef, 
+  onExpansionPlatformClick,
+  activeMode,
 }) => {
   return (
     <>
@@ -725,6 +766,10 @@ const ObjectRendererGroup = ({
             addingCorridorMode={addingCorridorMode}
             onAddCorridor={onAddCorridor}
             objects={objects}
+            viewTransform={viewTransform}
+            svgRef={svgRef}
+            onExpansionPlatformClick={onExpansionPlatformClick}
+            activeMode={activeMode}
           />
         );
       })}
@@ -733,290 +778,359 @@ const ObjectRendererGroup = ({
 };
 export default React.memo(ObjectRendererGroup);
 
-
 ==== src\components\Configurator\canvas\ObjectVisual.jsx ====
+// src/components/Configurator/canvas/ObjectVisual.jsx
 import React from "react";
-import SelectionExtras from "./SelectionExtras";
+import { toast } from 'react-toastify';
+// import SelectionExtras from "./SelectionExtras"; // Disabled for static
 import DoorVisual from "./DoorVisual";
-import WindowVisual from "./WindowVisual"; 
-import OutletVisual from "./OutletVisual"; 
-import DefaultRectVisual from "./DefaultRectVisual"; 
+import WindowVisual from "./WindowVisual";
+import OutletVisual from "./OutletVisual";
+import DefaultRectVisual from "./DefaultRectVisual";
+// import ExpansionPlatform from "./ExpansionPlatform"; // Disabled for static
 
 import {
   objectColors,
-  OVERLAP_HIGHLIGHT_COLOR,
+  // OVERLAP_HIGHLIGHT_COLOR, // Disabled for static
   LOCKED_OBJECT_STROKE_COLOR,
-  defaultObjectSizes, 
+  defaultObjectSizes,
   INITIAL_PPM,
+  ARCH_BLACK,
+  ARCH_DARK_GRAY,
+  ARCH_LIGHT_GRAY,
+  ARCH_WHITE,
+  // ARCH_STROKE_THICK, // Not directly used, but its value might be
+  ARCH_STROKE_MEDIUM,
+  ARCH_STROKE_THIN,
+  ARCH_STROKE_VERY_THIN,
+  ARCH_SELECT_BLUE,
+  ARCH_CORRIDOR_STROKE,
+  WALL_THICKNESS_M,
 } from "../configuratorConstants";
+
+import { DEFAULT_PANEL_WIDTH_M } from "../appConstants";
 
 const ObjectVisual = ({
   obj,
   scale,
   isSelected,
   isLocked,
-  isOverlapping,
+  lockedObjectIds,
+  // isOverlapping, // Disabled for static
   modifierKeys,
   onMouseDown,
-  onResizeHandleMouseDown,
-  draggingState,
-  resizingState,
+  // onResizeHandleMouseDown, // Disabled for static
+  // draggingState, // Not used for visual style of static objects
+  // resizingState, // Not used for visual style of static objects
   onAddObject,
-  addingCorridorMode,
   onAddCorridor,
   objects,
+  viewTransform,
+  svgRef,
+  // onExpansionPlatformClick, // Disabled for static
+  // activeMode, // Not directly used for static visuals
 }) => {
   const [hoveredCorridor, setHoveredCorridor] = React.useState(null);
 
   const rotationCenterXScaled = (obj.width * scale) / 2;
   const rotationCenterYScaled = (obj.height * scale) / 2;
 
-  let strokeColor = objectColors[obj.type]
-    ? objectColors[obj.type] === "lightgray"
-      ? "#555"
-      : "black"
-    : "black";
-  if (obj.type === "wall") strokeColor = "#666";
-  if (isLocked) strokeColor = LOCKED_OBJECT_STROKE_COLOR;
-  else if (isSelected) strokeColor = "blue";
+  let baseStroke = ARCH_BLACK;
+  let baseStrokeWidthUnscaled = ARCH_STROKE_THIN;
+  let corridorLineStrokeWidth = 1.5;
 
-  const baseStrokeWidthUnscaled = 1;
-  const selectedStrokeWidthUnscaled = 2;
-  const baseStrokeWidth = Math.max(
-    0.2,
-    baseStrokeWidthUnscaled / (scale / INITIAL_PPM),
-  );
-  const selectedStrokeWidth = Math.max(
-    0.5,
-    selectedStrokeWidthUnscaled / (scale / INITIAL_PPM),
-  );
+  if (obj.type === 'wall' || obj.type === 'module') {
+      baseStrokeWidthUnscaled = ARCH_STROKE_MEDIUM;
+  } else if (obj.type === 'door' || obj.type === 'window') {
+       baseStrokeWidthUnscaled = ARCH_STROKE_THIN;
+  } else if (obj.type === 'light_led' || obj.type === 'radiator' || obj.type === 'kitchen_unit') {
+        baseStrokeWidthUnscaled = ARCH_STROKE_VERY_THIN;
+  } else if (obj.type === 'outlet') {
+      baseStrokeWidthUnscaled = ARCH_STROKE_THIN;
+      baseStroke = ARCH_BLACK;
+  } else if (obj.type === 'corridor') {
+      baseStroke = ARCH_CORRIDOR_STROKE;
+  } else {
+       baseStrokeWidthUnscaled = ARCH_STROKE_MEDIUM;
+       baseStroke = objectColors[obj.type] || ARCH_DARK_GRAY;
+  }
+
+  const finalStroke = isLocked ? LOCKED_OBJECT_STROKE_COLOR : (isSelected ? ARCH_SELECT_BLUE : baseStroke);
+
+  let finalObjectStrokeWidth;
+  if (obj.type === 'corridor') {
+    finalObjectStrokeWidth = corridorLineStrokeWidth;
+  } else {
+    finalObjectStrokeWidth = isSelected
+     ? Math.max(0.5, ARCH_STROKE_MEDIUM / (scale / INITIAL_PPM))
+     : Math.max(0.15, baseStrokeWidthUnscaled / (scale / INITIAL_PPM));
+  }
 
   const commonProps = {
-    stroke: strokeColor,
-    strokeWidth:
-      isSelected && !isLocked ? selectedStrokeWidth : baseStrokeWidth,
+    stroke: finalStroke,
+    strokeWidth: finalObjectStrokeWidth,
     style: {
-      cursor:
-        isLocked && !modifierKeys.shift && !isSelected
-          ? "default"
-          : draggingState?.initialPositions?.find((p) => p.id === obj.id) ||
-              resizingState?.objectId === obj.id
-            ? "grabbing"
-            : "grab",
+      cursor: "default", // Always default for static objects
     },
     "data-object-id": obj.id,
   };
 
   const groupTransform = `translate(${obj.x * scale}, ${obj.y * scale}) rotate(${obj.rotation || 0}, ${rotationCenterXScaled}, ${rotationCenterYScaled})`;
 
+  const localScreenToWorld = (screenX, screenY) => {
+      if (!svgRef?.current || !viewTransform) {
+          return { x: 0, y: 0 };
+      }
+      const svgRect = svgRef.current.getBoundingClientRect();
+      return {
+        x: (screenX - svgRect.left - viewTransform.x) / viewTransform.scale,
+        y: (screenY - svgRect.top - viewTransform.y) / viewTransform.scale,
+      };
+  };
+
+  const handleWallSegmentClick = (e, block, parentObj) => {
+        e.stopPropagation();
+        if (parentObj.id && lockedObjectIds && lockedObjectIds.includes(parentObj.id) && !modifierKeys.shift) {
+            toast.warn(`Родительский объект ${parentObj.label || parentObj.id} заблокирован.`);
+            return;
+        }
+        
+        const existingElementInSegment = objects.find(o => o.parentId === parentObj.id && o.side === block.side && o.segmentIndex === block.segmentIndex);
+
+        let segmentOccupiedByDoorWindowOutlet = false;
+        if (parentObj.type === 'module') {
+            segmentOccupiedByDoorWindowOutlet = objects.some(o => o.parentId === parentObj.id && o.side === block.side && o.segmentIndex === block.segmentIndex && (o.type === 'door' || o.type === 'window' || o.type === 'outlet'));
+        } else if (parentObj.type === 'corridor') {
+            segmentOccupiedByDoorWindowOutlet = objects.some(o => o.parentId === parentObj.id && o.type === 'door' );
+        }
+        
+        const intendedTypeFromBlock = block.intendedType || null;
+        if (segmentOccupiedByDoorWindowOutlet && (intendedTypeFromBlock === 'radiator' || intendedTypeFromBlock === 'kitchen_unit')) {
+            toast.info(`Этот участок уже занят дверью/окном/розеткой. Аксессуар добавить нельзя.`);
+            return;
+        }
+        if (existingElementInSegment && (existingElementInSegment.type === 'radiator' || existingElementInSegment.type === 'kitchen_unit') && (intendedTypeFromBlock === 'door' || intendedTypeFromBlock === 'window' || intendedTypeFromBlock === 'outlet')) {
+            toast.info(`Этот участок уже занят аксессуаром. Дверь/окно/розетку добавить нельзя.`);
+            return;
+        }
+         if (existingElementInSegment && intendedTypeFromBlock && existingElementInSegment.type !== intendedTypeFromBlock) {
+             toast.info(`Этот участок ${parentObj.type === 'module' ? 'стены' : 'коридора'} уже занят другим типом объекта.`);
+             return;
+        }
+
+
+        const panel = document.createElement('div');
+        panel.className = 'fixed bg-white rounded-lg shadow-lg p-4 z-50';
+        panel.style.left = `${e.clientX}px`; panel.style.top = `${e.clientY}px`;
+        
+        let availableButtons = [];
+        if (parentObj.type === 'corridor') {
+            availableButtons = [{ type: 'door', label: 'Дверь', icon: '🚪', category: 'opening' }];
+        } else {
+            availableButtons = [
+                { type: 'door', label: 'Дверь', icon: '🚪', category: 'opening' },
+                { type: 'window', label: 'Окно', icon: '🪟', category: 'opening' },
+                { type: 'outlet', label: 'Розетка', icon: '🔌', category: 'opening' },
+                { type: 'radiator', label: 'Радиатор', icon: '♨️', category: 'accessory' },
+                { type: 'kitchen_unit', label: 'Кух. блок', icon: '🍳', category: 'accessory' },
+            ];
+        }
+
+        const segmentHasOpening = objects.some(o => o.parentId === parentObj.id && o.side === block.side && o.segmentIndex === block.segmentIndex && (o.type === 'door' || o.type === 'window' || o.type === 'outlet'));
+        const segmentHasAccessory = objects.some(o => o.parentId === parentObj.id && o.side === block.side && o.segmentIndex === block.segmentIndex && (o.type === 'radiator' || o.type === 'kitchen_unit'));
+
+        availableButtons.forEach(btn => {
+            if (segmentHasOpening && btn.category === 'accessory') return; 
+            if (segmentHasAccessory && btn.category === 'opening') return;
+            
+            if (existingElementInSegment && existingElementInSegment.type !== btn.type) {
+                 if(existingElementInSegment.id) return; 
+            }
+
+
+            const buttonElement = document.createElement('button');
+            buttonElement.className = 'flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 w-full mb-2 text-sm';
+            buttonElement.innerHTML = `${btn.icon} ${btn.label}`;
+            buttonElement.onclick = () => {
+                if (typeof onAddObject === 'function') {
+                    const elementDefaultSize = defaultObjectSizes[btn.type];
+                    if (!elementDefaultSize) { console.error(`No default size for type ${btn.type}`); if (panel.parentNode) panel.parentNode.removeChild(panel); return; }
+                    let elW = elementDefaultSize.width; let elH = WALL_THICKNESS_M;
+                    if (btn.type === 'radiator' || btn.type === 'kitchen_unit') {
+                        elH = elementDefaultSize.height; 
+                    }
+
+                    let newElementX, newElementY; let elementRotation = 0;
+                    const parentWorldX = parentObj.x; const parentWorldY = parentObj.y;
+                    if (parentObj.type === 'module') {
+                        const blockLocalX = block.x; const blockLocalY = block.y;
+                        const blockW = block.width; const blockH = block.height;
+                        const blockCenterX = parentWorldX + blockLocalX + blockW / 2;
+                        const blockCenterY = parentWorldY + blockLocalY + blockH / 2;
+                        
+                        if (block.side === 'top') {
+                            elementRotation = 0;
+                            newElementX = blockCenterX - elW / 2;
+                            newElementY = blockCenterY - elH / 2;
+                        } else if (block.side === 'bottom') {
+                            elementRotation = 180;
+                             newElementX = blockCenterX - elW / 2;
+                             newElementY = blockCenterY - elH / 2;
+                        } else if (block.side === 'left') {
+                            elementRotation = -90;
+                            let tempW = elW; elW = elH; elH = tempW; 
+                            newElementX = blockCenterX - elW / 2;
+                            newElementY = blockCenterY - elH / 2;
+                        } else if (block.side === 'right') {
+                            elementRotation = 90;
+                            let tempW = elW; elW = elH; elH = tempW; 
+                            newElementX = blockCenterX - elW / 2;
+                            newElementY = blockCenterY - elH / 2;
+                        }
+                    } else if (parentObj.type === 'corridor') {
+                        const isVerticalCorridor = parentObj.height > parentObj.width;
+                        const doorLength = elW; const doorThickness = WALL_THICKNESS_M;
+                        const corridorCenterX = parentWorldX + parentObj.width / 2;
+                        const corridorCenterY = parentWorldY + parentObj.height / 2;
+                        const clickWorld = localScreenToWorld(e.clientX, e.clientY);
+                        if (isVerticalCorridor) { elementRotation = 0; newElementX = corridorCenterX - doorThickness / 2; newElementY = clickWorld.y - doorLength / 2;
+                        } else { elementRotation = 90; newElementX = clickWorld.x - doorLength / 2; newElementY = corridorCenterY - doorThickness / 2; }
+                        elW = doorLength; elH = doorThickness;
+                    } else { if (panel.parentNode) panel.parentNode.removeChild(panel); return; }
+                    onAddObject( btn.type, newElementX, newElementY, elW, elH, { rotation: elementRotation, segmentIndex: block.segmentIndex, side: block.side, parentId: parentObj.id, ...(btn.type === 'door' && { isOpen: false, openingAngle: 90, hingeSide: 'left', openingDirection: 'inward' })});
+                }
+                if (panel.parentNode) panel.parentNode.removeChild(panel);
+            };
+            panel.appendChild(buttonElement);
+        });
+        const closeBtn = document.createElement('button'); closeBtn.className = 'absolute top-2 right-2 text-gray-500 hover:text-gray-700'; closeBtn.innerHTML = '✕';
+        closeBtn.onclick = () => { if (panel.parentNode) panel.parentNode.removeChild(panel); }; panel.appendChild(closeBtn); document.body.appendChild(panel);
+        const closePanel = (ev) => { if (panel.parentNode && !panel.contains(ev.target)) { panel.parentNode.removeChild(panel); document.removeEventListener('click', closePanel); }};
+        setTimeout(() => document.addEventListener('click', closePanel), 0);
+  };
+
   let specificVisual;
   if (obj.type === "door") {
-    specificVisual = (
-      <DoorVisual
-        obj={obj}
-        scale={scale}
-        commonProps={commonProps}
-        isSelected={isSelected}
-        isLocked={isLocked}
-      />
-    );
+    specificVisual = ( <DoorVisual obj={obj} scale={scale} commonProps={commonProps} isSelected={isSelected} /> );
   } else if (obj.type === "window") {
-    specificVisual = (
-      <WindowVisual obj={obj} scale={scale} commonProps={commonProps} />
-    );
+    specificVisual = ( <WindowVisual obj={obj} scale={scale} commonProps={commonProps} isSelected={isSelected} /> );
   } else if (obj.type === "outlet") {
-    specificVisual = (
-      <OutletVisual
-        obj={obj}
-        scale={scale}
-        commonProps={commonProps}
-        rotationCenterXScaled={rotationCenterXScaled}
-        rotationCenterYScaled={rotationCenterYScaled}
-      />
-    );
+    specificVisual = ( <OutletVisual obj={obj} scale={scale} commonProps={commonProps} rotationCenterXScaled={rotationCenterXScaled} rotationCenterYScaled={rotationCenterYScaled} isSelected={isSelected} /> );
   } else if (obj.type === "corridor") {
     const isVertical = obj.height > obj.width;
-    const lineLength = isVertical ? obj.height * scale : obj.width * scale;
-    const lineThickness = 2; 
+    const lengthScaled = isVertical ? obj.height * scale : obj.width * scale;
+    let x1, y1, x2, y2;
+    const logicalThicknessForClick = Math.max(WALL_THICKNESS_M * scale, 10);
+
+    if (isVertical) {
+        x1 = obj.width * scale / 2; y1 = 0;
+        x2 = obj.width * scale / 2; y2 = lengthScaled;
+    } else {
+        x1 = 0; y1 = obj.height * scale / 2;
+        x2 = lengthScaled; y2 = obj.height * scale / 2;
+    }
     specificVisual = (
-      <line
-        x1={isVertical ? lineThickness / 2 : 0}
-        y1={isVertical ? 0 : lineThickness / 2}
-        x2={isVertical ? lineThickness / 2 : lineLength}
-        y2={isVertical ? lineLength : lineThickness / 2}
-        stroke="#222"
-        strokeWidth={lineThickness}
-      />
+        <g onClick={(e) => handleWallSegmentClick(e, { x: 0, y: 0, width: obj.width, height: obj.height, side: isVertical ? 'vertical' : 'horizontal', segmentIndex: 0, intendedType: 'door' }, obj)}
+           style={{ cursor: 'pointer' }} // Keep pointer for adding elements to corridor
+        >
+            <rect
+                x={isVertical ? (obj.width * scale / 2) - (logicalThicknessForClick / 2) : 0}
+                y={isVertical ? 0 : (obj.height * scale / 2) - (logicalThicknessForClick / 2)}
+                width={isVertical ? logicalThicknessForClick : lengthScaled}
+                height={isVertical ? lengthScaled : logicalThicknessForClick}
+                fill="transparent"
+            />
+            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth} />
+        </g>
     );
-  } else if (obj.type === "module" && obj.bathroom && obj.shower) {
-    specificVisual = (
-      <DefaultRectVisual
-        obj={obj}
-        width={obj.width * scale}
-        height={obj.height * scale}
-        {...commonProps}
-      />
-    );
-  } else if (obj.type === "module" && obj.bathroom) {
-    specificVisual = (
-      <DefaultRectVisual
-        obj={obj}
-        width={obj.width * scale}
-        height={obj.height * scale}
-        {...commonProps}
-      />
-    );
+
   } else if (obj.type === "module" && !obj.corridor && !obj.bathroom && !obj.shower) {
-    const patternId = `module-hatch-${obj.id}`;
-    const wallThickness = 0.08; 
-    const blockSize = 1; 
-    
-    const wallBlocks = [];
-    
-    for (let x_seg = 0; x_seg < obj.width; x_seg += blockSize) {
-      wallBlocks.push({
-        x: x_seg, 
-        y: 0,     
-        width: Math.min(blockSize, obj.width - x_seg),
-        height: wallThickness,
-        side: 'top',
-        segmentIndex: Math.floor(x_seg / blockSize)
-      });
-      wallBlocks.push({
-        x: x_seg,
-        y: obj.height - wallThickness,
-        width: Math.min(blockSize, obj.width - x_seg),
-        height: wallThickness,
-        side: 'bottom',
-        segmentIndex: Math.floor(x_seg / blockSize)
-      });
+    const moduleWidth = obj.width * scale;
+    const moduleHeight = obj.height * scale;
+    const wallThicknessM = 0.08;
+    const wallThicknessScaled = wallThicknessM * scale;
+    const blockSize = DEFAULT_PANEL_WIDTH_M; 
+
+    const outerPath = `M 0 0 L ${moduleWidth} 0 L ${moduleWidth} ${moduleHeight} L 0 ${moduleHeight} Z`;
+    const innerPath = `M ${wallThicknessScaled} ${wallThicknessScaled} L ${moduleWidth - wallThicknessScaled} ${wallThicknessScaled} L ${moduleWidth - wallThicknessScaled} ${moduleHeight - wallThicknessScaled} L ${wallThicknessScaled} ${moduleHeight - wallThicknessScaled} Z`;
+
+    const studLines = [];
+    const studInterval = blockSize * scale;
+    for (let x = studInterval; x < moduleWidth - wallThicknessScaled; x += studInterval) {
+        studLines.push(<line key={`stud-t-${x}`} x1={x} y1={wallThicknessScaled} x2={x} y2={wallThicknessScaled + 5} stroke={ARCH_LIGHT_GRAY} strokeWidth={ARCH_STROKE_VERY_THIN} />);
+        studLines.push(<line key={`stud-b-${x}`} x1={x} y1={moduleHeight - wallThicknessScaled} x2={x} y2={moduleHeight - wallThicknessScaled - 5} stroke={ARCH_LIGHT_GRAY} strokeWidth={ARCH_STROKE_VERY_THIN} />);
+    }
+     for (let y = studInterval + wallThicknessScaled; y < moduleHeight - wallThicknessScaled; y += studInterval) {
+        studLines.push(<line key={`stud-l-${y}`} x1={wallThicknessScaled} y1={y} x2={wallThicknessScaled + 5} y2={y} stroke={ARCH_LIGHT_GRAY} strokeWidth={ARCH_STROKE_VERY_THIN} />);
+        studLines.push(<line key={`stud-r-${y}`} x1={moduleWidth - wallThicknessScaled} y1={y} x2={moduleWidth - wallThicknessScaled - 5} y2={y} stroke={ARCH_LIGHT_GRAY} strokeWidth={ARCH_STROKE_VERY_THIN} />);
+    }
+
+    const interactionBlocks = [];
+     for (let x_seg = 0; x_seg < obj.width; x_seg += blockSize) {
+        interactionBlocks.push({ x: x_seg * scale, y: 0, width: Math.min(blockSize, obj.width - x_seg) * scale, height: wallThicknessScaled, side: 'top', segmentIndex: Math.floor(x_seg / blockSize), origBlock: {x: x_seg, y: 0, width: Math.min(blockSize, obj.width - x_seg), height: wallThicknessM, side: 'top'} });
+        interactionBlocks.push({ x: x_seg * scale, y: moduleHeight - wallThicknessScaled, width: Math.min(blockSize, obj.width - x_seg) * scale, height: wallThicknessScaled, side: 'bottom', segmentIndex: Math.floor(x_seg / blockSize), origBlock: {x: x_seg, y: obj.height - wallThicknessM, width: Math.min(blockSize, obj.width - x_seg), height: wallThicknessM, side: 'bottom'} });
+    }
+    for (let y_seg = wallThicknessM; y_seg < obj.height - wallThicknessM; y_seg += blockSize) {
+       interactionBlocks.push({ x: 0, y: y_seg * scale, width: wallThicknessScaled, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM) * scale, side: 'left', segmentIndex: Math.floor((y_seg - wallThicknessM) / blockSize), origBlock: {x: 0, y: y_seg, width: wallThicknessM, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM), side: 'left'} });
+       interactionBlocks.push({ x: moduleWidth - wallThicknessScaled, y: y_seg * scale, width: wallThicknessScaled, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM) * scale, side: 'right', segmentIndex: Math.floor((y_seg - wallThicknessM) / blockSize), origBlock: {x: obj.width - wallThicknessM, y: y_seg, width: wallThicknessM, height: Math.min(blockSize, obj.height - y_seg - wallThicknessM), side: 'right'} });
     }
     
-    for (let y_seg = wallThickness; y_seg < obj.height - wallThickness; y_seg += blockSize) {
-       wallBlocks.push({
-        x: 0,
-        y: y_seg,
-        width: wallThickness,
-        height: Math.min(blockSize, obj.height - y_seg - wallThickness),
-        side: 'left',
-        segmentIndex: Math.floor((y_seg - wallThickness) / blockSize)
-      });
-      wallBlocks.push({
-        x: obj.width - wallThickness,
-        y: y_seg,
-        width: wallThickness,
-        height: Math.min(blockSize, obj.height - y_seg - wallThickness),
-        side: 'right',
-        segmentIndex: Math.floor((y_seg - wallThickness) / blockSize)
-      });
-    }
-    
-    let corridorBlocks = [];
+    let corridorPlaceholders = [];
     const existingCorridors = (window.__corridorObjectsCache = window.__corridorObjectsCache || []);
-    if (Array.isArray(existingCorridors)) {
-      existingCorridors.length = 0;
-    }
-    
-    for (let i = 1; i < obj.width; i++) {
-      for (let j = 0; j < obj.height - 1; j++) {
-         const blockX = i * blockSize * scale;
-         const blockY = j * blockSize * scale;
-         const blockH = blockSize * scale;
-         const plusX = blockX;
-         const plusY = blockY + blockH / 2;
-         const isHovered = hoveredCorridor && 
-           hoveredCorridor.type === 'vertical' && 
-           hoveredCorridor.index === i && 
-           hoveredCorridor.blockIndex === j;
-        
-         const corridorExists = Array.isArray(existingCorridors) && existingCorridors.some(c =>
-           c.parentId === obj.id &&
-           c.orientation === 'vertical' &&
-           Math.abs(c.x - (obj.x + i * blockSize)) < 0.01 && 
-           Math.abs(c.y - (obj.y + j * blockSize)) < 0.01
-         );
+    if (Array.isArray(existingCorridors)) { existingCorridors.length = 0;}
+    for (let i = 1; i < obj.width / blockSize; i++) { 
+      for (let j = 0; j < (obj.height - 2 * wallThicknessM) / blockSize; j++) { 
+         const blockGridX = i * blockSize * scale; 
+         const blockGridY = (j * blockSize + wallThicknessM) * scale; 
+         const blockGridH = blockSize * scale;     
+         const plusX = blockGridX;
+         const plusY = blockGridY + blockGridH / 2;
+         const isHovered = hoveredCorridor && hoveredCorridor.type === 'vertical' && hoveredCorridor.index === i && hoveredCorridor.blockIndex === j;
+         const corridorExists = false; 
          if (!corridorExists) {
-           corridorBlocks.push(
+           corridorPlaceholders.push(
              <g key={`corridor-vblock-${i}-${j}`}
-               onMouseEnter={() => setHoveredCorridor({ 
-                 type: 'vertical', index: i, blockIndex: j,
-                 x: obj.x + i * blockSize, y: obj.y + j * blockSize, 
-                 width: blockSize, height: blockSize, 
-                 orientation: 'vertical', parentId: obj.id 
-               })}
+               onMouseEnter={() => setHoveredCorridor({ type: 'vertical', index: i, blockIndex: j, x: obj.x + i * blockSize, y: obj.y + j * blockSize + wallThicknessM, width: blockSize, height: blockSize, orientation: 'vertical', parentId: obj.id })}
                onMouseLeave={() => setHoveredCorridor(null)}
              >
-               <rect x={blockX - 8} y={blockY} width={16} height={blockH} fill="transparent" style={{ cursor: 'pointer' }}/>
-               {isHovered && <line x1={blockX} y1={blockY} x2={blockX} y2={blockY + blockH} stroke="#4f46e5" strokeWidth={2} strokeDasharray="4,4" opacity={0.5} />}
-               {isHovered && (
-                 <g style={{ cursor: 'pointer' }} onClick={(e) => {
-                     e.stopPropagation();
-                     if (typeof onAddCorridor === 'function') { onAddCorridor({ ...hoveredCorridor }); } 
-                     else { console.warn('onAddCorridor is not a function!'); }
-                   }}>
+               <rect x={blockGridX - 8} y={blockGridY} width={16} height={blockGridH} fill="transparent" style={{ cursor: 'pointer' }}/>
+               {isHovered && <line x1={blockGridX} y1={blockGridY} x2={blockGridX} y2={blockGridY + blockGridH} stroke="#4f46e5" strokeWidth={2} strokeDasharray="4,4" opacity={0.5} />}
+               {isHovered && (<g style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); if (typeof onAddCorridor === 'function') { onAddCorridor({ ...hoveredCorridor }); } else { console.warn('onAddCorridor is not a function!'); } }}>
                    <circle cx={plusX} cy={plusY} r={14} fill="#fff" stroke="#4f46e5" strokeWidth={2} opacity={0.9} style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))', transition: 'all 0.2s ease' }}/>
                    <text x={plusX} y={plusY + 5} textAnchor="middle" fontSize="20" fill="#4f46e5" fontWeight="bold" opacity={0.9} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))', transition: 'all 0.2s ease' }}>+</text>
-                 </g>)}
+               </g>)}
              </g>
-           );
-         }
-       }
-     }
-    
-    for (let j = 1; j < obj.height; j++) {
-      for (let i = 0; i < obj.width - 1; i++) {
-         const blockX = i * blockSize * scale;
-         const blockY = j * blockSize * scale;
-         const blockW = blockSize * scale;
-         const plusX = blockX + blockW / 2;
-         const plusY = blockY;
-         const isHovered = hoveredCorridor && 
-           hoveredCorridor.type === 'horizontal' && 
-           hoveredCorridor.index === j && 
-           hoveredCorridor.blockIndex === i;
-        
-         const corridorExists = Array.isArray(existingCorridors) && existingCorridors.some(c =>
-           c.parentId === obj.id &&
-           c.orientation === 'horizontal' &&
-           Math.abs(c.x - (obj.x + i * blockSize)) < 0.01 &&
-           Math.abs(c.y - (obj.y + j * blockSize)) < 0.01
-         );
-         if (!corridorExists) {
-           corridorBlocks.push(
+           );}
+      }}
+    for (let j = 1; j < obj.height / blockSize; j++) { 
+      for (let i = 0; i < (obj.width - 2 * wallThicknessM) / blockSize; i++) { 
+         const blockGridX = (i * blockSize + wallThicknessM) * scale;
+         const blockGridY = j * blockSize * scale;
+         const blockGridW = blockSize * scale;
+         const plusX = blockGridX + blockGridW / 2;
+         const plusY = blockGridY;
+         const isHovered = hoveredCorridor && hoveredCorridor.type === 'horizontal' && hoveredCorridor.index === j && hoveredCorridor.blockIndex === i;
+         const corridorExists = false; 
+          if (!corridorExists) {
+           corridorPlaceholders.push(
              <g key={`corridor-hblock-${j}-${i}`}
-               onMouseEnter={() => setHoveredCorridor({ 
-                 type: 'horizontal', index: j, blockIndex: i,
-                 x: obj.x + i * blockSize, y: obj.y + j * blockSize, 
-                 width: blockSize, height: blockSize, 
-                 orientation: 'horizontal', parentId: obj.id 
-               })}
+               onMouseEnter={() => setHoveredCorridor({ type: 'horizontal', index: j, blockIndex: i, x: obj.x + i * blockSize + wallThicknessM, y: obj.y + j * blockSize, width: blockSize, height: blockSize, orientation: 'horizontal', parentId: obj.id })}
                onMouseLeave={() => setHoveredCorridor(null)}
              >
-               <rect x={blockX} y={blockY - 8} width={blockW} height={16} fill="transparent" style={{ cursor: 'pointer' }}/>
-               {isHovered && <line x1={blockX} y1={blockY} x2={blockX + blockW} y2={blockY} stroke="#4f46e5" strokeWidth={2} strokeDasharray="4,4" opacity={0.5} />}
-               {isHovered && (
-                 <g style={{ cursor: 'pointer' }} onClick={(e) => {
-                     e.stopPropagation();
-                     if (typeof onAddCorridor === 'function') { onAddCorridor({ ...hoveredCorridor }); } 
-                     else { console.warn('onAddCorridor is not a function!'); }
-                   }}>
+               <rect x={blockGridX} y={blockGridY - 8} width={blockGridW} height={16} fill="transparent" style={{ cursor: 'pointer' }}/>
+               {isHovered && <line x1={blockGridX} y1={blockGridY} x2={blockGridX + blockGridW} y2={blockGridY} stroke="#4f46e5" strokeWidth={2} strokeDasharray="4,4" opacity={0.5} />}
+               {isHovered && (<g style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); if (typeof onAddCorridor === 'function') { onAddCorridor({ ...hoveredCorridor }); } else { console.warn('onAddCorridor is not a function!'); } }}>
                    <circle cx={plusX} cy={plusY} r={14} fill="#fff" stroke="#4f46e5" strokeWidth={2} opacity={0.9} style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))', transition: 'all 0.2s ease' }} />
                    <text x={plusX} y={plusY + 5} textAnchor="middle" fontSize="20" fill="#4f46e5" fontWeight="bold" opacity={0.9} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))', transition: 'all 0.2s ease' }}>+</text>
-                 </g>)}
+               </g>)}
              </g>
-           );
-         }
-       }
-     }
+           );}
+      }}
 
     const occupiedSegments = new Set();
-    if (objects && obj.type === 'module') {
+     if (objects && obj.type === 'module') {
       objects.forEach(el => {
-        if (
-          (el.type === 'door' || el.type === 'window' || el.type === 'outlet') &&
-          el.parentId === obj.id &&
-          el.side && typeof el.segmentIndex === 'number'
-        ) {
+        if ((el.type === 'door' || el.type === 'window' || el.type === 'outlet' || el.type === 'radiator' || el.type === 'kitchen_unit') && el.parentId === obj.id && el.side && typeof el.segmentIndex === 'number') {
           occupiedSegments.add(`${el.side}-${el.segmentIndex}`);
         }
       });
@@ -1024,218 +1138,50 @@ const ObjectVisual = ({
 
     specificVisual = (
       <>
-        <defs>
-          <pattern id={patternId} width={8} height={8} patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-            <line x1="0" y1="0" x2="0" y2="8" stroke="#bbb" strokeWidth="1" />
-          </pattern>
-        </defs>
-        
-        <rect
-          x={wallThickness * scale}
-          y={wallThickness * scale}
-          width={(obj.width - 2 * wallThickness) * scale}
-          height={(obj.height - 2 * wallThickness) * scale}
-          fill={`url(#${patternId})`}
-          stroke="none"
-        />
-        
-        {wallBlocks.map((block, index) => (
-          occupiedSegments.has(`${block.side}-${block.segmentIndex}`) ? null : (
-            <g key={`wall-block-${index}`}>
-              <rect 
-                x={(block.x + 0.02) * scale}
-                y={(block.y + 0.02) * scale}
-                width={block.width * scale}
-                height={block.height * scale}
-                fill="#222"
-                opacity="0.3"
-              />
-              <rect 
-                x={block.x * scale}
-                y={block.y * scale}
-                width={block.width * scale}
-                height={block.height * scale}
-                fill="#444"
-                stroke="#222"
-                strokeWidth={0.5}
-                style={{
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.fill = '#666';
-                  e.currentTarget.style.filter = 'drop-shadow(0 2px 2px rgba(0,0,0,0.3))';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.fill = '#444';
-                  e.currentTarget.style.filter = 'drop-shadow(0 1px 1px rgba(0,0,0,0.2))';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const panel = document.createElement('div');
-                  panel.className = 'fixed bg-white rounded-lg shadow-lg p-4 z-50';
-                  panel.style.left = `${e.clientX}px`;
-                  panel.style.top = `${e.clientY}px`;
-                  
-                  const buttons = [
-                    { type: 'door', label: 'Дверь', icon: '🚪' },
-                    { type: 'window', label: 'Окно', icon: '🪟' },
-                    { type: 'outlet', label: 'Розетка', icon: '🔌' }
-                  ];
-                  
-                  buttons.forEach(btn => {
-                    const button = document.createElement('button');
-                    button.className = 'flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-100 w-full mb-2';
-                    button.innerHTML = `${btn.icon} ${btn.label}`;
-                    button.onclick = () => {
-                      if (typeof onAddObject === 'function') {
-                        const elementDefaultSize = defaultObjectSizes[btn.type];
-                        if (!elementDefaultSize) {
-                          console.error(`No default size for type ${btn.type}`);
-                          if (panel.parentNode) panel.parentNode.removeChild(panel);
-                          return;
-                        }
-
-                        const elW = elementDefaultSize.width; 
-                        const elH = elementDefaultSize.height; 
-                        
-                        let newElementX, newElementY;
-                        let elementRotation = 0;
-                        
-                        const moduleWorldX = obj.x;
-                        const moduleWorldY = obj.y;
-                        const blockLocalX = block.x;
-                        const blockLocalY = block.y;
-                        const blockW = block.width;
-                        const blockH = block.height;
-                        
-                        // Calculate the center of the wall block in world coordinates
-                        const blockCenterX = moduleWorldX + blockLocalX + blockW / 2;
-                        const blockCenterY = moduleWorldY + blockLocalY + blockH / 2;
-
-                        // Calculate the top-left corner (newElementX, newElementY) 
-                        // needed for the element so its center aligns with the block center.
-                        newElementX = blockCenterX - elW / 2;
-                        newElementY = blockCenterY - elH / 2;
-
-                        // Assign rotation based on the wall side
-                        if (block.side === 'top') {
-                          elementRotation = 0;
-                        } else if (block.side === 'bottom') {
-                          elementRotation = 180; 
-                        } else if (block.side === 'left') {
-                           elementRotation = -90;
-                        } else if (block.side === 'right') {
-                           elementRotation = 90;
-                        } else {
-                          console.error("Unknown block side:", block.side);
-                          if (panel.parentNode) panel.parentNode.removeChild(panel);
-                          return;
-                        }
-
-                        onAddObject(
-                          btn.type,
-                          newElementX, // Use calculated top-left X
-                          newElementY, // Use calculated top-left Y
-                          elW, // Use intrinsic element width
-                          elH, // Use intrinsic element height
-                          {
-                            rotation: elementRotation,
-                            segmentIndex: block.segmentIndex,
-                            side: block.side,
-                            parentId: obj.id, 
-                            ...(btn.type === 'door' && { isOpen: false, openingAngle: 90, hingeSide: 'left', openingDirection: 'inward' }),
-                          }
-                        );
-                      }
-                      if (panel.parentNode) {
-                        panel.parentNode.removeChild(panel);
-                      }
-                    };
-                    panel.appendChild(button);
-                  });
-                  
-                  const closeBtn = document.createElement('button');
-                  closeBtn.className = 'absolute top-2 right-2 text-gray-500 hover:text-gray-700';
-                  closeBtn.innerHTML = '✕';
-                  closeBtn.onclick = () => {
-                    if (panel.parentNode) {
-                      panel.parentNode.removeChild(panel);
-                    }
-                  };
-                  panel.appendChild(closeBtn);
-                  
-                  document.body.appendChild(panel);
-                  
-                  const closePanel = (e) => {
-                    if (panel.parentNode && !panel.contains(e.target)) {
-                      panel.parentNode.removeChild(panel);
-                      document.removeEventListener('click', closePanel);
-                    }
-                  };
-                  setTimeout(() => document.addEventListener('click', closePanel), 0);
-                }}
-              />
-            </g>
+        <path d={outerPath} fill="none" stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth} />
+        <path d={innerPath} fill="none" stroke={commonProps.stroke} strokeWidth={commonProps.strokeWidth * 0.7} opacity={0.8} />
+        {studLines}
+        {interactionBlocks.map((block, index) => (
+          occupiedSegments.has(`${block.origBlock.side}-${block.segmentIndex}`) ? null : (
+            <rect key={`int-block-${index}`} x={block.x} y={block.y} width={block.width} height={block.height} fill="transparent" style={{ cursor: 'pointer' }} onClick={(e) => handleWallSegmentClick(e, block.origBlock, obj)} />
           )
         ))}
-        {corridorBlocks}
+        {corridorPlaceholders}
       </>
     );
-  } else if (obj.type === "module") {
-    specificVisual = (
-      <DefaultRectVisual
-        obj={obj}
-        width={obj.width * scale}
-        height={obj.height * scale}
-        {...commonProps}
-      />
-    );
-  } else {
-    specificVisual = (
-      <DefaultRectVisual obj={obj} scale={scale} commonProps={commonProps} />
-    );
+  }
+  else if (obj.type === "module") {
+    specificVisual = ( <DefaultRectVisual obj={obj} scale={scale} commonProps={commonProps} /> );
+  }
+  else {
+    specificVisual = ( <DefaultRectVisual obj={obj} scale={scale} commonProps={commonProps} /> );
   }
 
-  const canInteractWithHandles = !isLocked || modifierKeys.shift;
+  // const canInteractWithHandles = !isLocked || modifierKeys.shift; // Not used for static
+  // const expansionPlatformSize = defaultObjectSizes.panel?.width || 1; // Not used for static
 
   return (
     <g transform={groupTransform} onMouseDown={(e) => onMouseDown(e, obj.id)}>
       {specificVisual}
-      {isOverlapping && !isLocked && (
-        <rect
-          x="0"
-          y="0"
-          width={Math.max(1, obj.width * scale)}
-          height={Math.max(1, obj.height * scale)}
-          fill={OVERLAP_HIGHLIGHT_COLOR}
-          stroke="red"
-          strokeWidth={commonProps.strokeWidth * 0.5}
-          pointerEvents="none"
-        />
-      )}
-      {isSelected && !isLocked && (
-        <SelectionExtras
-          obj={obj}
-          scale={scale}
-          canInteractWithHandles={canInteractWithHandles}
-          onResizeHandleMouseDown={onResizeHandleMouseDown}
-        />
-      )}
-      {obj.label && isSelected && !isLocked && (
-        <text
-          x={(obj.width * scale) / 2}
-          y={obj.height * scale + 12 / (scale / INITIAL_PPM)}
-          fontSize={`${10 / (scale / INITIAL_PPM)}px`}
-          textAnchor="middle"
-          fill="#333"
-          style={{ pointerEvents: "none" }}
-        >
-          {obj.label}
-        </text>
+      {/* Expansion platforms are removed for static objects */}
+      {/* {isSelected && obj.type === 'module' && activeMode === 'modular' && !draggingState && !resizingState && onExpansionPlatformClick && (
+        <>
+          <ExpansionPlatform x={obj.width} y={(obj.height - expansionPlatformSize) / 2} width={expansionPlatformSize} height={expansionPlatformSize} scale={scale} side="right" onClick={(e) => {e.stopPropagation(); onExpansionPlatformClick(obj.id, 'right', { x: obj.x + obj.width, y: obj.y + (obj.height - expansionPlatformSize)/2 , width: expansionPlatformSize, height: expansionPlatformSize });}} />
+          <ExpansionPlatform x={-expansionPlatformSize} y={(obj.height - expansionPlatformSize) / 2} width={expansionPlatformSize} height={expansionPlatformSize} scale={scale} side="left" onClick={(e) => {e.stopPropagation(); onExpansionPlatformClick(obj.id, 'left', { x: obj.x - expansionPlatformSize, y: obj.y + (obj.height - expansionPlatformSize)/2, width: expansionPlatformSize, height: expansionPlatformSize });}} />
+          <ExpansionPlatform x={(obj.width - expansionPlatformSize) / 2} y={obj.height} width={expansionPlatformSize} height={expansionPlatformSize} scale={scale} side="bottom" onClick={(e) => {e.stopPropagation(); onExpansionPlatformClick(obj.id, 'bottom', { x: obj.x + (obj.width - expansionPlatformSize)/2, y: obj.y + obj.height, width: expansionPlatformSize, height: expansionPlatformSize });}} />
+          <ExpansionPlatform x={(obj.width - expansionPlatformSize) / 2} y={-expansionPlatformSize} width={expansionPlatformSize} height={expansionPlatformSize} scale={scale} side="top" onClick={(e) => {e.stopPropagation(); onExpansionPlatformClick(obj.id, 'top', { x: obj.x + (obj.width - expansionPlatformSize)/2, y: obj.y - expansionPlatformSize, width: expansionPlatformSize, height: expansionPlatformSize });}} />
+        </>
+      )} */}
+      {/* Overlap highlight is removed for static objects */}
+      {/* {isOverlapping && !isLocked && (
+        <rect x="0" y="0" width={Math.max(1, obj.width * scale)} height={Math.max(1, obj.height * scale)} fill={OVERLAP_HIGHLIGHT_COLOR} stroke="red" strokeWidth={ARCH_STROKE_VERY_THIN} pointerEvents="none" />
+      )} */}
+      {/* SelectionExtras are removed for static objects */}
+      {/* {isSelected && !isLocked && obj.type !== 'module' && obj.type !== 'corridor' && (
+        <SelectionExtras obj={obj} scale={scale} canInteractWithHandles={canInteractWithHandles} onResizeHandleMouseDown={onResizeHandleMouseDown} />
+      )} */}
+       {obj.type === 'module' && obj.label && isSelected && !isLocked && (
+        <text x={(obj.width * scale) / 2} y={(obj.height * scale) / 2} fontSize={`${Math.max(10, 14 / (scale / INITIAL_PPM))}px`} textAnchor="middle" dominantBaseline="central" fill={ARCH_DARK_GRAY} style={{ pointerEvents: "none", fontWeight: 500 }} > {obj.label} </text>
       )}
     </g>
   );
@@ -1244,7 +1190,15 @@ export default React.memo(ObjectVisual);
 
 ==== src\components\Configurator\canvas\OutletVisual.jsx ====
 import React from "react";
-import { ARCH_OUTLET_FILL, ARCH_OUTLET_STROKE } from "../configuratorConstants";
+import {
+    ARCH_BLACK,
+    ARCH_STROKE_MEDIUM,
+    ARCH_STROKE_THIN,
+    ARCH_WHITE,
+    ARCH_SELECT_BLUE,
+    ARCH_OUTLET_FILL,
+    ARCH_OUTLET_STROKE,
+} from "../configuratorConstants";
 
 const OutletVisual = ({
   obj,
@@ -1254,31 +1208,33 @@ const OutletVisual = ({
   rotationCenterYScaled,
   isSelected
 }) => {
- 
-  const baseRadius = Math.max(1, (obj.width * scale) / 2);
-  const strokeWidth = isSelected ? 1.5 : 0.7;
-  const radius = baseRadius - strokeWidth / 2;
+
+  const baseSize = Math.max(1, obj.width * scale);
+  const baseStroke = ARCH_OUTLET_STROKE || ARCH_BLACK;
+  const strokeWidth = isSelected ? ARCH_STROKE_MEDIUM : ARCH_STROKE_THIN;
+  const size = Math.max(0.5, baseSize - strokeWidth);
+
+  const x = rotationCenterXScaled - size / 2;
+  const y = rotationCenterYScaled - size / 2;
 
   return (
-    // Simple circle representation for now
-    <circle
-      cx={rotationCenterXScaled} 
-      cy={rotationCenterYScaled}
-      r={radius}
-      fill={ARCH_OUTLET_FILL}
-      stroke={isSelected ? "blue" : ARCH_OUTLET_STROKE}
-      strokeWidth={strokeWidth}
-      style={commonProps.style}
-      data-object-id={commonProps['data-object-id']}
+    <rect
+        x={x}
+        y={y}
+        width={size}
+        height={size}
+        fill={ARCH_OUTLET_FILL}
+        stroke={isSelected ? ARCH_SELECT_BLUE : baseStroke}
+        strokeWidth={strokeWidth}
+        style={commonProps.style}
+        data-object-id={commonProps['data-object-id']}
     />
-    // Could alternatively use an SVG path for a more standard outlet symbol
   );
 };
 
 export default React.memo(OutletVisual);
 
 ==== src\components\Configurator\canvas\SelectionExtras.jsx ====
-// src/components/Configurator/canvas/SelectionExtras.jsx
 import React from "react";
 import {
   RESIZE_HANDLE_SIZE_PX,
@@ -1298,9 +1254,6 @@ const SelectionExtras = ({
   const handles = [];
   const dimensionTexts = [];
 
-  // Коэффициент, который помогает сохранить визуальный размер элементов интерфейса
-  // относительно начального масштаба. Когда scale увеличивается (приближение),
-  // 1 / (scale / INITIAL_PPM) уменьшается, компенсируя увеличение scale.
   const uiScaleFactor = INITIAL_PPM / scale;
 
   const OBBHandlesDef = [
@@ -1314,8 +1267,7 @@ const SelectionExtras = ({
     { type: "br", x: obj.width, y: obj.height },
   ];
 
-  const handleSizeBase = RESIZE_HANDLE_SIZE_PX; // Базовый размер в пикселях
-  // Размер маркера в SVG единицах, который будет выглядеть как handleSizeBase пикселей на экране
+  const handleSizeBase = RESIZE_HANDLE_SIZE_PX; 
   const handleSizeSVG = Math.max(
     4 * uiScaleFactor,
     handleSizeBase * uiScaleFactor,
@@ -1325,57 +1277,54 @@ const SelectionExtras = ({
     0.5 * uiScaleFactor,
   );
 
-  if (obj.type !== "module") {
-    OBBHandlesDef.forEach((h) => {
-      handles.push(
-        <rect
-          key={`handle-${h.type}`}
-          data-resize-handle="true"
-          // Позиционируем маркеры в координатах объекта (которые уже умножены на scale)
-          // а их размер задаем в SVG единицах, которые компенсируют scale
-          x={h.x * scale - handleSizeSVG / 2}
-          y={h.y * scale - handleSizeSVG / 2}
-          width={handleSizeSVG}
-          height={handleSizeSVG}
-          fill={RESIZE_HANDLE_COLOR}
-          stroke="white"
-          strokeWidth={handleStrokeWidthSVG}
-          style={{
-            cursor: canInteractWithHandles
-              ? getResizeCursorForHandle(h.type, obj.rotation || 0)
-              : "default",
-          }}
-          onMouseDown={(e) => {
-            if (canInteractWithHandles)
-              onResizeHandleMouseDown(e, obj.id, h.type);
-            else e.stopPropagation();
-          }}
-        />,
-      );
-    });
-  }
 
-  const midPointXObjScaled = (obj.width / 2) * scale; // Центральная точка объекта в экранных SVG координатах (относительно группы объекта)
+  OBBHandlesDef.forEach((h) => {
+    handles.push(
+      <rect
+        key={`handle-${h.type}`}
+        data-resize-handle="true"
+        x={h.x * scale - handleSizeSVG / 2}
+        y={h.y * scale - handleSizeSVG / 2}
+        width={handleSizeSVG}
+        height={handleSizeSVG}
+        fill={RESIZE_HANDLE_COLOR}
+        stroke="white"
+        strokeWidth={handleStrokeWidthSVG}
+        style={{
+          cursor: canInteractWithHandles
+            ? getResizeCursorForHandle(h.type, obj.rotation || 0)
+            : "default",
+        }}
+        onMouseDown={(e) => {
+          if (canInteractWithHandles)
+            onResizeHandleMouseDown(e, obj.id, h.type);
+          else e.stopPropagation();
+        }}
+      />,
+    );
+  });
+  
+
+  const midPointXObjScaled = (obj.width / 2) * scale; 
   const midPointYObjScaled = (obj.height / 2) * scale;
 
-  const textOffsetBase = 15; // Базовый отступ в пикселях
-  const textOffsetSVG = textOffsetBase * uiScaleFactor; // Отступ в SVG единицах
+  const textOffsetBase = 15; 
+  const textOffsetSVG = textOffsetBase * uiScaleFactor; 
 
-  const fontSizeBase = 10; // Базовый размер шрифта в пикселях
-  const fontSizeSVG = Math.max(6 * uiScaleFactor, fontSizeBase * uiScaleFactor); // Размер шрифта в SVG единицах
+  const fontSizeBase = 10; 
+  const fontSizeSVG = Math.max(6 * uiScaleFactor, fontSizeBase * uiScaleFactor); 
 
-  const strokeBgWidthBase = 3; // Базовая толщина обводки фона
+  const strokeBgWidthBase = 3; 
   const strokeBgWidthSVG = Math.max(
     1 * uiScaleFactor,
     strokeBgWidthBase * uiScaleFactor,
   );
 
-  // Позиционируем текст относительно центра объекта, но с отступом в SVG единицах, компенсирующих scale
   dimensionTexts.push(
     <text
       key="dim-width"
-      x={midPointXObjScaled} // Центр по X объекта
-      y={0 - textOffsetSVG} // Выше объекта с отступом
+      x={midPointXObjScaled} 
+      y={0 - textOffsetSVG} 
       fontSize={`${fontSizeSVG}px`}
       textAnchor="middle"
       fill={DIMENSION_TEXT_COLOR}
@@ -1393,12 +1342,12 @@ const SelectionExtras = ({
   dimensionTexts.push(
     <text
       key="dim-height"
-      x={0 - textOffsetSVG} // Левее объекта с отступом
-      y={midPointYObjScaled} // Центр по Y объекта
+      x={0 - textOffsetSVG} 
+      y={midPointYObjScaled} 
       fontSize={`${fontSizeSVG}px`}
       textAnchor="middle"
       dominantBaseline="middle"
-      transform={`rotate(-90, ${0 - textOffsetSVG}, ${midPointYObjScaled})`} // Поворачиваем вокруг точки позиционирования
+      transform={`rotate(-90, ${0 - textOffsetSVG}, ${midPointYObjScaled})`} 
       fill={DIMENSION_TEXT_COLOR}
       style={{
         paintOrder: "stroke",
@@ -1422,9 +1371,7 @@ const SelectionExtras = ({
 
 export default React.memo(SelectionExtras);
 
-
 ==== src\components\Configurator\canvas\SnapGuides.jsx ====
-// src/components/Configurator/canvas/SnapGuides.jsx
 import React from "react";
 import { SNAP_LINE_COLOR, INITIAL_PPM } from "../configuratorConstants";
 
@@ -1438,14 +1385,10 @@ const SnapGuides = ({ activeSnapLines, viewTransform }) => {
   return (
     <g id="snap-guides">
       {activeSnapLines.map((line, index) => {
-        // Координаты уже в мировых единицах, их нужно масштабировать для отрисовки в SVG
-        // но они должны быть относительно viewTransform (т.е. уже в группе с translate)
-        // поэтому здесь просто масштабируем значения
         const scaledVal = line.val * scale;
         const scaledStart = line.start * scale;
         const scaledEnd = line.end * scale;
 
-        // Масштабирование толщины и пунктира
         const strokeWidth = Math.max(1, 1 / (scale / INITIAL_PPM));
         const dashArray = `${3 / (scale / INITIAL_PPM)},${2 / (scale / INITIAL_PPM)}`;
 
@@ -1453,18 +1396,17 @@ const SnapGuides = ({ activeSnapLines, viewTransform }) => {
           return (
             <line
               key={`snap-x-${index}`}
-              x1={scaledVal} // Уже в "оттранслированных" координатах группы
+              x1={scaledVal} 
               y1={scaledStart}
               x2={scaledVal}
               y2={scaledEnd}
               stroke={SNAP_LINE_COLOR}
               strokeWidth={strokeWidth}
               strokeDasharray={dashArray}
-              pointerEvents="none" // Не должны перехватывать события мыши
+              pointerEvents="none" 
             />
           );
         } else {
-          // line.type === 'y'
           return (
             <line
               key={`snap-y-${index}`}
@@ -1486,14 +1428,14 @@ const SnapGuides = ({ activeSnapLines, viewTransform }) => {
 
 export default React.memo(SnapGuides);
 
-
 ==== src\components\Configurator\canvas\SvgCanvas.jsx ====
 // src/components/Configurator/canvas/SvgCanvas.jsx
-import React, { useState, useEffect, useCallback } from "react"; // Добавлен useState, useEffect, useCallback
+import React, { useState, useEffect, useCallback } from "react"; 
 import Grid from "./Grid";
 import ObjectRendererGroup from "./ObjectRendererGroup";
 import SnapGuides from "./SnapGuides";
 import MarqueeSelection from "./MarqueeSelection";
+import PreviewLine from "./PreviewLine"; // Import PreviewLine
 
 const SvgCanvas = ({
   svgRef,
@@ -1509,7 +1451,7 @@ const SvgCanvas = ({
   addingObjectType,
   isPanningWithSpace,
   draggingState,
-  resizingState,
+  // resizingState, // Resizing is static
   handleMouseMove,
   handleMouseUp,
   handleMouseLeave,
@@ -1517,12 +1459,14 @@ const SvgCanvas = ({
   handleMouseDownOnObject,
   handleMouseDownOnResizeHandle,
   onAddObject,
-  onAddCorridor,
-  addingCorridorMode,
+  onAddCorridor, // Keep if corridor adding via old UI is still possible
+  addingCorridorMode, // Keep if corridor adding via old UI is still possible
+  onExpansionPlatformClick, 
+  activeMode,
+  drawingLineState, // New prop for preview line
 }) => {
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
 
-  // Обновление размеров SVG при изменении размера окна или контейнера
   useEffect(() => {
     const currentSvg = svgRef.current;
     if (!currentSvg) return;
@@ -1536,7 +1480,6 @@ const SvgCanvas = ({
 
     resizeObserver.observe(currentSvg);
 
-    // Первоначальная установка размеров
     const rect = currentSvg.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
       setSvgDimensions({ width: rect.width, height: rect.height });
@@ -1564,28 +1507,29 @@ const SvgCanvas = ({
     [isPanningWithSpace, draggingState, setViewTransform, handleMouseMove],
   );
 
+  let cursorClass = "cursor-default";
+  if (addingObjectType || (drawingLineState && drawingLineState.type) ) {
+      cursorClass = "cursor-crosshair";
+  } else if (isPanningWithSpace) {
+      cursorClass = "cursor-grabbing";
+  } else if (modifierKeys.spacebar) {
+      cursorClass = "cursor-grab";
+  }
+
+
   return (
     <svg
       ref={svgRef}
       width="100%"
       height="100%"
-      onMouseMove={localHandleMouseMove} // Используем localHandleMouseMove
+      onMouseMove={localHandleMouseMove} 
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDownOnCanvas}
-      className={`block bg-white ${
-        addingObjectType
-          ? "cursor-crosshair"
-          : isPanningWithSpace
-            ? "cursor-grabbing"
-            : modifierKeys.spacebar
-              ? "cursor-grab"
-              : "cursor-default"
-      }`}
+      className={`block bg-white ${cursorClass}`}
     >
       {svgDimensions.width > 0 &&
-        svgDimensions.height >
-          0 /* Рендерим Grid только если есть размеры */ && (
+        svgDimensions.height > 0 && (
           <Grid
             viewTransform={viewTransform}
             svgWidth={svgDimensions.width}
@@ -1601,84 +1545,86 @@ const SvgCanvas = ({
           overlappingObjectIds={overlappingObjectIds}
           modifierKeys={modifierKeys}
           handleMouseDownOnObject={handleMouseDownOnObject}
-          handleMouseDownOnResizeHandle={handleMouseDownOnResizeHandle}
-          draggingState={draggingState}
-          resizingState={resizingState}
+          handleMouseDownOnResizeHandle={handleMouseDownOnResizeHandle} // Does nothing for static
+          // draggingState={draggingState} // Not needed for static rendering of objects
+          // resizingState={null} // Not needed for static rendering of objects
           onAddObject={onAddObject}
-          onAddCorridor={onAddCorridor}
-          addingCorridorMode={addingCorridorMode}
+          // addingCorridorMode={addingCorridorMode} // Old way of adding corridors
+          onAddCorridor={onAddCorridor} // Old way of adding corridors
+          svgRef={svgRef}
+          // onExpansionPlatformClick={onExpansionPlatformClick} // Disabled for static
+          activeMode={activeMode}
         />
         <SnapGuides
-          activeSnapLines={activeSnapLines}
+          activeSnapLines={activeSnapLines} // Will be empty for static objects
           viewTransform={viewTransform}
         />
+        <PreviewLine drawingLineState={drawingLineState} viewTransform={viewTransform} />
       </g>
-      <MarqueeSelection marqueeRect={marqueeRect} svgRef={svgRef} />
+      <MarqueeSelection marqueeRect={marqueeRect} svgRef={svgRef} /> 
     </svg>
   );
 };
 
-export default SvgCanvas; // Не оборачиваем в React.memo, т.к. он принимает много колбэков и состояний
-
+export default SvgCanvas; 
 
 ==== src\components\Configurator\canvas\WindowVisual.jsx ====
 import React from "react";
-import { 
-    ARCH_WINDOW_FRAME_STROKE, 
-    ARCH_WINDOW_GLAZING_STROKE 
+import {
+    ARCH_BLACK,
+    ARCH_MID_GRAY,
+    ARCH_STROKE_MEDIUM,
+    ARCH_STROKE_THICK,
+    ARCH_STROKE_THIN,
+    ARCH_STROKE_VERY_THIN,
+    ARCH_SELECT_BLUE,
+    ARCH_WINDOW_FRAME_STROKE,
+    ARCH_WINDOW_GLAZING_STROKE,
+    INITIAL_PPM
 } from "../configuratorConstants";
 
 const WindowVisual = ({ obj, scale, commonProps, isSelected }) => {
   const widthScaled = obj.width * scale;
-  const heightScaled = obj.height * scale; // Wall thickness
+  const heightScaled = obj.height * scale;
 
-  const frameStrokeWidth = isSelected ? 2 : 1;
-  const glazingStrokeWidth = isSelected ? 1 : 0.5;
+  const baseFrameStrokeWidth = Math.max(0.2, ARCH_STROKE_THICK / (scale / INITIAL_PPM));
+  const baseGlazingStrokeWidth = Math.max(0.1, ARCH_STROKE_THIN / (scale / INITIAL_PPM));
+  const baseMullionStrokeWidth = Math.max(0.15, ARCH_STROKE_MEDIUM / (scale / INITIAL_PPM));
 
-  // Determine number of glazing lines based on thickness
-  const numGlazingLines = heightScaled > 10 ? 3 : 2; // Simple example threshold
+  const frameStrokeWidth = isSelected ? ARCH_STROKE_MEDIUM : baseFrameStrokeWidth;
+  const glazingStrokeWidth = isSelected ? ARCH_STROKE_THIN : baseGlazingStrokeWidth;
+  const mullionStrokeWidth = isSelected ? ARCH_STROKE_MEDIUM : baseMullionStrokeWidth;
+
+  const numGlazingLines = 3;
   const glazingLines = [];
-  if (numGlazingLines === 2) {
-    const spacing = heightScaled / 3;
-    glazingLines.push(
-      <line key="glaze1" x1={0} y1={spacing} x2={widthScaled} y2={spacing} stroke={ARCH_WINDOW_GLAZING_STROKE} strokeWidth={glazingStrokeWidth} />,
-      <line key="glaze2" x1={0} y1={heightScaled - spacing} x2={widthScaled} y2={heightScaled - spacing} stroke={ARCH_WINDOW_GLAZING_STROKE} strokeWidth={glazingStrokeWidth} />
-    );
-  } else { // 3 lines
-     const spacing = heightScaled / 4;
-     glazingLines.push(
-       <line key="glaze1" x1={0} y1={spacing} x2={widthScaled} y2={spacing} stroke={ARCH_WINDOW_GLAZING_STROKE} strokeWidth={glazingStrokeWidth} />,
-       <line key="glaze2" x1={0} y1={heightScaled / 2} x2={widthScaled} y2={heightScaled / 2} stroke={ARCH_WINDOW_GLAZING_STROKE} strokeWidth={glazingStrokeWidth} />,
-       <line key="glaze3" x1={0} y1={heightScaled - spacing} x2={widthScaled} y2={heightScaled - spacing} stroke={ARCH_WINDOW_GLAZING_STROKE} strokeWidth={glazingStrokeWidth} />
-     );
+  const spacing = heightScaled / (numGlazingLines + 1);
+  for(let i=1; i <= numGlazingLines; i++){
+       glazingLines.push(
+         <line key={`glaze${i}`} x1={0} y1={spacing * i} x2={widthScaled} y2={spacing * i} stroke={ARCH_WINDOW_GLAZING_STROKE} strokeWidth={glazingStrokeWidth} />
+       );
   }
 
   return (
     <>
-      {/* Window Frame */}
       <rect
         x="0"
         y="0"
         width={widthScaled}
         height={heightScaled}
-        fill="none" // No fill for window frame itself
-        stroke={isSelected ? "blue" : ARCH_WINDOW_FRAME_STROKE}
+        fill="none"
+        stroke={isSelected ? ARCH_SELECT_BLUE : ARCH_WINDOW_FRAME_STROKE}
         strokeWidth={frameStrokeWidth}
-        // Use commonProps only for interaction styles/data if needed
-        style={commonProps.style} 
-        data-object-id={commonProps['data-object-id']} 
+        style={commonProps.style}
+        data-object-id={commonProps['data-object-id']}
       />
-      {/* Glazing Lines */}
       {glazingLines}
-      {/* Optional Sill/Mullion line - can add if needed */}
-       <line
+      <line
          x1={widthScaled / 2}
          y1={0}
          x2={widthScaled / 2}
          y2={heightScaled}
-         stroke={ARCH_WINDOW_FRAME_STROKE}
-         strokeWidth={frameStrokeWidth * 0.6} // Thinner mullion
-         opacity={0.8}
+         stroke={isSelected ? ARCH_SELECT_BLUE : ARCH_WINDOW_FRAME_STROKE}
+         strokeWidth={mullionStrokeWidth}
        />
     </>
   );
@@ -1687,7 +1633,6 @@ const WindowVisual = ({ obj, scale, commonProps, isSelected }) => {
 export default React.memo(WindowVisual);
 
 ==== src\components\Configurator\common\PropertyInput.jsx ====
-// src/components/Configurator/common/PropertyInput.jsx
 import React from "react";
 import PropTypes from "prop-types";
 
@@ -1725,20 +1670,19 @@ PropertyInput.propTypes = {
   step: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   children: PropTypes.node,
   disabled: PropTypes.bool,
-  min: PropTypes.string, // Added missing prop types
+  min: PropTypes.string, 
   max: PropTypes.string,
   title: PropTypes.string,
 };
 
 export default PropertyInput;
 
-
 ==== src\components\Configurator\Configurator.jsx ====
 // src/components/Configurator/Configurator.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import PropTypes from "prop-types";
 import { MODES, DEFAULT_MODE } from "./appConstants";
-import { OBJECT_TYPES_TO_ADD } from "./configuratorConstants";
+import { OBJECT_TYPES_TO_ADD, WALL_THICKNESS_M } from "./configuratorConstants"; 
 
 import useConfiguratorState from "./hooks/useConfiguratorState";
 import useObjectManagement from "./hooks/useObjectManagement";
@@ -1752,12 +1696,13 @@ import SvgCanvas from "./canvas/SvgCanvas";
 import PropertiesPanel from "./sidebar/PropertiesPanel";
 import StatusBar from "./statusbar/StatusBar";
 
-// Import mode components
 import ModularMode from "./modes/ModularMode";
 import FramelessMode from "./modes/FramelessMode";
 import FrameMode from "./modes/FrameMode";
 
-import { getInitialObjects } from "./hooks/useObjectManagement"; // Это нормально, если getInitialObjects статична
+import { getInitialObjects } from "./hooks/useObjectManagement";
+import { toast } from "react-toastify";
+
 
 const Configurator = ({
   activeMode: activeModeProp,
@@ -1773,11 +1718,9 @@ const Configurator = ({
   const svgRef = useRef(null);
   const mainContainerRef = useRef(null);
 
-  // ---- Hooks ----
-  // 1. useConfiguratorState должен быть первым, так как он предоставляет objectsRef
   const {
     objects,
-    objectsRef, // Этот objectsRef инициализируется в useConfiguratorState
+    objectsRef,
     setObjects,
     selectedObjectIds,
     setSelectedObjectIds,
@@ -1788,15 +1731,15 @@ const Configurator = ({
     handleUndo,
     handleRedo,
     primarySelectedObject,
-    copiedObjectsData,
-    setCopiedObjectsData,
-    overlappingObjectIds,
-    setOverlappingObjectIds,
+    // overlappingObjectIds, // This was from useConfiguratorState
+    // setOverlappingObjectIds, // This was from useConfiguratorState
   } = useConfiguratorState(setProjectInfoDataExt, activeModeInternal);
+
+  // If overlaps are truly disabled, provide a default empty array
+  const overlappingObjectIds = []; // Default to empty if not managed
 
   const modifierKeys = useModifierKeys(mainContainerRef, svgRef);
 
-  // 2. useObjectManagement зависит от setObjects и objectsRef из useConfiguratorState
   const {
     addObject,
     updateObject,
@@ -1804,24 +1747,26 @@ const Configurator = ({
     updateSelectedObjectProperty,
     addAndSelectObject,
     defaultObjectSizes,
+    rotateModule180,
+    mirrorModuleX,
+    mirrorModuleY,
   } = useObjectManagement(
     setObjects,
     selectedObjectIds,
     lockedObjectIds,
     modifierKeys,
-    objectsRef // Передаем objectsRef напрямую. Его .current будет актуальным.
+    objectsRef,
+    activeModeInternal
   );
 
   const { viewTransform, setViewTransform, screenToWorld, screenToWorldRect } =
     useViewTransform(svgRef);
 
   const [addingObjectType, setAddingObjectType] = useState(null);
-  const [addingCorridorMode, setAddingCorridorMode] = useState(false);
+  const [addingCorridorMode, setAddingCorridorMode] = useState(false); 
 
   const mouseInteractions = useMouseInteractions({
-    objectsRef, // Передаем objectsRef
-    setObjects, // setObjects (с логикой истории)
-    setObjectsState: setObjects, // Для mouseMove, где история не нужна при каждом шаге
+    objectsRef,
     selectedObjectIds,
     setSelectedObjectIds,
     lockedObjectIds,
@@ -1832,10 +1777,9 @@ const Configurator = ({
     modifierKeys,
     addingObjectType,
     setAddingObjectType,
-    addAndSelectObject,
+    addAndSelectObject, 
     mainContainerRef,
     svgRef,
-    setOverlappingObjectIdsProp: setOverlappingObjectIds,
     activeMode: activeModeInternal,
   });
 
@@ -1845,27 +1789,22 @@ const Configurator = ({
     setSelectedObjectIds,
     lockedObjectIds,
     setLockedObjectIds,
-    objectsRef, // Передаем objectsRef
-    setObjects,
+    objectsRef,
+    setObjects, 
     handleUndo,
     handleRedo,
-    copiedObjectsData,
-    setCopiedObjectsData,
     addingObjectType,
     setAddingObjectType,
-    marqueeRectActive: mouseInteractions.marqueeRect.active,
-    resizingStateActive: !!mouseInteractions.resizingState,
+    marqueeRectActive: false, 
+    resizingStateActive: false, 
   });
 
   useEffect(() => {
     mainContainerRef.current?.focus();
   }, []);
-  
-  // Если activeModeProp меняется извне, обновляем внутренний стейт
+
   useEffect(() => {
     if (activeModeProp !== undefined && activeModeProp !== activeModeInternal) {
-        // Здесь можно добавить логику смены режима, если это необходимо
-        // пока просто синхронизируем
         setActiveModeInternal(activeModeProp);
     }
   }, [activeModeProp, activeModeInternal]);
@@ -1874,7 +1813,7 @@ const Configurator = ({
   const handleStartAddObject = useCallback(
     (type) => {
       setAddingObjectType(type);
-      setSelectedObjectIds([]); 
+      setSelectedObjectIds([]);
     },
     [setSelectedObjectIds],
   );
@@ -1885,7 +1824,7 @@ const Configurator = ({
       (!lockedObjectIds.includes(primarySelectedObject.id) ||
         modifierKeys.shift)
     ) {
-      deleteObjectById(primarySelectedObject.id);
+      deleteObjectById(primarySelectedObject.id); 
       setSelectedObjectIds((ids) =>
         ids.filter((id) => id !== primarySelectedObject.id),
       );
@@ -1899,22 +1838,22 @@ const Configurator = ({
   ]);
 
   const handleAddCorridor = useCallback((corridorData) => {
-    const blockSize = 1; 
-    const corridorThickness = 0.2; 
+    const blockSize = 1;
+    const visualCorridorLineThickness = 0.01;
 
     const isVertical = corridorData.orientation === 'vertical';
     let finalX, finalY, corridorWidth, corridorHeight;
 
     if (isVertical) {
-      corridorWidth = corridorThickness;
+      corridorWidth = visualCorridorLineThickness;
       corridorHeight = blockSize;
-      finalX = corridorData.x - corridorThickness / 2; 
+      finalX = corridorData.x - visualCorridorLineThickness / 2;
       finalY = corridorData.y;
-    } else { 
+    } else {
       corridorWidth = blockSize;
-      corridorHeight = corridorThickness;
+      corridorHeight = visualCorridorLineThickness;
       finalX = corridorData.x;
-      finalY = corridorData.y - corridorThickness / 2; 
+      finalY = corridorData.y - visualCorridorLineThickness / 2;
     }
 
     addObject(
@@ -1923,22 +1862,25 @@ const Configurator = ({
       finalY,
       corridorWidth,
       corridorHeight,
-      { 
-        orientation: corridorData.orientation, 
+      {
+        orientation: corridorData.orientation,
         parentId: corridorData.parentId,
+        logicalThickness: WALL_THICKNESS_M 
       }
     );
     setAddingCorridorMode(false);
   }, [addObject]);
 
+
   function getInitialObjectsForMode(mode) {
     if (mode === MODES.FRAMELESS) return getInitialObjects();
+    if (mode === MODES.MODULAR) return []; 
     return [];
   }
 
   const handleModeChange = useCallback((newMode) => {
     if (newMode === activeModeInternal) return;
-    if (objects.length > 0) { // objects из useConfiguratorState
+    if (objects.length > 0) {
       const confirmed = window.confirm(
         "При смене режима все несохраненные изменения будут потеряны. Продолжить?"
       );
@@ -1947,21 +1889,23 @@ const Configurator = ({
     setObjects(getInitialObjectsForMode(newMode));
     setSelectedObjectIds([]);
     setLockedObjectIds([]);
-    setHistory({ undo: [], redo: [] }); 
+    setHistory({ undo: [], redo: [] });
     setAddingObjectType(null);
     setActiveModeInternal(newMode);
   }, [activeModeInternal, objects, setObjects, setSelectedObjectIds, setLockedObjectIds, setHistory]);
 
   const configuratorInterface = {
-    addObject,
-    updateObject,
-    deleteObject: deleteObjectById,
-    getObjects: () => objectsRef.current, // Используем objectsRef.current
+    addObject, 
+    updateObject, 
+    deleteObject: deleteObjectById, 
+    getObjects: () => objectsRef.current,
     getSelectedObjectIds: () => selectedObjectIds,
     setSelectedObjectIds,
     screenToWorld,
     viewTransform,
     svgRef,
+    activeMode: activeModeInternal,
+    objects, 
   };
 
   const renderModeComponent = () => {
@@ -1981,25 +1925,19 @@ const Configurator = ({
     <div
       ref={mainContainerRef}
       className="w-full h-full flex flex-col select-none outline-none"
-      tabIndex={0} 
+      tabIndex={0}
     >
       <ConfiguratorToolbar
         activeModeName={activeModeInternal}
         addingObjectType={addingObjectType}
         onStartAddObject={handleStartAddObject}
         onModeChange={handleModeChange}
+        selectedObjectIds={selectedObjectIds}
+        primarySelectedObject={primarySelectedObject}
       />
 
       <div className="flex flex-grow overflow-hidden">
         <div className="flex-grow relative bg-gray-200">
-          {false && activeModeInternal === 'modular' && primarySelectedObject && primarySelectedObject.type === 'module' && !addingCorridorMode && (
-            <button
-              className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-4 py-2 rounded shadow z-30 hover:bg-indigo-700"
-              onClick={() => setAddingCorridorMode(true)}
-            >
-              Добавить коридор
-            </button>
-          )}
           {addingCorridorMode && (
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-indigo-100 text-indigo-900 px-4 py-2 rounded shadow z-30">
               Кликните по линии внутри модуля для размещения коридора
@@ -2014,29 +1952,29 @@ const Configurator = ({
           <SvgCanvas
             svgRef={svgRef}
             viewTransform={viewTransform}
-            setViewTransform={setViewTransform} 
-            objects={objects} // objects из useConfiguratorState
+            setViewTransform={setViewTransform}
+            objects={objects}
             selectedObjectIds={selectedObjectIds}
             lockedObjectIds={lockedObjectIds}
-            overlappingObjectIds={overlappingObjectIds}
-            activeSnapLines={mouseInteractions.activeSnapLines}
-            marqueeRect={mouseInteractions.marqueeRect}
+            overlappingObjectIds={overlappingObjectIds} // Ensure this is passed
+            activeSnapLines={mouseInteractions.activeSnapLines} 
+            marqueeRect={mouseInteractions.marqueeRect} 
             modifierKeys={modifierKeys}
             addingObjectType={addingObjectType}
             isPanningWithSpace={mouseInteractions.isPanningWithSpace}
-            draggingState={mouseInteractions.draggingState}
-            resizingState={mouseInteractions.resizingState}
+            draggingState={mouseInteractions.draggingState} 
             handleMouseMove={mouseInteractions.handleMouseMove}
             handleMouseUp={mouseInteractions.handleMouseUp}
             handleMouseLeave={mouseInteractions.handleMouseLeave}
             handleMouseDownOnCanvas={mouseInteractions.handleMouseDownOnCanvas}
             handleMouseDownOnObject={mouseInteractions.handleMouseDownOnObject}
             handleMouseDownOnResizeHandle={
-              mouseInteractions.handleMouseDownOnResizeHandle
+              mouseInteractions.handleMouseDownOnResizeHandle 
             }
-            onAddObject={addObject} // из useObjectManagement
+            onAddObject={addObject}
             addingCorridorMode={addingCorridorMode}
             onAddCorridor={handleAddCorridor}
+            activeMode={activeModeInternal}
           />
           {addingObjectType && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-300 text-black px-3 py-1.5 rounded shadow-lg text-xs z-10 pointer-events-none">
@@ -2064,6 +2002,9 @@ const Configurator = ({
           updateSelectedObjectProperty={updateSelectedObjectProperty}
           deleteSelectedObject={handleDeleteSelectedObjectInPanel}
           activeMode={activeModeInternal}
+          rotateModule180={rotateModule180} 
+          mirrorModuleX={mirrorModuleX}     
+          mirrorModuleY={mirrorModuleY}     
         />
       </div>
 
@@ -2089,98 +2030,139 @@ export default Configurator;
 // src/components/Configurator/configuratorConstants.js
 import {
   DEFAULT_PANEL_WIDTH_M as APP_DEFAULT_PANEL_WIDTH_M,
-  WALL_THICKNESS_M as APP_WALL_THICKNESS_M,
+  WALL_THICKNESS_M as APP_WALL_THICKNESS_M, 
   DOOR_WIDTH_M as APP_DOOR_WIDTH_M,
   WINDOW_WIDTH_M as APP_WINDOW_WIDTH_M,
-} from "./appConstants"; 
+  DEFAULT_MODULE_WIDTH_M,
+  DEFAULT_MODULE_HEIGHT_M,
+  INTERNAL_ELEMENT_SNAP_GRID_SIZE,
+} from "./appConstants";
 
-// --- Architectural Style Colors ---
-const ARCH_WALL_FILL = "#4A5568"; // Dark Gray for wall fill
-const ARCH_WALL_STROKE = "#2D3748"; // Very Dark Gray for wall stroke
-const ARCH_DOOR_LEAF_FILL = "#E2E8F0"; // Light Gray for door leaf
-const ARCH_DOOR_STROKE = "#4A5568"; // Mid Gray for door stroke/arc
-const ARCH_WINDOW_FRAME_STROKE = "#4A5568"; // Mid Gray for window frame
-const ARCH_WINDOW_GLAZING_STROKE = "#A0AEC0"; // Lighter Gray for glazing lines
-const ARCH_FURNITURE_FILL_LIGHT = "#E2E8F0"; // Light Gray for furniture
-const ARCH_FURNITURE_FILL_MID = "#CBD5E0"; // Mid Gray for furniture
-const ARCH_FURNITURE_STROKE = "#4A5568"; // Mid Gray for furniture stroke
-const ARCH_OUTLET_FILL = "#F7FAFC"; // Very Light Gray / Off-white for outlet
-const ARCH_OUTLET_STROKE = "#718096"; // Gray stroke for outlet
-const ARCH_HATCH_COLOR = "#CBD5E0"; // Floor hatching color
-const ARCH_GRID_LINE = "#E2E8F0"; // Grid lines color
-const ARCH_GRID_BOLD_LINE = "#CBD5E0"; // Bold grid lines color
-const ARCH_CORRIDOR_STROKE = "#4A5568"; // Corridor line color
 
-// --- Other Constants ---
+const ARCH_BLACK = "#1A202C";
+const ARCH_DARK_GRAY = "#4A5568";
+const ARCH_MID_GRAY = "#718096";
+const ARCH_LIGHT_GRAY = "#CBD5E0";
+const ARCH_VERY_LIGHT_GRAY = "#E2E8F0";
+const ARCH_WHITE = "#FFFFFF";
+const ARCH_SELECT_BLUE = "rgba(0, 100, 255, 0.8)";
+const ARCH_CORRIDOR_STROKE = ARCH_DARK_GRAY;
+const ARCH_INTERNAL_WALL_FILL = ARCH_WHITE; // Or a slightly different shade
+const ARCH_DOOR_LEAF_FILL = ARCH_WHITE;
+const ARCH_DOOR_STROKE = ARCH_BLACK;
+const ARCH_WINDOW_FRAME_STROKE = ARCH_BLACK;
+const ARCH_WINDOW_GLAZING_STROKE = ARCH_MID_GRAY;
+const ARCH_OUTLET_FILL = ARCH_WHITE;
+const ARCH_OUTLET_STROKE = ARCH_BLACK;
+const ARCH_HATCH_COLOR = ARCH_LIGHT_GRAY;
+const ARCH_FURNITURE_FILL_LIGHT = ARCH_WHITE;
+const ARCH_FURNITURE_FILL_MID = ARCH_VERY_LIGHT_GRAY;
+const ARCH_FURNITURE_STROKE = ARCH_DARK_GRAY;
+
+const ARCH_STROKE_THICK = 1.2;
+const ARCH_STROKE_MEDIUM = 0.8;
+const ARCH_STROKE_THIN = 0.5;
+const ARCH_STROKE_VERY_THIN = 0.3;
+
 export const PANEL_SIZE_M = APP_DEFAULT_PANEL_WIDTH_M;
 export const INITIAL_PPM = 50;
-export const GRID_LINE_COLOR = ARCH_GRID_LINE; // Use new arch color
-export const GRID_BOLD_LINE_COLOR = ARCH_GRID_BOLD_LINE; // Use new arch color
+export const GRID_LINE_COLOR = ARCH_VERY_LIGHT_GRAY;
+export const GRID_BOLD_LINE_COLOR = ARCH_LIGHT_GRAY;
 export const ORIGIN_POINT_COLOR = "transparent";
 export const SNAP_THRESHOLD_WORLD = 0.05;
-export const SNAP_LINE_COLOR = "rgba(0, 150, 255, 0.6)"; // Keep selection/snap blueish
+export const SNAP_LINE_COLOR = "rgba(0, 150, 255, 0.6)";
 export const PASTE_OFFSET_M = 0.2;
 export const MAX_HISTORY_SIZE = 50;
 export const MARQUEE_FILL_COLOR = "rgba(0, 100, 255, 0.1)";
 export const MARQUEE_STROKE_COLOR = "rgba(0, 100, 255, 0.5)";
 export const MIN_DRAG_FOR_MARQUEE_PAN = 5;
 export const RESIZE_HANDLE_SIZE_PX = 8;
-export const RESIZE_HANDLE_COLOR = "rgba(0, 100, 255, 0.8)"; // Keep blue for UI feedback
-export const DIMENSION_TEXT_COLOR = "#1A202C"; // Dark text
-export const DIMENSION_TEXT_BG_COLOR = "rgba(255, 255, 255, 0.8)"; // Semi-transparent white bg
-export const OVERLAP_HIGHLIGHT_COLOR = "rgba(255, 0, 0, 0.2)"; // Keep red for overlap warning
-export const LOCKED_OBJECT_STROKE_COLOR = "orange"; // Keep orange for locked status
-export const DOOR_LEAF_VISUAL_THICKNESS_M = 0.04; // Slightly thinner door leaf
+export const RESIZE_HANDLE_COLOR = ARCH_SELECT_BLUE;
+export const DIMENSION_TEXT_COLOR = ARCH_BLACK;
+export const DIMENSION_TEXT_BG_COLOR = "rgba(255, 255, 255, 0.8)";
+export const OVERLAP_HIGHLIGHT_COLOR = "rgba(255, 0, 0, 0.2)";
+export const LOCKED_OBJECT_STROKE_COLOR = "orange";
+export const DOOR_LEAF_VISUAL_THICKNESS_M = 0.04;
+export const WALL_THICKNESS_M = APP_WALL_THICKNESS_M; 
+export { INTERNAL_ELEMENT_SNAP_GRID_SIZE };
 
-// --- Object specific colors (Using Arch styles) ---
+
+export const PREVIEW_LINE_COLOR = "rgba(255, 165, 0, 0.7)";
+export const PREVIEW_LINE_STROKE_WIDTH = 2;
+
+
 export const objectColors = {
-  panel: ARCH_FURNITURE_FILL_MID, // Use a mid-gray for panels if needed
-  window: ARCH_WINDOW_FRAME_STROKE, // Window frame color (fill is handled specially)
-  door: ARCH_DOOR_LEAF_FILL, // Door leaf fill color
-  outlet: ARCH_OUTLET_FILL, // Outlet fill color
-  wall: ARCH_WALL_FILL, // Wall fill color
-  default: "#A0AEC0", // Default fallback color (a gray)
-  sofa: ARCH_FURNITURE_FILL_MID,
-  table: ARCH_FURNITURE_FILL_LIGHT,
-  cabinet: ARCH_FURNITURE_FILL_MID,
-  toilet: ARCH_FURNITURE_FILL_LIGHT,
-  bed: ARCH_FURNITURE_FILL_MID,
-  corridor: ARCH_CORRIDOR_STROKE, // Corridor color (used for stroke maybe?)
+  panel: ARCH_WHITE,
+  window: ARCH_BLACK,
+  door: ARCH_BLACK,
+  outlet: ARCH_BLACK,
+  wall: ARCH_BLACK, // For external walls or if internal uses same
+  partition: ARCH_INTERNAL_WALL_FILL, // For internal walls if different
+  default: ARCH_MID_GRAY,
+  sofa: ARCH_WHITE,
+  table: ARCH_WHITE,
+  cabinet: ARCH_WHITE,
+  toilet: ARCH_WHITE,
+  bed: ARCH_WHITE,
+  corridor: ARCH_CORRIDOR_STROKE,
+  light_led: ARCH_BLACK,
+  module: ARCH_WHITE,
+  radiator: ARCH_LIGHT_GRAY,
+  kitchen_unit: ARCH_MID_GRAY,
 };
 
-// --- Default Object Sizes (No changes needed here based on style request) ---
 export const defaultObjectSizes = {
   panel: { width: PANEL_SIZE_M, height: PANEL_SIZE_M },
   window: { width: APP_WINDOW_WIDTH_M, height: APP_WALL_THICKNESS_M },
   door: { width: APP_DOOR_WIDTH_M, height: APP_WALL_THICKNESS_M },
-  outlet: { width: 0.1, height: 0.1 }, // Smaller outlet visual
-  wall: { width: PANEL_SIZE_M, height: APP_WALL_THICKNESS_M },
+  outlet: { width: 0.1, height: 0.1 },
+  wall: { width: PANEL_SIZE_M, height: APP_WALL_THICKNESS_M }, // Default for external or generic wall
+  partition: { width: PANEL_SIZE_M, height: APP_WALL_THICKNESS_M }, // Default for internal partition
   sofa: { width: 1.8, height: 0.8 },
   table: { width: 1.0, height: 0.5 },
   cabinet: { width: 0.8, height: 0.4 },
   toilet: { width: 0.4, height: 0.7 },
   bed: { width: 1.5, height: 2.0 },
-  corridor: { width: 1.0, height: 0.15 }, // Default corridor size example
+  corridor: { width: 1.0, height: 0.01 }, // Corridors are thin lines
+  light_led: {width: 1.2, height: 0.15},
+  module: { width: DEFAULT_MODULE_WIDTH_M, height: DEFAULT_MODULE_HEIGHT_M },
+  radiator: { width: 0.8, height: 0.1 }, 
+  kitchen_unit: { width: 1.5, height: 0.6 },
 };
 
-// --- Object Types to Add (No changes needed) ---
 export const OBJECT_TYPES_TO_ADD = [
-  { type: "wall", label: "Стена" },
-  { type: "panel", label: "Панель" },
+  { type: "wall", label: "Стена (внеш.)" }, // Changed label for clarity
   { type: "window", label: "Окно" },
   { type: "door", label: "Дверь" },
   { type: "outlet", label: "Розетка" },
+  { type: "light_led", label: "Свет LED"},
   { type: "sofa", label: "Диван" },
   { type: "table", label: "Стол" },
   { type: "cabinet", label: "Шкаф" },
   { type: "bed", label: "Кровать" },
   { type: "toilet", label: "Туалет" },
+  { type: "radiator", label: "Радиатор"},
+  { type: "kitchen_unit", label: "Кух. блок"},
 ];
 
-// --- Export specific Arch colors if needed elsewhere ---
+export const INTERNAL_DRAWING_TYPES = {
+    PARTITION: 'partition',
+    CORRIDOR: 'corridor',
+};
+
 export {
-    ARCH_WALL_FILL,
-    ARCH_WALL_STROKE,
+    ARCH_BLACK,
+    ARCH_DARK_GRAY,
+    ARCH_MID_GRAY,
+    ARCH_LIGHT_GRAY,
+    ARCH_VERY_LIGHT_GRAY,
+    ARCH_WHITE,
+    ARCH_SELECT_BLUE,
+    ARCH_STROKE_THICK,
+    ARCH_STROKE_MEDIUM,
+    ARCH_STROKE_THIN,
+    ARCH_STROKE_VERY_THIN,
+    ARCH_CORRIDOR_STROKE,
     ARCH_DOOR_LEAF_FILL,
     ARCH_DOOR_STROKE,
     ARCH_WINDOW_FRAME_STROKE,
@@ -2191,14 +2173,12 @@ export {
     ARCH_OUTLET_FILL,
     ARCH_OUTLET_STROKE,
     ARCH_HATCH_COLOR,
-    ARCH_CORRIDOR_STROKE
+    ARCH_INTERNAL_WALL_FILL,
 };
 
 ==== src\components\Configurator\configuratorUtils.js ====
-// src/components/Configurator/configuratorUtils.js
 import { DOOR_LEAF_VISUAL_THICKNESS_M } from "./configuratorConstants";
 
-// ... (rotatePoint, getAABB, checkAABBIntersection, getResizeCursorForHandle - без изменений) ...
 export const rotatePoint = (point, angleRad, center) => {
   const s = Math.sin(angleRad);
   const c = Math.cos(angleRad);
@@ -2358,73 +2338,54 @@ export const isDoorLeafColliding = (doorObj, openingAngleDegrees, allOtherObject
     const doorLeafAABB = getAABBFromCorners(doorLeafWorldCorners);
 
     for (const otherObj of allOtherObjects) {
-        if (otherObj.id === doorObj.id) continue; // Don't collide with its own frame 
+        if (otherObj.id === doorObj.id) continue; 
         
-        // --- ДОБАВЛЕНА ПРОВЕРКА ---
-        // Если у двери есть parentId (т.е. она прикреплена к модулю)
-        // и ID другого объекта совпадает с parentId двери,
-        // то пропускаем проверку столкновения с этим родительским модулем.
         if (doorObj.parentId && otherObj.id === doorObj.parentId) {
             continue; 
         }
-        // --- КОНЕЦ ДОБАВЛЕННОЙ ПРОВЕРКИ ---
 
         const otherAABB = getAABB(otherObj); 
         
         if (checkAABBIntersection(doorLeafAABB, otherAABB)) {
-            // AABB check passed, now potentially more precise checks
-
-            // Handle door-door leaf collision
             if (otherObj.type === 'door' && otherObj.isOpen && otherObj.openingAngle > 0) {
                 const otherDoorLeafCorners = getDoorLeafCorners(otherObj, otherObj.openingAngle);
                 const otherDoorLeafAABB = getAABBFromCorners(otherDoorLeafCorners);
                 if (checkAABBIntersection(doorLeafAABB, otherDoorLeafAABB)) {
-                    // More precise check would go here (e.g., SAT)
-                    console.warn(`[Collision] Door ${doorObj.id} leaf vs Door ${otherObj.id} leaf`);
-                    return true; // Leaf-to-leaf collision detected by AABB for now
+                    return true; 
                 }
-                // Leaves don't collide based on AABB, but we already know this door's leaf AABB
-                // intersects the other door's overall AABB (frame+leaf), so return true.
-                // Or should we only return true on leaf-leaf? Let's stick to AABB vs AABB for now.
-                 console.warn(`[Collision] Door ${doorObj.id} leaf (angle ${openingAngleDegrees}) vs ${otherObj.type} ${otherObj.id} (Frame AABB)`);
-                 return true; // Collision with the other door object's bounding box
+                 return true; 
             } else {
-                // Collision with a non-door or a closed door object
-                 console.warn(`[Collision] Door ${doorObj.id} leaf (angle ${openingAngleDegrees}) vs ${otherObj.type} ${otherObj.id}`);
-                 return true; // AABB collision is sufficient for now
+                 return true; 
             }
         }
     }
-    return false; // No collisions detected
+    return false; 
 };
 
 ==== src\components\Configurator\ElementRenderer.jsx ====
-// components/Configurator/ElementRenderer.jsx
 import React from 'react';
-import PropTypes from 'prop-types'; // Добавим PropTypes для лучшей проверки компонента
+import PropTypes from 'prop-types'; 
 import {
     RENDER_SCALE,
     DOOR_LEAF_THICKNESS_PX,
     DOOR_HANDLE_SIZE_PX,
     DOOR_HANDLE_OFFSET_FROM_EDGE_PX,
-} from './constants'; // Предполагается, что appConstants.js переименован в constants.js или наоборот
+} from './constants'; 
 
 const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
     const {
         id,
         type,
-        position, // { x, y } - hinge position for doors, center for windows
-        rotation, // degrees (0, 90, 180, -90) - overall rotation of the element
-        width: elementWidthMm, // Specific width of the element in mm
+        position, 
+        rotation, 
+        width: elementWidthMm, 
         isOpen,
-        openingSide, // 'left' or 'right'
-        openingDirection, // 'inward' or 'outward'
-        moduleId, // For data attributes
+        openingSide, 
+        openingDirection, 
+        moduleId, 
     } = element;
 
-    // Проверка на наличие необходимых свойств
     if (!id || !type || !position || typeof position.x !== 'number' || typeof position.y !== 'number' || typeof rotation !== 'number' || typeof elementWidthMm !== 'number') {
-        console.warn('[ElementRenderer] Missing or invalid core element properties:', element);
         return null;
     }
     
@@ -2432,7 +2393,6 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
     const elementWidthPx = elementWidthMm * RENDER_SCALE;
 
     if (elementWidthPx <= 0) {
-        console.warn('[ElementRenderer] Invalid elementWidthPx:', elementWidthPx, 'for element:', element);
         return null;
     }
 
@@ -2442,7 +2402,7 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
     const handleClick = (e) => {
         e.stopPropagation(); 
         if (onClick) {
-            onClick(element, e); // Передаем сам элемент и событие
+            onClick(element, e); 
         }
     };
 
@@ -2450,11 +2410,10 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
         'data-module-id': moduleId,
         'data-element-id': id,
         'data-interactive': 'true',
-        // className: `cursor-pointer element-group ${isSelected ? 'selected-element-highlight' : ''}`, // Класс для стилизации через CSS, если нужно
         style: { 
             cursor: onClick ? 'pointer' : 'default',
-            outline: isSelected ? '1px dashed #007bff' : 'none', // Пример подсветки выбранного элемента
-            outlineOffset: '2px', // Отступ для outline
+            outline: isSelected ? '1px dashed #007bff' : 'none', 
+            outlineOffset: '2px', 
         },
         onClick: handleClick,
         transform: groupTransform,
@@ -2465,50 +2424,42 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
         const doorLeafWidthPx = elementWidthPx;
         const doorLeafThicknessPx = DOOR_LEAF_THICKNESS_PX;
 
-        let swingAngleDeg = 0; // Угол поворота в градусах
+        let swingAngleDeg = 0; 
         if (isOpen) {
             if (openingDirection === 'inward') {
                 swingAngleDeg = (openingSide === 'left') ? 90 : -90;
-            } else { // outward
+            } else { 
                 swingAngleDeg = (openingSide === 'left') ? -90 : 90;
             }
         }
 
-        // Путь для дверного полотна. Петля в локальных (0,0).
         const leafPath = openingSide === 'left'
             ? `M 0 ${-doorLeafThicknessPx / 2} L ${doorLeafWidthPx} ${-doorLeafThicknessPx / 2} L ${doorLeafWidthPx} ${doorLeafThicknessPx / 2} L 0 ${doorLeafThicknessPx / 2} Z`
             : `M 0 ${-doorLeafThicknessPx / 2} L ${-doorLeafWidthPx} ${-doorLeafThicknessPx / 2} L ${-doorLeafWidthPx} ${doorLeafThicknessPx / 2} L 0 ${doorLeafThicknessPx / 2} Z`;
         
-        // Позиция ручки (относительно полотна, до его поворота)
-        const handleOffsetFromEdge = DOOR_HANDLE_OFFSET_FROM_EDGE_PX; // Более понятное имя
+        const handleOffsetFromEdge = DOOR_HANDLE_OFFSET_FROM_EDGE_PX; 
         const handleRadius = DOOR_HANDLE_SIZE_PX / 2;
         const handleCenterX = openingSide === 'left'
             ? doorLeafWidthPx - handleOffsetFromEdge - handleRadius
             : -doorLeafWidthPx + handleOffsetFromEdge + handleRadius;
         const handleCenterY = 0; 
 
-        // Параметры дуги открывания
         let arcPathD = "";
         if (isOpen) {
             const radius = doorLeafWidthPx;
-            const startX = 0; // Петля
+            const startX = 0; 
             const startY = 0;
 
-            // Конечная точка дуги
             const endX_arc = radius * Math.cos(swingAngleDeg * Math.PI / 180);
             const endY_arc = radius * Math.sin(swingAngleDeg * Math.PI / 180);
             
-            // Флаги для SVG path arc
-            // large-arc-flag всегда 0 для <= 90 градусов
-            // sweep-flag: 0 = против часовой, 1 = по часовой
             let sweepFlag;
             if (openingSide === 'left') {
-                sweepFlag = (openingDirection === 'inward') ? 1 : 0; // Inward (+90 deg) -> clockwise, Outward (-90 deg) -> counter-clockwise
-            } else { // openingSide === 'right'
-                sweepFlag = (openingDirection === 'inward') ? 0 : 1; // Inward (-90 deg) -> counter-clockwise, Outward (+90 deg) -> clockwise
+                sweepFlag = (openingDirection === 'inward') ? 1 : 0; 
+            } else { 
+                sweepFlag = (openingDirection === 'inward') ? 0 : 1; 
             }
 
-            // Координаты для прямой линии от петли до края закрытой двери
             const lineToX = (openingSide === 'left') ? doorLeafWidthPx : -doorLeafWidthPx;
 
             arcPathD = `M ${startX} ${startY} L ${lineToX} ${startY} A ${radius} ${radius} 0 0 ${sweepFlag} ${endX_arc} ${endY_arc}`;
@@ -2516,7 +2467,6 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
 
         return (
             <g {...gProps}>
-                {/* Дверное полотно - трансформируется на swingAngleDeg */}
                 <g transform={`rotate(${swingAngleDeg})`}>
                     <path
                         d={leafPath}
@@ -2524,17 +2474,15 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
                         stroke={isSelected ? "#3B82F6" : "#6D513D"}
                         strokeWidth="0.5" 
                     />
-                    {/* Ручка двери - отображается всегда, вращается с полотном */}
                     <circle
                         cx={handleCenterX}
                         cy={handleCenterY}
                         r={handleRadius}
-                        fill={isOpen ? "#A0A0A0" : "#808080"} // Разный цвет для открытой/закрытой
+                        fill={isOpen ? "#A0A0A0" : "#808080"} 
                         stroke="#505050"
                         strokeWidth="0.2"
                     />
                 </g>
-                {/* Дуга для визуализации открывания (только когда открыта) */}
                 {isOpen && (
                     <path
                         d={arcPathD}
@@ -2549,8 +2497,7 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
 
     } else if (elementTypeNormalized.includes('okno')) {
         if (typeof wallThicknessPx !== 'number' || wallThicknessPx <= 0) {
-            console.warn('[ElementRenderer] Invalid wallThicknessPx for window:', wallThicknessPx, 'for element:', element);
-            return ( // Можно вернуть заглушку или null
+            return ( 
                 <g {...gProps}>
                     <text x="0" y="0" fontSize="3" fill="red">Invalid Wall</text>
                 </g>
@@ -2560,7 +2507,6 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
         
         return (
             <g {...gProps}>
-                {/* Стекло окна */}
                 <rect
                     x={-windowDrawWidthPx / 2}
                     y={-wallThicknessPx / 2}
@@ -2570,14 +2516,12 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
                     stroke={isSelected ? "#3B82F6" : "#708090"} 
                     strokeWidth="0.5" 
                 />
-                {/* Центральная линия рамы (вертикальная) */}
                 <line
                     x1="0" y1={-wallThicknessPx / 2}
                     x2="0" y2={wallThicknessPx / 2}
                     stroke={isSelected ? "#FFFFFF" : "#B0C4DE"} 
                     strokeWidth="0.3" 
                 />
-                 {/* Центральная линия рамы (горизонтальная) */}
                 <line
                     x1={-windowDrawWidthPx / 2} y1="0"
                     x2={windowDrawWidthPx / 2} y2="0"
@@ -2587,8 +2531,6 @@ const ElementRenderer = ({ element, wallThicknessPx, isSelected, onClick }) => {
             </g>
         );
     }
-
-    // console.warn(`ElementRenderer: Unsupported element type: ${type}`);
     return null; 
 };
 
@@ -2601,13 +2543,13 @@ ElementRenderer.propTypes = {
             y: PropTypes.number.isRequired,
         }).isRequired,
         rotation: PropTypes.number.isRequired,
-        width: PropTypes.number.isRequired, // 'width' from element object is elementWidthMm
+        width: PropTypes.number.isRequired, 
         isOpen: PropTypes.bool,
         openingSide: PropTypes.oneOf(['left', 'right']),
         openingDirection: PropTypes.oneOf(['inward', 'outward']),
         moduleId: PropTypes.string,
     }).isRequired,
-    wallThicknessPx: PropTypes.number, // Required for windows
+    wallThicknessPx: PropTypes.number, 
     isSelected: PropTypes.bool,
     onClick: PropTypes.func,
 };
@@ -2615,7 +2557,7 @@ ElementRenderer.propTypes = {
 ElementRenderer.defaultProps = {
     isSelected: false,
     onClick: null,
-    wallThicknessPx: 0, // Default to 0, but windows should have a valid one
+    wallThicknessPx: 0, 
 };
 
 export default ElementRenderer;
@@ -2751,14 +2693,13 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
   const [objects, setObjectsState] = useState(() => {
     if (activeMode === 'modular') return [];
     if (activeMode === 'frameless') return getInitialObjects();
-    // Для других режимов по умолчанию пусто
     return [];
   });
   const [selectedObjectIds, setSelectedObjectIds] = useState([]);
   const [lockedObjectIds, setLockedObjectIds] = useState([]);
   const [history, setHistory] = useState({ undo: [], redo: [] });
-  const [copiedObjectsData, setCopiedObjectsData] = useState(null); // For copy/paste
-  const [overlappingObjectIds, setOverlappingObjectIds] = useState([]);
+  // const [copiedObjectsData, setCopiedObjectsData] = useState(null); // Disabled for static
+  const [overlappingObjectIds, setOverlappingObjectIds] = useState([]); // Keep for prop consistency
 
   const objectsRef = useRef(objects);
   useEffect(() => {
@@ -2788,7 +2729,6 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
             }));
           }
         }
-        // Update project info data
         let totalArea = 0;
         newState.forEach((obj) => {
           if (
@@ -2797,7 +2737,7 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
             typeof obj.height === "number" &&
             (obj.type === "panel" ||
               obj.type === "wall" ||
-              obj.type.match(/sofa|table|cabinet|toilet|bed/))
+              obj.type.match(/sofa|table|cabinet|toilet|bed|module/)) 
           ) {
             totalArea += obj.width * obj.height;
           }
@@ -2818,9 +2758,9 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
       if (prevHistory.undo.length > 0) {
         const stateToRestore = prevHistory.undo[0];
         const remainingUndo = prevHistory.undo.slice(1);
-        const currentStateForRedo = objectsRef.current; // Use ref for current state
-        setObjectsState(stateToRestore); // Directly set state, history handled by setObjects
-        setSelectedObjectIds([]); // Clear selection on undo
+        const currentStateForRedo = objectsRef.current; 
+        setObjectsState(stateToRestore); 
+        setSelectedObjectIds([]); 
         return {
           undo: remainingUndo,
           redo: [currentStateForRedo, ...prevHistory.redo].slice(
@@ -2837,9 +2777,9 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
     setHistory((prevHistory) => {
       if (prevHistory.redo.length > 0) {
         const [stateToRestore, ...remainingRedo] = prevHistory.redo;
-        const currentStateForUndo = objectsRef.current; // Use ref for current state
-        setObjectsState(stateToRestore); // Directly set state
-        setSelectedObjectIds([]); // Clear selection on redo
+        const currentStateForUndo = objectsRef.current; 
+        setObjectsState(stateToRestore); 
+        setSelectedObjectIds([]); 
         return {
           undo: [currentStateForUndo, ...prevHistory.undo].slice(
             0,
@@ -2866,27 +2806,24 @@ const useConfiguratorState = (setProjectInfoDataProp, activeMode) => {
     lockedObjectIds,
     setLockedObjectIds,
     history,
-    setHistory, // Expose for direct manipulation if needed (e.g. mouse up after drag)
+    setHistory, 
     handleUndo,
     handleRedo,
     primarySelectedObject,
-    copiedObjectsData,
-    setCopiedObjectsData,
-    overlappingObjectIds,
-    setOverlappingObjectIds,
+    // copiedObjectsData, // Disabled for static
+    // setCopiedObjectsData, // Disabled for static
+    overlappingObjectIds, // Keep for prop consistency
+    setOverlappingObjectIds, // Keep for prop consistency
   };
 };
 
 export default useConfiguratorState;
 
-
 ==== src\components\Configurator\hooks\useKeyboardShortcuts.js ====
 // src/components/Configurator/hooks/useKeyboardShortcuts.js
 import { useEffect, useCallback } from "react";
-import { PASTE_OFFSET_M } from "../configuratorConstants";
-// createObject, getNextId needs to be accessible, e.g. from useObjectManagement context or passed in
-// For simplicity here, assuming they are imported if static, or passed if instance-based.
-import { createObject } from "./useObjectManagement";
+// import { PASTE_OFFSET_M } from "../configuratorConstants"; // Not needed for static
+// import { createObject } from "./useObjectManagement"; // Not needed for paste
 
 const useKeyboardShortcuts = ({
   mainContainerRef,
@@ -2894,16 +2831,16 @@ const useKeyboardShortcuts = ({
   setSelectedObjectIds,
   lockedObjectIds,
   setLockedObjectIds,
-  objectsRef, // direct ref to current objects array
-  setObjects, // state setter with history
+  objectsRef, 
+  setObjects, 
   handleUndo,
   handleRedo,
-  copiedObjectsData,
-  setCopiedObjectsData,
-  addingObjectType, // To cancel adding mode
+  // copiedObjectsData, // Disabled for static
+  // setCopiedObjectsData, // Disabled for static
+  addingObjectType, 
   setAddingObjectType,
-  marqueeRectActive, // To cancel marquee
-  resizingStateActive, // To cancel resize
+  marqueeRectActive, // Should be always false for static
+  resizingStateActive, // Should be always null for static
 }) => {
   const deleteSelectedObjects = useCallback(() => {
     if (selectedObjectIds.length === 0) return;
@@ -2912,7 +2849,7 @@ const useKeyboardShortcuts = ({
     );
     if (deletableIds.length > 0) {
       setObjects(
-        (prev) => prev.filter((obj) => !deletableIds.includes(obj.id)),
+        (prev) => prev.filter((obj) => !deletableIds.includes(obj.id) && (!obj.parentId || !deletableIds.includes(obj.parentId))),
         true,
       );
       setSelectedObjectIds((prev) =>
@@ -2923,53 +2860,8 @@ const useKeyboardShortcuts = ({
     }
   }, [selectedObjectIds, lockedObjectIds, setObjects, setSelectedObjectIds]);
 
-  const copySelectedObjects = useCallback(() => {
-    if (selectedObjectIds.length > 0) {
-      const selected = objectsRef.current.filter(
-        (obj) =>
-          selectedObjectIds.includes(obj.id) &&
-          !lockedObjectIds.includes(obj.id),
-      );
-      if (selected.length > 0) {
-        setCopiedObjectsData({
-          objects: JSON.parse(JSON.stringify(selected)), // Deep copy
-          pasteCount: 0,
-        });
-      }
-    }
-  }, [selectedObjectIds, objectsRef, lockedObjectIds, setCopiedObjectsData]);
-
-  const pasteCopiedObjects = useCallback(() => {
-    if (copiedObjectsData && copiedObjectsData.objects.length > 0) {
-      const pasteCount = copiedObjectsData.pasteCount + 1;
-      const newIds = [];
-      const newObjects = copiedObjectsData.objects.map((objToPaste) => {
-        const newObj = createObject(
-          // Uses imported createObject which handles new IDs
-          objToPaste.type,
-          objToPaste.x + PASTE_OFFSET_M * pasteCount,
-          objToPaste.y + PASTE_OFFSET_M * pasteCount,
-          objToPaste.width,
-          objToPaste.height,
-          {
-            ...objToPaste,
-            id: undefined,
-            label: objToPaste.label ? `${objToPaste.label} (copy)` : "",
-          }, // Exclude ID to get new one
-        );
-        newIds.push(newObj.id);
-        return newObj;
-      });
-      setObjects((prev) => [...prev, ...newObjects], true);
-      setSelectedObjectIds(newIds);
-      setCopiedObjectsData((prev) => ({ ...prev, pasteCount }));
-    }
-  }, [
-    copiedObjectsData,
-    setCopiedObjectsData,
-    setObjects,
-    setSelectedObjectIds,
-  ]);
+  // const copySelectedObjects = useCallback(() => { /* ... */ }, []); // Disabled
+  // const pasteCopiedObjects = useCallback(() => { /* ... */ }, []); // Disabled
 
   useEffect(() => {
     const mainEl = mainContainerRef.current;
@@ -2982,14 +2874,13 @@ const useKeyboardShortcuts = ({
         activeEl && ["INPUT", "TEXTAREA", "SELECT"].includes(activeEl.tagName);
 
       if (isInputFocused) {
-        // Allow native copy/paste/undo/redo in inputs
         if (
           isCtrlOrCmd &&
-          ["c", "v", "x", "z", "y"].includes(e.key.toLowerCase())
+          ["z", "y"].includes(e.key.toLowerCase()) // Allow undo/redo in inputs if native
         )
           return;
         if (e.key === "Escape") {
-          setAddingObjectType(null); // Also cancel add mode if input focused
+          setAddingObjectType(null); 
           if (activeEl instanceof HTMLElement) activeEl.blur();
           return;
         }
@@ -2997,7 +2888,6 @@ const useKeyboardShortcuts = ({
         if (e.key === "Delete" || e.key === "Backspace") return;
       }
 
-      // Global shortcuts (if not in input or specific keys)
       if (isCtrlOrCmd && e.key.toLowerCase() === "z" && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
@@ -3007,34 +2897,34 @@ const useKeyboardShortcuts = ({
       ) {
         e.preventDefault();
         handleRedo();
-      } else if (
-        isCtrlOrCmd &&
-        e.key.toLowerCase() === "c" &&
-        !isInputFocused
-      ) {
-        e.preventDefault();
-        copySelectedObjects();
-      } else if (
-        isCtrlOrCmd &&
-        e.key.toLowerCase() === "v" &&
-        !isInputFocused
-      ) {
-        e.preventDefault();
-        pasteCopiedObjects();
-      } else if (
+      } 
+      // Copy and Paste shortcuts disabled for static objects
+      // else if (
+      //   isCtrlOrCmd &&
+      //   e.key.toLowerCase() === "c" &&
+      //   !isInputFocused
+      // ) { /* ... */ }
+      // else if (
+      //   isCtrlOrCmd &&
+      //   e.key.toLowerCase() === "v" &&
+      //   !isInputFocused
+      // ) { /* ... */ } 
+      else if (
         (e.key === "Delete" || e.key === "Backspace") &&
         selectedObjectIds.length > 0 &&
         !isInputFocused
       ) {
         e.preventDefault();
-        deleteSelectedObjects();
+        deleteSelectedObjects(); // Deletion can still be useful
       } else if (e.key === "Escape") {
         e.preventDefault();
-        if (addingObjectType) setAddingObjectType(null);
-        else if (marqueeRectActive || resizingStateActive) {
-          /* Handled by mouse up/leave */
-        } else if (selectedObjectIds.length > 0) setSelectedObjectIds([]);
-        else mainContainerRef.current?.focus(); // Refocus main if nothing else to cancel
+        if (addingObjectType) {
+            setAddingObjectType(null);
+        } else if (selectedObjectIds.length > 0) {
+            setSelectedObjectIds([]);
+        } else {
+            mainContainerRef.current?.focus(); 
+        }
       } else if (e.key.toLowerCase() === "l" && !isInputFocused) {
         e.preventDefault();
         if (selectedObjectIds.length > 0) {
@@ -3062,21 +2952,21 @@ const useKeyboardShortcuts = ({
     setLockedObjectIds,
     handleUndo,
     handleRedo,
-    copySelectedObjects,
-    pasteCopiedObjects,
+    // copySelectedObjects, // Disabled
+    // pasteCopiedObjects, // Disabled
     deleteSelectedObjects,
     addingObjectType,
     setAddingObjectType,
-    marqueeRectActive,
-    resizingStateActive,
+    // marqueeRectActive, // Always false
+    // resizingStateActive, // Always null
+    objectsRef, // For deleteSelectedObjects
+    setObjects, // For deleteSelectedObjects
   ]);
 };
 
 export default useKeyboardShortcuts;
 
-
 ==== src\components\Configurator\hooks\useModifierKeys.js ====
-// src/components/Configurator/hooks/useModifierKeys.js
 import { useState, useEffect, useCallback } from "react";
 
 const useModifierKeys = (mainContainerRef, svgRef) => {
@@ -3130,7 +3020,6 @@ const useModifierKeys = (mainContainerRef, svgRef) => {
     mainEl.addEventListener("keydown", handleKeyDown);
     mainEl.addEventListener("keyup", handleKeyUp);
 
-    // Also listen on window for keyup in case focus is lost
     window.addEventListener("keyup", handleKeyUp);
 
     return () => {
@@ -3151,124 +3040,64 @@ export default useModifierKeys;
 import { useState, useCallback, useRef } from "react";
 import { getAABB, checkAABBIntersection } from "../configuratorUtils";
 import {
-  PANEL_SIZE_M,
-  SNAP_THRESHOLD_WORLD,
   MIN_DRAG_FOR_MARQUEE_PAN,
   MAX_HISTORY_SIZE,
 } from "../configuratorConstants";
 
 const useMouseInteractions = ({
   objectsRef,
-  setObjects, // from useConfiguratorState
-  setObjectsState, // direct setter from useConfiguratorState for non-history updates
+  // setObjects, // No longer needed for direct manipulation here
+  // setObjectsState, // No longer needed for direct manipulation here
   selectedObjectIds,
   setSelectedObjectIds,
-  lockedObjectIds,
-  setHistory,
+  lockedObjectIds, // Kept for selection logic if needed
+  setHistory, // Kept for adding new objects
   viewTransform,
   screenToWorld,
   screenToWorldRect,
   modifierKeys,
   addingObjectType,
-  setAddingObjectType, // To reset after adding
-  addAndSelectObject, // from useObjectManagement
+  setAddingObjectType,
+  addAndSelectObject,
   mainContainerRef,
   svgRef,
-  setOverlappingObjectIdsProp, // Renamed to avoid conflict
-  activeMode, // новый проп
+  // setOverlappingObjectIdsProp, // Overlaps not relevant for static objects
+  // activeMode, // Not directly used here anymore for static interactions
 }) => {
-  const [draggingState, setDraggingState] = useState(null);
-  const [resizingState, setResizingState] = useState(null);
-  const [marqueeRect, setMarqueeRect] = useState({
-    active: false,
-    startScreenX: 0,
-    startScreenY: 0,
-    currentScreenX: 0,
-    currentScreenY: 0,
-  });
+  const [draggingState, setDraggingState] = useState(null); // Kept for panning
+  const [resizingState, setResizingState] = useState(null); // Effectively disabled
+  const [marqueeRect, setMarqueeRect] = useState({ active: false }); // Effectively disabled
   const [isPanningWithSpace, setIsPanningWithSpace] = useState(false);
-  const [activeSnapLines, setActiveSnapLines] = useState([]);
-  const mouseDownStartPosRef = useRef(null); // Stores {x, y, shiftKeyAtStart}
-
-  const checkAndSetOverlaps = useCallback(() => {
-    const overlaps = new Set();
-    const currentManipulatedIds = resizingState
-      ? [resizingState.objectId]
-      : draggingState?.initialPositions?.map((p) => p.id) || [];
-
-    if (currentManipulatedIds.length > 0) {
-      const activeObjects = objectsRef.current.filter((obj) =>
-        currentManipulatedIds.includes(obj.id),
-      );
-      const staticObjects = objectsRef.current.filter(
-        (obj) => !currentManipulatedIds.includes(obj.id),
-      );
-      activeObjects.forEach((activeObj) => {
-        const activeAABB = getAABB(activeObj);
-        staticObjects.forEach((staticObj) => {
-          const staticAABB = getAABB(staticObj);
-          if (checkAABBIntersection(activeAABB, staticAABB)) {
-            overlaps.add(activeObj.id);
-            overlaps.add(staticObj.id);
-          }
-        });
-      });
-    }
-    setOverlappingObjectIdsProp(Array.from(overlaps));
-  }, [resizingState, draggingState, objectsRef, setOverlappingObjectIdsProp]);
+  const [activeSnapLines, setActiveSnapLines] = useState([]); // Effectively disabled
+  const mouseDownStartPosRef = useRef(null);
 
   const handleMouseDownOnObject = useCallback(
     (e, clickedObjectId) => {
       e.stopPropagation();
       if (addingObjectType) return;
 
-      const objectIsLocked = lockedObjectIds.includes(clickedObjectId);
-      if (objectIsLocked && !modifierKeys.shift) return;
-
       mainContainerRef.current?.focus();
-      mouseDownStartPosRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        shiftKeyAtStart: modifierKeys.shift,
-      };
+      // Simplified selection logic without initiating drag
+      const objectIsLocked = lockedObjectIds.includes(clickedObjectId);
+      if (objectIsLocked && !modifierKeys.shift) {
+        // If locked and not shift-clicking, only select if not already selected
+        if (!selectedObjectIds.includes(clickedObjectId)) {
+            setSelectedObjectIds([clickedObjectId]);
+        }
+        return;
+      }
+
 
       const newSelectedIds = modifierKeys.shift
         ? selectedObjectIds.includes(clickedObjectId)
           ? selectedObjectIds.filter((id) => id !== clickedObjectId)
           : [...selectedObjectIds, clickedObjectId]
-        : selectedObjectIds.includes(clickedObjectId) &&
-            selectedObjectIds.length === 1
-          ? selectedObjectIds
-          : [clickedObjectId];
+        : selectedObjectIds.includes(clickedObjectId) && selectedObjectIds.length === 1 && selectedObjectIds[0] === clickedObjectId
+          ? selectedObjectIds // Keep selection if clicking the same single selected object
+          : [clickedObjectId]; // Otherwise, select only the clicked one
       setSelectedObjectIds(newSelectedIds);
-
-      if (activeMode === 'modular') {
-        setDraggingState(null); // Запретить drag, но разрешить выделение
-        return;
-      }
-
-      if (
-        newSelectedIds.length > 0 &&
-        (!objectIsLocked || modifierKeys.shift)
-      ) {
-        const initialPositions = objectsRef.current
-          .filter((obj) => newSelectedIds.includes(obj.id))
-          .map((obj) => ({
-            id: obj.id,
-            x: obj.x,
-            y: obj.y,
-            rotation: obj.rotation,
-          }));
-        setDraggingState({
-          primaryDraggedObjectId: clickedObjectId,
-          startScreenX: e.clientX,
-          startScreenY: e.clientY,
-          initialPositions: initialPositions,
-          objectsBeforeOp: [...objectsRef.current], // For history
-        });
-      } else {
-        setDraggingState(null);
-      }
+      setDraggingState(null); // Ensure no dragging state is set
+      setResizingState(null); // Ensure no resizing state is set
     },
     [
       addingObjectType,
@@ -3276,56 +3105,29 @@ const useMouseInteractions = ({
       modifierKeys.shift,
       selectedObjectIds,
       setSelectedObjectIds,
-      objectsRef,
       mainContainerRef,
-      activeMode,
     ],
   );
 
-  const handleMouseDownOnResizeHandle = useCallback(
-    (e, objectId, handleType) => {
-      if (activeMode === 'modular') return; // Запретить resize
-      e.stopPropagation();
-      const obj = objectsRef.current.find((o) => o.id === objectId);
-      if (!obj) return;
-      if (obj.type === "module") return;
-      const objectIsLocked = lockedObjectIds.includes(objectId);
-      if (objectIsLocked && !modifierKeys.shift) return;
-
-      mainContainerRef.current?.focus();
-      setResizingState({
-        objectId,
-        handleType,
-        startScreenX: e.clientX,
-        startScreenY: e.clientY,
-        originalObject: { ...obj },
-        objectsBeforeOp: [...objectsRef.current], // For history
-      });
-      setDraggingState(null); // Ensure no conflict with dragging
-    },
-    [lockedObjectIds, modifierKeys.shift, objectsRef, mainContainerRef, activeMode],
-  );
+  const handleMouseDownOnResizeHandle = useCallback((e) => {
+    e.stopPropagation();
+    // Do nothing, resizing is disabled
+  }, []);
 
   const handleMouseDownOnCanvas = useCallback(
     (e) => {
       mainContainerRef.current?.focus();
-      if (e.button !== 0) return; // Only left click
-      setActiveSnapLines([]);
-      mouseDownStartPosRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        shiftKeyAtStart: modifierKeys.shift,
-      };
+      if (e.button !== 0) return;
 
       if (addingObjectType) {
         const { x: worldX, y: worldY } = screenToWorld(e.clientX, e.clientY);
+        // History is saved by addAndSelectObject
         const newId = addAndSelectObject(addingObjectType, worldX, worldY);
         setSelectedObjectIds([newId]);
         setAddingObjectType(null);
       } else if (modifierKeys.spacebar) {
         setIsPanningWithSpace(true);
         setDraggingState({
-          // Re-using draggingState for panning info
           isPanning: true,
           startScreenX: e.clientX,
           startScreenY: e.clientY,
@@ -3333,17 +3135,13 @@ const useMouseInteractions = ({
           initialViewY: viewTransform.y,
         });
       } else {
-        setMarqueeRect({
-          startScreenX: e.clientX,
-          startScreenY: e.clientY,
-          currentScreenX: e.clientX,
-          currentScreenY: e.clientY,
-          active: false, // Will be set to true on mousemove if drag exceeds threshold
-        });
+        // Clear selection if not shift-clicking and not starting a pan/add
         if (!modifierKeys.shift) {
           setSelectedObjectIds([]);
         }
       }
+      setMarqueeRect({ active: false }); // Ensure marquee is never active
+      setActiveSnapLines([]);
     },
     [
       addingObjectType,
@@ -3355,371 +3153,66 @@ const useMouseInteractions = ({
       viewTransform.x,
       viewTransform.y,
       mainContainerRef,
+      setHistory, // Ensure setHistory is available if addAndSelectObject uses it implicitly
     ],
   );
 
   const handleMouseMove = useCallback(
-    (e) => {
-      if (
-        addingObjectType &&
-        !draggingState?.primaryDraggedObjectId &&
-        !resizingState
-      )
-        return;
-
+    (_e) => {
+      // Panning is handled in SvgCanvas's localHandleMouseMove
+      // No object dragging or resizing logic needed here
       if (isPanningWithSpace && draggingState?.isPanning) {
-        const dxScreen = e.clientX - draggingState.startScreenX;
-        const dyScreen = e.clientY - draggingState.startScreenY;
-        // This should call setViewTransform from useViewTransform hook,
-        // but hooks cannot call other hooks' setters directly except via parent.
-        // For now, this logic needs to be in Configurator.jsx or SvgCanvas.jsx
-        // Or, viewTransform setter is passed to this hook. Let's assume it's handled by parent.
-        // Here, we just update state for cursor or visual feedback if any.
-        // Actual viewTransform update is in SvgCanvas or Configurator.
-        // Let's pass setViewTransform to this hook for simplicity in this refactor.
-        // No, that makes this hook too powerful. SvgCanvas should handle this.
-        // This hook focuses on object interactions. Panning is a view interaction.
-        // We'll leave the panning logic here and assume SvgCanvas calls setViewTransform.
-        // The `draggingState` (for `isPanning`) is returned by this hook for SvgCanvas to use.
-        return; // Panning logic will be in SvgCanvas based on draggingState.isPanning
-      }
-
-      // Marquee activation
-      if (
-        mouseDownStartPosRef.current &&
-        !draggingState?.initialPositions &&
-        !resizingState &&
-        !addingObjectType &&
-        !isPanningWithSpace
-      ) {
-        const dx = Math.abs(e.clientX - mouseDownStartPosRef.current.x);
-        const dy = Math.abs(e.clientY - mouseDownStartPosRef.current.y);
-        if (
-          !marqueeRect.active &&
-          (dx > MIN_DRAG_FOR_MARQUEE_PAN || dy > MIN_DRAG_FOR_MARQUEE_PAN)
-        ) {
-          setMarqueeRect((prev) => ({
-            ...prev,
-            startScreenX: mouseDownStartPosRef.current.x,
-            startScreenY: mouseDownStartPosRef.current.y,
-            currentScreenX: e.clientX,
-            currentScreenY: e.clientY,
-            active: true,
-          }));
-        } else if (marqueeRect.active) {
-          setMarqueeRect((prev) => ({
-            ...prev,
-            currentScreenX: e.clientX,
-            currentScreenY: e.clientY,
-          }));
-        }
-      }
-
-      // Resizing logic
-      if (resizingState) {
-        const {
-          objectId,
-          handleType,
-          startScreenX,
-          startScreenY,
-          originalObject,
-        } = resizingState;
-        const obj = objectsRef.current.find((o) => o.id === objectId);
-        if (obj && obj.type === "module") return;
-        const scale = viewTransform.scale;
-        const dxScreen = e.clientX - startScreenX;
-        const dyScreen = e.clientY - startScreenY;
-        let dxWorld = dxScreen / scale;
-        let dyWorld = dyScreen / scale;
-
-        // Simplified rotation logic from original for brevity, full logic would be complex.
-        // Assume original logic for rotated resize is complex and needs careful porting.
-        // This is a placeholder for the detailed resize math.
-        let newX = originalObject.x;
-        let newY = originalObject.y;
-        let newWidth = originalObject.width;
-        let newHeight = originalObject.height;
-
-        if (
-          originalObject.rotation === 0 ||
-          originalObject.rotation % 360 === 0
-        ) {
-          if (handleType.includes("r")) newWidth += dxWorld;
-          if (handleType.includes("l")) {
-            newWidth -= dxWorld;
-            newX = originalObject.x + dxWorld;
-          }
-          if (handleType.includes("b")) newHeight += dyWorld;
-          if (handleType.includes("t")) {
-            newHeight -= dyWorld;
-            newY = originalObject.y + dyWorld;
-          }
-        } else {
-          // Placeholder for rotated resize:
-          // Needs to transform dxWorld, dyWorld into object's local coords
-          const angleRad = (-originalObject.rotation * Math.PI) / 180;
-          const cosA = Math.cos(angleRad);
-          const sinA = Math.sin(angleRad);
-          const localDx = dxWorld * cosA + dyWorld * sinA;
-          const localDy = -dxWorld * sinA + dyWorld * cosA;
-
-          if (handleType.includes("r")) newWidth += localDx;
-          if (handleType.includes("l")) {
-            newWidth -= localDx;
-            // This part needs careful derivation for rotated object origin shift
-            newX += dxWorld * cosA * cosA + dyWorld * sinA * cosA;
-            newY += dxWorld * cosA * sinA + dyWorld * sinA * sinA;
-          }
-          if (handleType.includes("b")) newHeight += localDy;
-          if (handleType.includes("t")) {
-            newHeight -= localDy;
-            newX += -dxWorld * sinA * cosA + dyWorld * cosA * cosA;
-            newY += dxWorld * sinA * sinA + dyWorld * cosA * cosA;
-          }
-        }
-
-        newWidth = Math.max(0.01, newWidth);
-        newHeight = Math.max(0.01, newHeight);
-
-        setObjectsState((prevObjs) =>
-          prevObjs.map((obj) => {
-            if (obj.id === objectId)
-              return {
-                ...obj,
-                width: newWidth,
-                height: newHeight,
-                x: newX,
-                y: newY,
-              };
-            return obj;
-          }),
-        );
-        checkAndSetOverlaps();
+        // Panning logic itself is in SvgCanvas, this just maintains state
         return;
-      }
-
-      // Dragging logic
-      if (
-        draggingState &&
-        draggingState.initialPositions &&
-        draggingState.initialPositions.length > 0
-      ) {
-        const currentSnapLines = [];
-        const dxScreen = e.clientX - draggingState.startScreenX;
-        const dyScreen = e.clientY - draggingState.startScreenY;
-        let dxWorld = dxScreen / viewTransform.scale;
-        let dyWorld = dyScreen / viewTransform.scale;
-        let finalDx = dxWorld;
-        let finalDy = dyWorld;
-
-        // Snapping logic (simplified, full logic from original is extensive)
-        if (modifierKeys.ctrl && draggingState.primaryDraggedObjectId) {
-          // ... (Full snapping logic here) ...
-        } else if (modifierKeys.alt && draggingState.primaryDraggedObjectId) {
-          const pOI = draggingState.initialPositions.find(
-            (p) => p.id === draggingState.primaryDraggedObjectId,
-          );
-          if (pOI) {
-            const snappedPosX =
-              Math.round((pOI.x + dxWorld) / PANEL_SIZE_M) * PANEL_SIZE_M;
-            const snappedPosY =
-              Math.round((pOI.y + dyWorld) / PANEL_SIZE_M) * PANEL_SIZE_M;
-            finalDx = snappedPosX - pOI.x;
-            finalDy = snappedPosY - pOI.y;
-          }
-        }
-
-        setObjectsState((prevObjs) =>
-          prevObjs.map((obj) => {
-            const initialPos = draggingState.initialPositions.find(
-              (p) => p.id === obj.id,
-            );
-            if (initialPos) {
-              if (lockedObjectIds.includes(obj.id) && !modifierKeys.shift)
-                return obj;
-              return {
-                ...obj,
-                x: initialPos.x + finalDx,
-                y: initialPos.y + finalDy,
-              };
-            }
-            return obj;
-          }),
-        );
-        setActiveSnapLines(currentSnapLines);
-        checkAndSetOverlaps();
-      } else {
-        if (!marqueeRect.active) setActiveSnapLines([]);
       }
     },
-    [
-      addingObjectType,
-      draggingState,
-      resizingState,
-      isPanningWithSpace,
-      marqueeRect.active,
-      viewTransform.scale,
-      modifierKeys,
-      selectedObjectIds,
-      lockedObjectIds,
-      checkAndSetOverlaps,
-      PANEL_SIZE_M,
-      setObjectsState, // Use direct setter for mouse move updates
-      // SNAP_THRESHOLD_WORLD, getAABB, (needed for full snap logic)
-    ],
+    [isPanningWithSpace, draggingState],
   );
 
   const handleMouseUp = useCallback(
-    (e) => {
-      const currentMouseDownStartPos = mouseDownStartPosRef.current;
-      let opMadeChange = false;
-      let objectsBeforeCurrentOperation = null;
-
-      if (draggingState && draggingState.objectsBeforeOp) {
-        objectsBeforeCurrentOperation = draggingState.objectsBeforeOp;
-        if (
-          JSON.stringify(objectsBeforeCurrentOperation) !==
-          JSON.stringify(objectsRef.current)
-        ) {
-          opMadeChange = true;
-        }
-      } else if (resizingState && resizingState.objectsBeforeOp) {
-        objectsBeforeCurrentOperation = resizingState.objectsBeforeOp;
-        if (
-          JSON.stringify(objectsBeforeCurrentOperation) !==
-          JSON.stringify(objectsRef.current)
-        ) {
-          opMadeChange = true;
-        }
-      }
-
-      if (opMadeChange && objectsBeforeCurrentOperation) {
-        setHistory((prevH) => ({
-          undo: [objectsBeforeCurrentOperation, ...prevH.undo].slice(
-            0,
-            MAX_HISTORY_SIZE,
-          ),
-          redo: [],
-        }));
-      }
-
+    (_e) => {
       if (isPanningWithSpace) setIsPanningWithSpace(false);
+      
+      // No history saving for drag/resize as they are disabled
+      // Marquee selection is also disabled
 
-      if (marqueeRect.active) {
-        const worldMarquee = screenToWorldRect(marqueeRect);
-        const newlySelectedInMarquee = objectsRef.current
-          .filter((obj) => {
-            const objectIsLocked = lockedObjectIds.includes(obj.id);
-            return (
-              !objectIsLocked ||
-              (objectIsLocked && currentMouseDownStartPos?.shiftKeyAtStart)
-            );
-          })
-          .filter((obj) => checkAABBIntersection(getAABB(obj), worldMarquee))
-          .map((obj) => obj.id);
-
-        if (currentMouseDownStartPos?.shiftKeyAtStart) {
-          setSelectedObjectIds((prevIds) =>
-            Array.from(new Set([...prevIds, ...newlySelectedInMarquee])),
-          );
-        } else {
-          setSelectedObjectIds(newlySelectedInMarquee);
-        }
-      } else if (
-        !draggingState?.initialPositions &&
-        !resizingState &&
-        !modifierKeys.spacebar &&
-        !addingObjectType &&
-        currentMouseDownStartPos
-      ) {
-        // Click logic (not drag, not marquee)
-        const downPos = currentMouseDownStartPos;
-        const dx =
-          e.clientX !== undefined ? Math.abs(e.clientX - downPos.x) : 0;
-        const dy =
-          e.clientY !== undefined ? Math.abs(e.clientY - downPos.y) : 0;
-
-        if (dx < MIN_DRAG_FOR_MARQUEE_PAN && dy < MIN_DRAG_FOR_MARQUEE_PAN) {
-          if (!downPos.shiftKeyAtStart && e.target) {
-            const clickedElement =
-              e.target instanceof Element ? e.target : null;
-            const clickedOnObject =
-              clickedElement && clickedElement.closest("[data-object-id]");
-            const clickedOnResizeHandle =
-              clickedElement && clickedElement.closest("[data-resize-handle]");
-            const targetIsCanvasOrGrid =
-              svgRef.current === e.target ||
-              e.target.id === "grid" ||
-              e.target.parentNode?.id === "grid";
-
-            if (
-              targetIsCanvasOrGrid &&
-              !clickedOnObject &&
-              !clickedOnResizeHandle
-            ) {
-              setSelectedObjectIds([]);
-            }
-          }
-        }
-      }
-
-      setMarqueeRect((prev) => ({ ...prev, active: false }));
       setDraggingState(null);
       setResizingState(null);
+      setMarqueeRect({ active: false });
       setActiveSnapLines([]);
-      setOverlappingObjectIdsProp([]); // Reset overlaps
+      // setOverlappingObjectIdsProp([]); // No overlaps for static
       mouseDownStartPosRef.current = null;
     },
     [
       isPanningWithSpace,
-      marqueeRect,
-      screenToWorldRect,
-      draggingState,
-      resizingState,
-      modifierKeys.spacebar,
-      addingObjectType,
-      lockedObjectIds,
-      objectsRef,
-      setHistory,
-      setSelectedObjectIds,
-      setOverlappingObjectIdsProp,
-      svgRef,
-      // checkAABBIntersection, getAABB, MIN_DRAG_FOR_MARQUEE_PAN (needed for full logic)
+      // setHistory, // Not needed here anymore
+      // objectsRef, // Not needed here anymore
+      // selectedObjectIds, // Not needed for marquee here
+      // setSelectedObjectIds, // Only for marquee which is disabled
+      // screenToWorldRect, // Only for marquee
+      // lockedObjectIds, // Only for marquee
+      // setOverlappingObjectIdsProp // Disabled
     ],
   );
 
   const handleMouseLeave = useCallback(() => {
     if (isPanningWithSpace) setIsPanningWithSpace(false);
-    if (marqueeRect.active)
-      setMarqueeRect((prev) => ({ ...prev, active: false }));
-
     if (draggingState || resizingState) {
-      // Simulate a mouse up to finalize any ongoing operation
-      handleMouseUp({}); // Pass empty event, or undefined.
+      handleMouseUp({});
     }
-
-    setActiveSnapLines([]);
-    setOverlappingObjectIdsProp([]);
-    if (!draggingState && !resizingState && !marqueeRect.active) {
-      mouseDownStartPosRef.current = null;
-    }
-  }, [
-    isPanningWithSpace,
-    marqueeRect.active,
-    draggingState,
-    resizingState,
-    handleMouseUp,
-    setOverlappingObjectIdsProp,
-  ]);
+    // setActiveSnapLines([]); // Already reset in mouseUp
+    // setOverlappingObjectIdsProp([]); // Already reset in mouseUp
+    // mouseDownStartPosRef.current = null; // Already reset in mouseUp
+  }, [isPanningWithSpace, draggingState, resizingState, handleMouseUp]);
 
   return {
-    draggingState,
-    resizingState,
-    marqueeRect,
-    isPanningWithSpace, // For SvgCanvas to handle pan and cursor
-    activeSnapLines,
+    draggingState, // Still needed for panning state
+    resizingState: null, // Always null
+    marqueeRect: { active: false }, // Always inactive
+    isPanningWithSpace,
+    activeSnapLines: [], // Always empty
     handleMouseDownOnObject,
-    handleMouseDownOnResizeHandle,
+    handleMouseDownOnResizeHandle, // Will do nothing
     handleMouseDownOnCanvas,
     handleMouseMove,
     handleMouseUp,
@@ -3729,25 +3222,27 @@ const useMouseInteractions = ({
 
 export default useMouseInteractions;
 
-
 ==== src\components\Configurator\hooks\useObjectManagement.js ====
-// src/components/Configurator/hooks/useObjectManagement.js
 import { useCallback } from "react";
+import { toast } from 'react-toastify'; 
 import {
   WALL_THICKNESS_M,
   DOOR_WIDTH_M as APP_DOOR_WIDTH_M,
   WINDOW_WIDTH_M as APP_WINDOW_WIDTH_M,
+  DEFAULT_MODULE_WIDTH_M,
+  DEFAULT_MODULE_HEIGHT_M,
 } from "../appConstants";
 import { defaultObjectSizes } from "../configuratorConstants";
 import {
-    getAABB, 
-    checkAABBIntersection, 
+    getAABB,
+    checkAABBIntersection,
     getDoorLeafCorners,
-    isDoorLeafColliding 
-} from "../configuratorUtils"; 
+    isDoorLeafColliding,
+    rotatePoint,
+} from "../configuratorUtils";
 
 let objectIdCounter = 0;
-const getNextId = () => `obj-${objectIdCounter++}`;
+export const getNextId = () => `obj-${objectIdCounter++}`;
 
 export const createObject = (type, x, y, width, height, data = {}) => {
   const baseObj = {
@@ -3764,20 +3259,24 @@ export const createObject = (type, x, y, width, height, data = {}) => {
   if (type === "door") {
     baseObj.isOpen = data.isOpen === undefined ? false : data.isOpen;
     baseObj.openingAngle =
-      data.openingAngle === undefined ? 90 : data.openingAngle; 
+      data.openingAngle === undefined ? 90 : data.openingAngle;
     baseObj.hingeSide = data.hingeSide || "left";
     baseObj.openingDirection = data.openingDirection || "inward";
+  }
+  if (type === "module") {
+      baseObj.mirroredX = data.mirroredX || false;
+      baseObj.mirroredY = data.mirroredY || false;
   }
   return baseObj;
 };
 
 export const getInitialObjects = () => {
-  objectIdCounter = 0;
+  objectIdCounter = 0; 
   const initialObjects = [];
   const WT = WALL_THICKNESS_M;
-
   const houseWidthOuter = 6;
   const houseDepthOuter = 3.5;
+  const gap = 0.1;
 
   initialObjects.push(
     createObject("wall", 0, 0, houseWidthOuter, WT, { label: "Верхняя стена" }),
@@ -3809,7 +3308,7 @@ export const getInitialObjects = () => {
       hingeSide: "left",
       openingDirection: "inward",
       isOpen: false,
-      openingAngle: 0, 
+      openingAngle: 0,
       label: "Входная дверь",
     }),
   );
@@ -3826,7 +3325,6 @@ export const getInitialObjects = () => {
     ),
   );
 
-  const gap = 0.1;
   const sofaWidth = 1.8;
   const sofaDepth = 0.8;
   initialObjects.push(
@@ -3929,7 +3427,7 @@ export const getInitialObjects = () => {
         hingeSide: "right",
         openingDirection: "inward",
         isOpen: false,
-        openingAngle: 0, 
+        openingAngle: 0,
         label: "Дверь в ванную",
       },
     ),
@@ -3956,27 +3454,39 @@ const useObjectManagement = (
   selectedObjectIds,
   lockedObjectIds,
   modifierKeys,
-  objectsRef // Используем objectsRef напрямую
+  objectsRef,
+  activeMode,
 ) => {
   const addObject = useCallback(
-    (type, x, y, width, height, data) => {
+    (type, x, y, width, height, data, skipHistory = false) => {
       const newObject = createObject(type, x, y, width, height, data);
-      setObjects((prev) => [...prev, newObject], true);
+      setObjects((prev) => [...prev, newObject], !skipHistory);
       return newObject;
     },
     [setObjects],
   );
 
   const updateObject = useCallback(
-    (id, updates) => {
+    (id, updates, skipHistory = false) => {
       setObjects(
         (prev) =>
           prev.map((obj) => (obj.id === id ? { ...obj, ...updates } : obj)),
-        true,
+        !skipHistory,
       );
     },
     [setObjects],
   );
+  
+  const updateMultipleObjects = useCallback((updatesArray, saveToHistory = true) => {
+    setObjects(prevObjects => {
+        const updatedObjects = prevObjects.map(obj => {
+            const updateForThisObject = updatesArray.find(u => u.id === obj.id);
+            return updateForThisObject ? { ...obj, ...updateForThisObject.updates } : obj;
+        });
+        return updatedObjects;
+    }, saveToHistory);
+  }, [setObjects]);
+
 
   const deleteObjectById = useCallback(
     (id) => {
@@ -3993,9 +3503,7 @@ const useObjectManagement = (
       if (selectedObjectIds.length !== 1) return;
       const targetId = selectedObjectIds[0];
       
-      // Используем objectsRef.current для доступа к актуальному массиву объектов
       if (!objectsRef || !objectsRef.current) {
-        console.error("useObjectManagement: objectsRef or objectsRef.current is undefined.");
         return;
       }
       const currentObjects = objectsRef.current; 
@@ -4006,7 +3514,7 @@ const useObjectManagement = (
 
       const objectIsLocked = lockedObjectIds.includes(targetId);
       if (objectIsLocked && !modifierKeys.shift) {
-        console.warn("Cannot modify locked object properties without Shift key.");
+        toast.warn(`Объект ${objToUpdate.label || objToUpdate.id} заблокирован.`);
         return;
       }
 
@@ -4014,7 +3522,7 @@ const useObjectManagement = (
       if (typeof objToUpdate[property] === 'number' && property !== 'rotation') { 
           const numVal = parseFloat(value);
           if (isNaN(numVal)) {
-              console.warn(`Invalid number format for ${property}: ${value}. Update cancelled.`);
+              toast.error(`Неверный формат числа для ${property}: ${value}`);
               return;
           }
           parsedValue = numVal;
@@ -4035,7 +3543,12 @@ const useObjectManagement = (
             newOpeningAngle = 0;
           }
         } else { 
-          newOpeningAngle = parsedValue;
+          const potentialAngle = parseFloat(parsedValue); 
+          if (isNaN(potentialAngle)) {
+              toast.error(`Неверный угол: ${value}`);
+              return;
+          }
+          newOpeningAngle = potentialAngle;
           if (newOpeningAngle <= 0) {
             newIsOpen = false;
             newOpeningAngle = 0; 
@@ -4065,8 +3578,14 @@ const useObjectManagement = (
           
           if (canOpenAtAll) {
             finalAngle = resolvedAngle;
+             if (targetAngle > finalAngle && property === "openingAngle") {
+                 toast.info(`Дверь '${objToUpdate.label || targetId}' открыта до ${finalAngle.toFixed(0)}° из-за препятствия.`); 
+             } else if (targetAngle > finalAngle && property === "isOpen") {
+                 toast.info(`Дверь '${objToUpdate.label || targetId}' открыта до ${finalAngle.toFixed(0)}° из-за препятствия.`);
+             }
           } else { 
-            console.warn(`Door ${targetId} cannot open to ${targetAngle}° due to collision. Keeping closed.`);
+            const msg = `Дверь '${objToUpdate.label || targetId}' не может открыться (${targetAngle.toFixed(0)}°) из-за столкновения.`;
+            toast.warn(msg); 
             finalAngle = 0;
             finalIsOpen = false;
           }
@@ -4075,25 +3594,29 @@ const useObjectManagement = (
             finalIsOpen = false;
         }
         
-        setObjects(
-          (prev) =>
-            prev.map((obj) =>
-              obj.id === targetId ? { ...obj, isOpen: finalIsOpen, openingAngle: finalAngle } : obj,
-            ),
-          true,
-        );
+        if (objToUpdate.isOpen !== finalIsOpen || objToUpdate.openingAngle !== finalAngle) {
+            setObjects(
+              (prev) =>
+                prev.map((obj) =>
+                  obj.id === targetId ? { ...obj, isOpen: finalIsOpen, openingAngle: finalAngle } : obj,
+                ),
+              true,
+            );
+        }
         return; 
       }
 
-      setObjects(
-        (prev) =>
-          prev.map((obj) =>
-            obj.id === targetId ? { ...obj, [property]: parsedValue } : obj,
-          ),
-        true,
-      );
+      if (objToUpdate[property] !== parsedValue) {
+          setObjects(
+            (prev) =>
+              prev.map((obj) =>
+                obj.id === targetId ? { ...obj, [property]: parsedValue } : obj,
+              ),
+            true,
+          );
+      }
     },
-    [selectedObjectIds, objectsRef, lockedObjectIds, modifierKeys.shift, setObjects], // Добавлен objectsRef в зависимости useCallback
+    [selectedObjectIds, objectsRef, lockedObjectIds, modifierKeys.shift, setObjects], 
   );
 
   const addAndSelectObject = useCallback(
@@ -4112,6 +3635,94 @@ const useObjectManagement = (
     [setObjects],
   );
 
+  const rotateModule180 = useCallback((moduleId) => {
+    const moduleToRotate = objectsRef.current.find(obj => obj.id === moduleId && obj.type === 'module');
+    if (!moduleToRotate) return;
+
+    const newRotation = (moduleToRotate.rotation + 180) % 360;
+    const childUpdates = [];
+    const moduleCenterX = moduleToRotate.x + moduleToRotate.width / 2;
+    const moduleCenterY = moduleToRotate.y + moduleToRotate.height / 2;
+
+    objectsRef.current.forEach(obj => {
+        if (obj.parentId === moduleId) {
+            const localX = obj.x - moduleToRotate.x;
+            const localY = obj.y - moduleToRotate.y;
+            
+            const rotatedLocalPoint = rotatePoint({x: localX, y: localY}, Math.PI, {x: moduleToRotate.width/2, y: moduleToRotate.height/2});
+            
+            const newChildX = moduleToRotate.x + (moduleToRotate.width - (rotatedLocalPoint.x + obj.width));
+            const newChildY = moduleToRotate.y + (moduleToRotate.height - (rotatedLocalPoint.y + obj.height));
+
+            const newChildRotation = (obj.rotation + 180) % 360;
+            
+            let newSide = obj.side;
+            if(obj.side === 'top') newSide = 'bottom';
+            else if(obj.side === 'bottom') newSide = 'top';
+            else if(obj.side === 'left') newSide = 'right';
+            else if(obj.side === 'right') newSide = 'left';
+
+            childUpdates.push({
+                id: obj.id,
+                updates: {
+                    x: newChildX,
+                    y: newChildY,
+                    rotation: newChildRotation,
+                    side: newSide,
+                }
+            });
+        }
+    });
+    updateMultipleObjects([{id: moduleId, updates: { rotation: newRotation }}, ...childUpdates], true);
+
+  }, [objectsRef, updateMultipleObjects]);
+
+  const mirrorModule = useCallback((moduleId, axis) => {
+    const moduleToMirror = objectsRef.current.find(obj => obj.id === moduleId && obj.type === 'module');
+    if (!moduleToMirror) return;
+
+    const childUpdates = [];
+    let moduleMirroredX = moduleToMirror.mirroredX;
+    let moduleMirroredY = moduleToMirror.mirroredY;
+
+    objectsRef.current.forEach(child => {
+        if (child.parentId === moduleId) {
+            let newChildX = child.x;
+            let newChildY = child.y;
+            let newChildRotation = child.rotation;
+            let newHingeSide = child.hingeSide;
+            let newSide = child.side;
+
+            const localX = child.x - moduleToMirror.x;
+            const localY = child.y - moduleToMirror.y;
+
+            if (axis === 'x') {
+                newChildX = moduleToMirror.x + (moduleToMirror.width - localX - child.width);
+                if (child.type === 'door') {
+                    newHingeSide = child.hingeSide === 'left' ? 'right' : 'left';
+                }
+                newChildRotation = (360 - child.rotation) % 360; 
+                if(child.side === 'left') newSide = 'right';
+                else if(child.side === 'right') newSide = 'left';
+                moduleMirroredX = !moduleToMirror.mirroredX;
+            } else if (axis === 'y') {
+                newChildY = moduleToMirror.y + (moduleToMirror.height - localY - child.height);
+                newChildRotation = (180 - child.rotation + 360) % 360;
+                if(child.side === 'top') newSide = 'bottom';
+                else if(child.side === 'bottom') newSide = 'top';
+                moduleMirroredY = !moduleToMirror.mirroredY;
+            }
+            
+            const updates = { x: newChildX, y: newChildY, rotation: newChildRotation, side: newSide };
+            if (child.type === 'door') updates.hingeSide = newHingeSide;
+            childUpdates.push({ id: child.id, updates });
+        }
+    });
+    updateMultipleObjects([{id: moduleId, updates: { mirroredX: moduleMirroredX, mirroredY: moduleMirroredY }}, ...childUpdates], true);
+
+  }, [objectsRef, updateMultipleObjects]);
+
+
   return {
     createObject,
     getInitialObjects,
@@ -4121,13 +3732,17 @@ const useObjectManagement = (
     updateSelectedObjectProperty,
     addAndSelectObject,
     defaultObjectSizes,
+    rotateModule180,
+    mirrorModule: mirrorModule,
+    mirrorModuleX: (moduleId) => mirrorModule(moduleId, 'x'),
+    mirrorModuleY: (moduleId) => mirrorModule(moduleId, 'y'),
   };
 };
 
 export default useObjectManagement;
 
+
 ==== src\components\Configurator\hooks\useViewTransform.js ====
-// src/components/Configurator/hooks/useViewTransform.js
 import { useState, useCallback, useEffect } from "react";
 import { INITIAL_PPM } from "../configuratorConstants";
 
@@ -4139,7 +3754,6 @@ const useViewTransform = (svgRef) => {
   });
   const [initialized, setInitialized] = useState(false);
 
-  // Центрируем мир по центру SVG при первом рендере
   useEffect(() => {
     if (initialized) return;
     const svg = svgRef.current;
@@ -4225,20 +3839,15 @@ const useViewTransform = (svgRef) => {
 
 export default useViewTransform;
 
-
 ==== src\components\Configurator\modes\FramelessMode.jsx ====
+// src/components/Configurator/modes/FramelessMode.jsx
 import React from "react";
 import PropTypes from 'prop-types';
 import { FaCube, FaPlusSquare } from "react-icons/fa";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { DEFAULT_PANEL_WIDTH_M } from '../appConstants';
+import { DEFAULT_PANEL_WIDTH_M, DEFAULT_MODULE_WIDTH_M, DEFAULT_MODULE_HEIGHT_M, WALL_THICKNESS_M } from '../appConstants';
 
-// Constants for construction
-const MODULE_WIDTH_METERS = 6;
-const MODULE_DEPTH_METERS = 2.4;
-const WALL_THICKNESS_M = 0.15;
-const PANEL_SIZE_M = 1.15;
 
 const FramelessMode = ({ 
   addObject, 
@@ -4252,23 +3861,22 @@ const FramelessMode = ({
       return;
     }
 
-    // Attempt to place the new module not overlapping existing ones
     const existingObjects = getObjects ? getObjects() : [];
-    let newX = 1; // Start at 1m
-    let newY = 1; // Start at 1m
+    let newX = 1; 
+    let newY = 1; 
 
     if (existingObjects.length > 0) {
       const lastObject = existingObjects[existingObjects.length - 1];
-      newX = lastObject.x + lastObject.width + 1; // Place 1m to the right of the last object
+      newX = lastObject.x + lastObject.width + 1; 
       newY = lastObject.y;
     }
 
     const moduleObj = addObject(
-      "panel", // Or a new 'module' type if defined with special rendering
+      "panel", 
       newX,
       newY,
-      MODULE_WIDTH_METERS,
-      MODULE_DEPTH_METERS,
+      DEFAULT_MODULE_WIDTH_M,
+      DEFAULT_MODULE_HEIGHT_M,
       { name: "Standard Module" },
     );
     if (moduleObj) {
@@ -4287,11 +3895,11 @@ const FramelessMode = ({
       : { x: 2, y: 2 };
 
     const wallObj = addObject(
-      "wall", // Assuming 'wall' type has distinct rendering
-      worldMouseX - PANEL_SIZE_M / 2, // Center the wall
+      "wall", 
+      worldMouseX - DEFAULT_PANEL_WIDTH_M / 2, 
       worldMouseY - WALL_THICKNESS_M / 2,
-      PANEL_SIZE_M, // Wall length of one panel
-      WALL_THICKNESS_M, // Wall thickness
+      DEFAULT_PANEL_WIDTH_M, 
+      WALL_THICKNESS_M, 
       { name: "Internal Wall" },
     );
     if (wallObj) {
@@ -4308,7 +3916,7 @@ const FramelessMode = ({
         <button
           onClick={handleAddModule}
           className="flex items-center justify-center px-3 py-1.5 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
-          title="Добавить стандартный модуль (6x2.4м)"
+          title={`Добавить стандартный модуль (${DEFAULT_MODULE_WIDTH_M}x${DEFAULT_MODULE_HEIGHT_M}м)`}
         >
           <FaCube className="mr-2" /> Добавить Модуль
         </button>
@@ -4333,14 +3941,11 @@ FramelessMode.propTypes = {
 
 export default FramelessMode;
 
-
 ==== src\components\Configurator\modes\FrameMode.jsx ====
 import React from "react";
 import PropTypes from 'prop-types';
 
 const FrameMode = ({ addObject, getObjects }) => {
-  // Placeholder for Frame Mode
-  // This will be implemented later
   return null;
 };
 
@@ -4351,20 +3956,23 @@ FrameMode.propTypes = {
 
 export default FrameMode;
 
-
 ==== src\components\Configurator\modes\ModularMode.jsx ====
-import React, { useState } from 'react';
+// src/components/Configurator/modes/ModularMode.jsx
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FaFilePdf } from "react-icons/fa";
+import { DEFAULT_MODULE_WIDTH_M, DEFAULT_MODULE_HEIGHT_M, WALL_THICKNESS_M, DOOR_WIDTH_M } from '../appConstants';
+import { defaultObjectSizes } from '../configuratorConstants';
+import { rotatePoint } from '../configuratorUtils';
 
-// SVG-компонент архитектурной платформы
-const PlatformVisual = ({ width = 6, height = 2, label = "Выберите и добавьте новый контейнер" }) => {
+
+const PlatformVisual = ({ width = DEFAULT_MODULE_WIDTH_M, height = DEFAULT_MODULE_HEIGHT_M, label = "Выберите и добавьте новый контейнер" }) => {
   const scale = 50;
   const w = width * scale;
   const h = height * scale;
   const pad = 8;
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: "100%" }}>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: "auto", maxHeight: "150px" }}>
       <rect x={0} y={0} width={w} height={h} fill="#fff" stroke="#888" strokeWidth={2} />
       <pattern id="hatch-platform" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
         <line x1="0" y1="0" x2="0" y2="8" stroke="#bbb" strokeWidth="1" />
@@ -4377,33 +3985,41 @@ const PlatformVisual = ({ width = 6, height = 2, label = "Выберите и д
   );
 };
 
-// SVG-заглушка для миниатюры модуля
-const ModuleThumb = ({ width = 60, height = 32 }) => (
-  <svg width={width} height={height} viewBox="0 0 60 32" fill="none">
-    <rect x="1" y="1" width="58" height="30" rx="3" fill="#f3f4f6" stroke="#333" strokeWidth="2" />
-    <rect x="6" y="6" width="15" height="8" fill="#ddd" stroke="#aaa" strokeWidth="1" />
-    <rect x="40" y="18" width="10" height="6" fill="#ddd" stroke="#aaa" strokeWidth="1" />
-    <rect x="25" y="12" width="10" height="8" fill="#eee" stroke="#bbb" strokeWidth="1" />
-  </svg>
-);
+const ModuleThumb = ({ width = 60, height = DEFAULT_MODULE_HEIGHT_M }) => { 
+  const thumbHeight = height * (60 / DEFAULT_MODULE_WIDTH_M) * 0.8; 
+  const viewBoxHeight = thumbHeight / 0.8 * (DEFAULT_MODULE_HEIGHT_M / DEFAULT_MODULE_WIDTH_M);
+  return (
+    <svg width={width} height={thumbHeight} viewBox={`0 0 60 ${viewBoxHeight}`} fill="none">
+        <rect x="1" y="1" width="58" height={viewBoxHeight - 2} rx="3" fill="#f3f4f6" stroke="#333" strokeWidth="2" />
+        <rect x="6" y="6" width="15" height="8" fill="#ddd" stroke="#aaa" strokeWidth="1" />
+        <rect x="40" y={viewBoxHeight - 14} width="10" height="6" fill="#ddd" stroke="#aaa" strokeWidth="1" />
+        <rect x="25" y={viewBoxHeight / 2 - 4} width="10" height="8" fill="#eee" stroke="#bbb" strokeWidth="1" />
+    </svg>
+  );
+};
 
-// Все шаблоны одного размера 6x2м
+
 const MODULE_TEMPLATES = [
   {
     code: 'DEFAULT',
     name: 'Стандартный модуль',
     type: 'module',
-    width: 6,
-    height: 2,
-    config: {},
-    thumb: <ModuleThumb />,
+    width: DEFAULT_MODULE_WIDTH_M,
+    height: DEFAULT_MODULE_HEIGHT_M,
+    config: {
+        label: `Модуль ${DEFAULT_MODULE_WIDTH_M}x${DEFAULT_MODULE_HEIGHT_M}`,
+        baseElements: [
+            { type: 'door', xRel: (DEFAULT_MODULE_WIDTH_M - DOOR_WIDTH_M) / 2, yRel: DEFAULT_MODULE_HEIGHT_M - WALL_THICKNESS_M, width: DOOR_WIDTH_M, height: WALL_THICKNESS_M, rotation: 0, side: 'bottom', segmentIndex: Math.floor(((DEFAULT_MODULE_WIDTH_M - DOOR_WIDTH_M) / 2) / 1.15), label: "Дверь главная" },
+            { type: 'light_led', xRel: (DEFAULT_MODULE_WIDTH_M - 1.2) / 2, yRel: (DEFAULT_MODULE_HEIGHT_M - 0.15) / 2, width: 1.2, height: 0.15, label: "Свет центр" },
+            { type: 'outlet', xRel: WALL_THICKNESS_M, yRel: DEFAULT_MODULE_HEIGHT_M / 2 - 0.05, width: 0.1, height: 0.1, rotation: 0, side: 'left', segmentIndex: Math.floor((DEFAULT_MODULE_HEIGHT_M / 2 - 0.05)/1.15), label: "Розетка лево" },
+        ]
+    },
+    thumb: <ModuleThumb width={60} height={DEFAULT_MODULE_HEIGHT_M} />,
   }
 ];
 
-// Функция перевода мировых координат в экранные
 function worldToScreen(x, y, viewTransform, svgRef) {
   if (!svgRef?.current) return { screenX: 0, screenY: 0 };
-  // svgRef используется только для offset, если нужно
   return {
     screenX: x * viewTransform.scale + viewTransform.x,
     screenY: y * viewTransform.scale + viewTransform.y,
@@ -4416,64 +4032,115 @@ const ModularMode = ({
   screenToWorld,
   viewTransform,
   svgRef,
+  objects, 
 }) => {
   const [showTemplates, setShowTemplates] = useState(false);
-
-  // Проверяем, есть ли уже модуль (type: 'module')
   const hasModule = getObjects().some(obj => obj.type === 'module');
 
-  // Центр ближайшей клетки сетки 1м (в мировых координатах)
   const gridSize = 1;
-  const gridCenterX = Math.round(0 / gridSize) * gridSize; // 0 — центр мира
+  const gridCenterX = Math.round(0 / gridSize) * gridSize; 
   const gridCenterY = Math.round(0 / gridSize) * gridSize;
-  // Координаты площадки (центр 6x2)
-  const areaWidth = 6;
-  const areaHeight = 2;
+  
+  const areaWidth = MODULE_TEMPLATES[0].width;
+  const areaHeight = MODULE_TEMPLATES[0].height;
   const areaX = gridCenterX - areaWidth / 2;
   const areaY = gridCenterY - areaHeight / 2;
 
-  // Переводим мировые координаты площадки в экранные
   const topLeft = worldToScreen(areaX, areaY, viewTransform, svgRef);
   const bottomRight = worldToScreen(areaX + areaWidth, areaY + areaHeight, viewTransform, svgRef);
   const overlayStyle = {
     position: 'absolute',
     left: `${topLeft.screenX}px`,
     top: `${topLeft.screenY}px`,
-    width: `${bottomRight.screenX - topLeft.screenX}px`,
-    height: `${bottomRight.screenY - topLeft.screenY}px`,
+    width: `${Math.max(100, bottomRight.screenX - topLeft.screenX)}px`,
+    height: `${Math.max(50 * (areaHeight/areaWidth) , bottomRight.screenY - topLeft.screenY)}px`,
     pointerEvents: 'auto',
     zIndex: 20,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   };
+  
+  useEffect(() => {
+    if (!hasModule && objects.length === 0) { 
+        setShowTemplates(true);
+    } else {
+        setShowTemplates(false);
+    }
+  }, [hasModule, objects]);
+
 
   const handleAreaClick = () => {
-    setShowTemplates(true);
+    if (!hasModule) {
+        setShowTemplates(true);
+    }
   };
 
   const handleSelectTemplate = (template) => {
-    addObject(
+    let moduleRotation = 0;
+    if (objects.filter(obj => obj.type === 'module').length === 0) {
+        moduleRotation = 0; 
+    }
+
+    const newModule = addObject(
       template.type,
       areaX,
       areaY,
-      areaWidth,
-      areaHeight,
-      { rotation: 0, ...template.config }
+      template.width,
+      template.height,
+      { rotation: moduleRotation, ...template.config, label: template.config.label || template.name },
+      true 
     );
+
+    if (newModule && template.config.baseElements) {
+        template.config.baseElements.forEach(el => {
+            const elSize = defaultObjectSizes[el.type] || {width: el.width, height: el.height};
+            let childX = newModule.x + el.xRel;
+            let childY = newModule.y + el.yRel;
+            let childWidth = elSize.width;
+            let childHeight = elSize.height;
+            let childRotation = el.rotation || 0; 
+
+            if (moduleRotation !== 0) {
+                const angleRad = moduleRotation * (Math.PI / 180);
+                const parentCenter = { x: newModule.width / 2, y: newModule.height / 2 };
+                
+                const rotatedChildCenterRel = rotatePoint(
+                    { x: el.xRel + elSize.width/2 - parentCenter.x, y: el.yRel + elSize.height/2 - parentCenter.y },
+                    angleRad,
+                    {x: 0, y: 0} 
+                );
+
+                childX = newModule.x + parentCenter.x + rotatedChildCenterRel.x - elSize.width/2;
+                childY = newModule.y + parentCenter.y + rotatedChildCenterRel.y - elSize.height/2;
+                childRotation = (childRotation + moduleRotation) % 360;
+
+                if ((moduleRotation === 90 || moduleRotation === 270) && 
+                    (el.type === 'door' || el.type === 'window' || el.type === 'outlet' || el.type === 'radiator' || el.type === 'kitchen_unit')) {
+                    [childWidth, childHeight] = [childHeight, childWidth];
+                }
+            }
+             
+            addObject(
+                el.type,
+                childX,
+                childY,
+                childWidth,
+                childHeight,
+                { 
+                    ...el, 
+                    rotation: childRotation, 
+                    parentId: newModule.id,
+                    label: el.label || el.type
+                },
+                true 
+            );
+        });
+        
+    }
     setShowTemplates(false);
   };
 
-  const moduleTypes = [
-    {
-      id: 'default',
-      name: 'Default Module',
-      code: 'DEFAULT',
-      width: 6,
-      height: 2,
-      type: 'module'
-    }
-  ];
 
   return (
     <>
@@ -4523,10 +4190,10 @@ ModularMode.propTypes = {
   screenToWorld: PropTypes.func,
   viewTransform: PropTypes.object,
   svgRef: PropTypes.object,
+  objects: PropTypes.array,
 };
 
 export default ModularMode;
-
 
 ==== src\components\Configurator\ProjectInfo.jsx ====
 import React from 'react';
@@ -4579,16 +4246,19 @@ export default ProjectInfo;
 ==== src\components\Configurator\sidebar\PropertiesPanel.jsx ====
 // src/components/Configurator/sidebar/PropertiesPanel.jsx
 import React from "react";
-import PropertyInput from "../common/PropertyInput"; // Use the moved component
+import PropertyInput from "../common/PropertyInput";
 
 const PropertiesPanel = ({
   primarySelectedObject,
-  selectedObjectIds, // For count
+  selectedObjectIds,
   lockedObjectIds,
   modifierKeys,
   updateSelectedObjectProperty,
-  deleteSelectedObject, // Assumes a function to delete the primary selected object
-  activeMode, // новый проп
+  deleteSelectedObject,
+  activeMode,
+  rotateModule180,
+  mirrorModuleX,
+  mirrorModuleY,
 }) => {
   if (!primarySelectedObject && selectedObjectIds.length === 0) {
     return (
@@ -4618,6 +4288,13 @@ const PropertiesPanel = ({
   const isLockedAndCantEdit =
     lockedObjectIds.includes(primarySelectedObject.id) && !modifierKeys.shift;
 
+  const objType = primarySelectedObject.type;
+  const isModule = objType === 'module';
+  const isCorridor = objType === 'corridor';
+  // For static objects, most dimension/position properties are disabled
+  const isStaticLike = true; 
+
+
   return (
     <div className="w-64 bg-gray-50 border-l border-gray-300 p-3 overflow-y-auto flex-shrink-0">
       <h2 className="text-md font-semibold mb-3 border-b pb-2">Свойства</h2>
@@ -4630,113 +4307,114 @@ const PropertiesPanel = ({
               : ""}
           </p>
           <p className="text-sm font-medium mb-2 capitalize">
-            Тип: {primarySelectedObject.type}
+            Тип: {objType}
             {lockedObjectIds.includes(primarySelectedObject.id) && (
               <span className="ml-2 text-orange-500 text-xs font-normal">
                 (Locked)
               </span>
             )}
           </p>
-          {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
-            <PropertyInput
+
+          <PropertyInput
               label="X (м):"
               value={primarySelectedObject.x.toFixed(3)}
               onChange={(e) => updateSelectedObjectProperty("x", e.target.value)}
-              disabled={isLockedAndCantEdit || activeMode === 'modular'}
+              disabled={isLockedAndCantEdit || isStaticLike}
             />
-          )}
-          {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
             <PropertyInput
               label="Y (м):"
               value={primarySelectedObject.y.toFixed(3)}
               onChange={(e) => updateSelectedObjectProperty("y", e.target.value)}
-              disabled={isLockedAndCantEdit || activeMode === 'modular'}
+              disabled={isLockedAndCantEdit || isStaticLike}
             />
-          )}
-          {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
-            <PropertyInput
+
+          <PropertyInput
               label={
-                primarySelectedObject.type === "door" ||
-                primarySelectedObject.type === "window"
-                  ? "Длина (м):"
-                  : "Ширина (м):"
+                objType === "door" || objType === "window" ? "Длина (м):"
+                : isCorridor && primarySelectedObject.width > primarySelectedObject.height ? "Длина (м):"
+                : isCorridor && primarySelectedObject.height > primarySelectedObject.width ? "Высота (м):"
+                : "Ширина (м):"
               }
               value={primarySelectedObject.width.toFixed(3)}
               min="0.01"
-              onChange={(e) =>
-                updateSelectedObjectProperty("width", e.target.value)
-              }
-              disabled={isLockedAndCantEdit || activeMode === 'modular'}
+              onChange={(e) => updateSelectedObjectProperty("width", e.target.value)}
+              disabled={isLockedAndCantEdit || isStaticLike}
             />
-          )}
-          {!(activeMode === "modular" && primarySelectedObject.type === "module") && (
-            <PropertyInput
+          <PropertyInput
               label={
-                primarySelectedObject.type === "door" ||
-                primarySelectedObject.type === "window" ||
-                primarySelectedObject.type === "wall"
-                  ? "Толщина (м):"
-                  : "Высота (м):"
+                objType === "door" || objType === "window" || objType === "wall" || isCorridor ? "Толщина (м):"
+                : "Высота (м):"
               }
               value={primarySelectedObject.height.toFixed(3)}
               min="0.01"
-              onChange={(e) =>
-                updateSelectedObjectProperty("height", e.target.value)
-              }
-              disabled={isLockedAndCantEdit || activeMode === 'modular'}
+              onChange={(e) => updateSelectedObjectProperty("height", e.target.value)}
+              disabled={isLockedAndCantEdit || isStaticLike}
             />
-          )}
+
           <PropertyInput
-            label="Вращение (°):"
-            type="number"
-            value={primarySelectedObject.rotation || 0}
-            step="1"
-            min="-360"
-            max="360"
-            onChange={(e) =>
-              updateSelectedObjectProperty("rotation", e.target.value)
-            }
-            disabled={isLockedAndCantEdit || activeMode === 'modular'}
+              label="Вращение (°):"
+              type="number"
+              value={primarySelectedObject.rotation || 0}
+              step="1"
+              min="-360"
+              max="360"
+              onChange={(e) => updateSelectedObjectProperty("rotation", e.target.value)}
+              disabled={isLockedAndCantEdit || isStaticLike}
           />
-          {primarySelectedObject.type === "door" && (
+          
+          {isModule && activeMode === 'modular' && (
+            <div className="mt-2 space-y-1">
+                <button
+                    onClick={() => rotateModule180(primarySelectedObject.id)}
+                    className={`w-full p-1 border border-gray-300 rounded text-xs bg-white hover:bg-gray-100 ${isLockedAndCantEdit || isStaticLike ? "cursor-not-allowed opacity-50" : ""}`}
+                    disabled={isLockedAndCantEdit || isStaticLike}
+                >
+                    Повернуть на 180°
+                </button>
+                <button
+                    onClick={() => mirrorModuleX(primarySelectedObject.id)}
+                    className={`w-full p-1 border border-gray-300 rounded text-xs bg-white hover:bg-gray-100 ${isLockedAndCantEdit || isStaticLike ? "cursor-not-allowed opacity-50" : ""}`}
+                    disabled={isLockedAndCantEdit || isStaticLike}
+                >
+                    Отзеркалить по X
+                </button>
+                <button
+                    onClick={() => mirrorModuleY(primarySelectedObject.id)}
+                    className={`w-full p-1 border border-gray-300 rounded text-xs bg-white hover:bg-gray-100 ${isLockedAndCantEdit || isStaticLike ? "cursor-not-allowed opacity-50" : ""}`}
+                    disabled={isLockedAndCantEdit || isStaticLike}
+                >
+                    Отзеркалить по Y
+                </button>
+            </div>
+          )}
+
+
+          {objType === "door" && (
             <>
               <PropertyInput label="Открыта:">
                 <button
-                  onClick={() =>
-                    updateSelectedObjectProperty(
-                      "isOpen",
-                      !primarySelectedObject.isOpen,
-                    )
-                  }
+                  onClick={() => updateSelectedObjectProperty("isOpen", !primarySelectedObject.isOpen)}
                   className={`w-full p-1 border border-gray-300 rounded text-sm bg-white hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 ${isLockedAndCantEdit ? "cursor-not-allowed opacity-50" : ""}`}
                   disabled={isLockedAndCantEdit}
                 >
-                  {primarySelectedObject.isOpen
-                    ? "Да (Закрыть)"
-                    : "Нет (Открыть)"}
+                  {primarySelectedObject.isOpen ? "Да (Закрыть)" : "Нет (Открыть)"}
                 </button>
               </PropertyInput>
               <PropertyInput
                 label="Угол откр. (°):"
                 type="number"
-                value={primarySelectedObject.openingAngle || 90}
+                value={primarySelectedObject.openingAngle || 0}
                 step="1"
                 min="0"
                 max="170"
-                onChange={(e) =>
-                  updateSelectedObjectProperty("openingAngle", e.target.value)
-                }
+                onChange={(e) => updateSelectedObjectProperty("openingAngle", e.target.value)}
                 disabled={isLockedAndCantEdit || !primarySelectedObject.isOpen}
-                title={
-                  !primarySelectedObject.isOpen ? "Сначала откройте дверь" : ""
-                }
+                title={!primarySelectedObject.isOpen ? "Сначала откройте дверь" : ""}
               />
               <PropertyInput label="Петли:">
                 <select
                   value={primarySelectedObject.hingeSide || "left"}
-                  onChange={(e) =>
-                    updateSelectedObjectProperty("hingeSide", e.target.value)
-                  }
+                  onChange={(e) => updateSelectedObjectProperty("hingeSide", e.target.value)}
                   className={`w-full p-1 border border-gray-300 rounded text-sm ${isLockedAndCantEdit ? "bg-gray-100 cursor-not-allowed" : "bg-white focus:ring-1 focus:ring-blue-500 outline-none"}`}
                   disabled={isLockedAndCantEdit}
                 >
@@ -4747,12 +4425,7 @@ const PropertiesPanel = ({
               <PropertyInput label="Направление откр.:">
                 <select
                   value={primarySelectedObject.openingDirection || "inward"}
-                  onChange={(e) =>
-                    updateSelectedObjectProperty(
-                      "openingDirection",
-                      e.target.value,
-                    )
-                  }
+                  onChange={(e) => updateSelectedObjectProperty("openingDirection", e.target.value)}
                   className={`w-full p-1 border border-gray-300 rounded text-sm ${isLockedAndCantEdit ? "bg-gray-100 cursor-not-allowed" : "bg-white focus:ring-1 focus:ring-blue-500 outline-none"}`}
                   disabled={isLockedAndCantEdit}
                 >
@@ -4762,12 +4435,13 @@ const PropertiesPanel = ({
               </PropertyInput>
             </>
           )}
+          {/* Удаление пока оставим, т.к. добавление есть */}
           <button
             onClick={deleteSelectedObject}
             className={`mt-4 w-full text-white text-sm py-1.5 rounded ${isLockedAndCantEdit ? "bg-red-300 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"}`}
             disabled={isLockedAndCantEdit && primarySelectedObject}
           >
-            Удалить выбранный
+            Удалить {objType === 'module' ? 'модуль' : objType === 'corridor' ? 'коридор' : 'выбранный'}
           </button>
         </div>
       )}
@@ -4777,9 +4451,7 @@ const PropertiesPanel = ({
 
 export default PropertiesPanel;
 
-
 ==== src\components\Configurator\statusbar\StatusBar.jsx ====
-// src/components/Configurator/statusbar/StatusBar.jsx
 import React from "react";
 
 const StatusBar = ({
@@ -4806,19 +4478,27 @@ const StatusBar = ({
 
 export default StatusBar;
 
-
 ==== src\components\Configurator\toolbar\ConfiguratorToolbar.jsx ====
-// src/components/Configurator/toolbar/ConfiguratorToolbar.jsx
 import React from "react";
 import { OBJECT_TYPES_TO_ADD } from "../configuratorConstants";
 import { MODES } from "../appConstants";
+import { FaPlusCircle } from "react-icons/fa";
 
 const ConfiguratorToolbar = ({
   activeModeName,
   addingObjectType,
   onStartAddObject,
   onModeChange,
+  selectedObjectIds,
+  primarySelectedObject,
+  onDuplicateAndConnectModule,
 }) => {
+  const canDuplicateModule = activeModeName === MODES.MODULAR &&
+                             selectedObjectIds &&
+                             selectedObjectIds.length === 1 &&
+                             primarySelectedObject &&
+                             primarySelectedObject.type === 'module';
+
   return (
     <div className="p-2 bg-gray-800 text-white border-b border-gray-700 flex justify-between items-center flex-shrink-0">
       <div className="flex items-center space-x-4">
@@ -4864,6 +4544,23 @@ const ConfiguratorToolbar = ({
             Каркасный
           </button>
         </div>
+        {activeModeName === MODES.MODULAR && (
+          <button
+            onClick={() => {
+              if (canDuplicateModule && onDuplicateAndConnectModule) {
+                onDuplicateAndConnectModule(primarySelectedObject.id, 'right');
+              }
+            }}
+            title="Дублировать и соединить модуль"
+            disabled={!canDuplicateModule}
+            className={`px-2 py-1.5 text-xs sm:px-3 sm:py-1.5 sm:text-sm rounded whitespace-nowrap transition-colors flex items-center
+                        ${canDuplicateModule
+                            ? "bg-green-500 hover:bg-green-600"
+                            : "bg-gray-500 cursor-not-allowed"}`}
+          >
+            <FaPlusCircle className="mr-1" /> Модуль+
+          </button>
+        )}
       </div>
       <div className="flex space-x-1 overflow-x-auto pb-1">
         {OBJECT_TYPES_TO_ADD.map((item) => (
@@ -4886,7 +4583,6 @@ const ConfiguratorToolbar = ({
 };
 
 export default ConfiguratorToolbar;
-
 
 ==== src\index.css ====
 /* src/index.css */

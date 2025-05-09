@@ -1,4 +1,3 @@
-// src/components/Configurator/hooks/useModifierKeys.js
 import { useState, useEffect, useCallback } from "react";
 
 const useModifierKeys = (mainContainerRef, svgRef) => {
@@ -52,7 +51,6 @@ const useModifierKeys = (mainContainerRef, svgRef) => {
     mainEl.addEventListener("keydown", handleKeyDown);
     mainEl.addEventListener("keyup", handleKeyUp);
 
-    // Also listen on window for keyup in case focus is lost
     window.addEventListener("keyup", handleKeyUp);
 
     return () => {
