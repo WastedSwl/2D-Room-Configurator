@@ -1,115 +1,84 @@
-
+// src/components/Configurator/canvas/Grid.jsx
 import React from "react";
 import {
   GRID_LINE_COLOR,
   GRID_BOLD_LINE_COLOR,
-  ORIGIN_POINT_COLOR,
+  GRID_CELL_SIZE_M, // Use this for main grid
   INITIAL_PPM,
 } from "../configuratorConstants";
 
 const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
-  if (svgWidth === 0 || svgHeight === 0) return null; 
+  if (svgWidth === 0 || svgHeight === 0) return null;
 
   const { x: viewX, y: viewY, scale } = viewTransform;
   const finalGridLines = [];
 
-  const majorGridSizeWorld = 1;
-  const minorGridDivisions = 10;
+  const cellSizeWorld = GRID_CELL_SIZE_M; // 1.15 meters
+  const cellSizeScaled = cellSizeWorld * scale;
 
-  const majorGridSizeScaled = majorGridSizeWorld * scale;
-  const minorGridSizeScaled = (majorGridSizeWorld / minorGridDivisions) * scale;
+  // Thresholds for showing lines
+  const cellLineThreshold = 10; // Show cell lines if they are at least 10px apart
+  const boldLineDivisor = 5; // Make every 5th cell line bold
 
-  const majorLineThreshold = 25; // Increased for less clutter at low zoom
-  const minorLineThreshold = 8; // Increased for less clutter at low zoom
+  // Vertical Lines
+  if (cellSizeScaled > cellLineThreshold) {
+    const startOffsetX = viewX % cellSizeScaled;
+    let counter = Math.floor((0 - viewX) / cellSizeScaled); // To keep track for bold lines
 
-  if (majorGridSizeScaled > majorLineThreshold) {
-    const startOffsetX = viewX % majorGridSizeScaled;
-    for (let x = startOffsetX; x < svgWidth; x += majorGridSizeScaled) {
+    for (let x = startOffsetX; x < svgWidth; x += cellSizeScaled) {
+      const isBold = counter % boldLineDivisor === 0;
       finalGridLines.push(
         <line
-          key={`major-gv-${x}`}
+          key={`grid-v-${x}`}
           x1={x}
           y1={0}
           x2={x}
           y2={svgHeight}
-          stroke={GRID_BOLD_LINE_COLOR}
-          strokeWidth={viewTransform.scale > INITIAL_PPM * 0.5 ? 0.5 : 0.3} // Thinner if zoomed out
+          stroke={isBold ? GRID_BOLD_LINE_COLOR : GRID_LINE_COLOR}
+          strokeWidth={
+            isBold
+              ? scale > INITIAL_PPM * 0.5
+                ? 0.5
+                : 0.3
+              : scale > INITIAL_PPM * 0.5
+                ? 0.25
+                : 0.15
+          }
         />,
       );
-    }
-    if (
-      minorGridSizeScaled > minorLineThreshold &&
-      majorGridSizeScaled / minorGridSizeScaled > 1.5
-    ) {
-      const minorStartOffsetX = viewX % minorGridSizeScaled;
-      for (let x = minorStartOffsetX; x < svgWidth; x += minorGridSizeScaled) {
-        if (
-          Math.abs(
-            (x - (viewX % majorGridSizeScaled) + majorGridSizeScaled) %
-              majorGridSizeScaled,
-          ) >
-          minorGridSizeScaled * 0.1
-        ) {
-          finalGridLines.push(
-            <line
-              key={`minor-gv-${x}`}
-              x1={x}
-              y1={0}
-              x2={x}
-              y2={svgHeight}
-              stroke={GRID_LINE_COLOR}
-              strokeWidth={viewTransform.scale > INITIAL_PPM * 0.5 ? 0.25 : 0.15} // Thinner if zoomed out
-            />,
-          );
-        }
-      }
+      counter++;
     }
   }
 
-  if (majorGridSizeScaled > majorLineThreshold) {
-    const startOffsetY = viewY % majorGridSizeScaled;
-    for (let y = startOffsetY; y < svgHeight; y += majorGridSizeScaled) {
+  // Horizontal Lines
+  if (cellSizeScaled > cellLineThreshold) {
+    const startOffsetY = viewY % cellSizeScaled;
+    let counter = Math.floor((0 - viewY) / cellSizeScaled); // To keep track for bold lines
+
+    for (let y = startOffsetY; y < svgHeight; y += cellSizeScaled) {
+      const isBold = counter % boldLineDivisor === 0;
       finalGridLines.push(
         <line
-          key={`major-gh-${y}`}
+          key={`grid-h-${y}`}
           x1={0}
           y1={y}
           x2={svgWidth}
           y2={y}
-          stroke={GRID_BOLD_LINE_COLOR}
-          strokeWidth={viewTransform.scale > INITIAL_PPM * 0.5 ? 0.5 : 0.3} // Thinner if zoomed out
+          stroke={isBold ? GRID_BOLD_LINE_COLOR : GRID_LINE_COLOR}
+          strokeWidth={
+            isBold
+              ? scale > INITIAL_PPM * 0.5
+                ? 0.5
+                : 0.3
+              : scale > INITIAL_PPM * 0.5
+                ? 0.25
+                : 0.15
+          }
         />,
       );
-    }
-    if (
-      minorGridSizeScaled > minorLineThreshold &&
-      majorGridSizeScaled / minorGridSizeScaled > 1.5
-    ) {
-      const minorStartOffsetY = viewY % minorGridSizeScaled;
-      for (let y = minorStartOffsetY; y < svgHeight; y += minorGridSizeScaled) {
-        if (
-          Math.abs(
-            (y - (viewY % majorGridSizeScaled) + majorGridSizeScaled) %
-              majorGridSizeScaled,
-          ) >
-          minorGridSizeScaled * 0.1
-        ) {
-          finalGridLines.push(
-            <line
-              key={`minor-gh-${y}`}
-              x1={0}
-              y1={y}
-              x2={svgWidth}
-              y2={y}
-              stroke={GRID_LINE_COLOR}
-              strokeWidth={viewTransform.scale > INITIAL_PPM * 0.5 ? 0.25 : 0.15} // Thinner if zoomed out
-            />,
-          );
-        }
-      }
+      counter++;
     }
   }
-
   return <g id="grid">{finalGridLines}</g>;
 };
 
