@@ -6,7 +6,7 @@ import { PlusCircleIcon } from "@heroicons/react/24/outline";
 const ConfiguratorToolbar = ({
   activeMode,
   setActiveMode,
-  onAddModuleFromToolbar, // Changed prop name for clarity
+  onAddModuleFromToolbar,
 }) => {
   const modsArray = [
     { key: MODES.MODULAR, label: "Модульный" },
@@ -16,7 +16,7 @@ const ConfiguratorToolbar = ({
 
   return (
     <div className="p-2 bg-gray-900 text-gray-200 border-b border-gray-700 flex justify-between items-center flex-shrink-0 shadow-md h-12 sm:h-14">
-      <div className="flex items-center">
+      <div className="flex items-center min-w-[200px] sm:min-w-[250px]">
         <h1 className="text-lg font-semibold tracking-tight mr-4">
           Grid<span className="text-primary-blue">Viewer</span>
         </h1>
@@ -31,6 +31,7 @@ const ConfiguratorToolbar = ({
                     ? "bg-primary-blue text-white"
                     : "text-gray-400 hover:bg-gray-700 hover:text-gray-200"
                 }`}
+              title={`Переключить в режим "${mode.label}"`}
             >
               {mode.label}
             </button>
@@ -41,7 +42,7 @@ const ConfiguratorToolbar = ({
       <div className="flex-grow flex justify-center items-center space-x-1 sm:space-x-2">
         {activeMode === MODES.MODULAR && (
           <button
-            onClick={onAddModuleFromToolbar} // Use the new prop
+            onClick={onAddModuleFromToolbar}
             className="flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs sm:text-sm rounded-md transition-colors"
             title="Добавить новый модуль"
           >
@@ -51,8 +52,7 @@ const ConfiguratorToolbar = ({
         )}
       </div>
 
-      <div className="flex items-center space-x-3">
-        {/* User Avatar or Menu can be added here later */}
+      <div className="flex items-center space-x-3 min-w-[50px]">
       </div>
     </div>
   );

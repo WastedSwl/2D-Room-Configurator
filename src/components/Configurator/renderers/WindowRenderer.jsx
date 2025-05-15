@@ -1,4 +1,4 @@
-// src/components/Configurator/renderers/WindowRenderer.jsx
+
 import React from "react";
 import { WINDOW_COLOR, ELEMENT_STROKE_COLOR } from "../configuratorConstants";
 
@@ -18,7 +18,7 @@ const WindowRenderer = ({
   const glassLineWidth = Math.max(0.5, 0.01 * scale);
 
   const handleClick = (e) => {
-    e.stopPropagation(); // Important to prevent wall selection
+    e.stopPropagation(); 
     onSelect(element.id);
   };
 

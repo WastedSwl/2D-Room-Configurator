@@ -1,0 +1,3779 @@
+Структура проекта:
+- .eslintrc.js
+- package-lock.json
+- package.json
+- postcss.config.js
++ public
+  - index.html
+  - manifest.json
+- README.md
++ src
+  - App.js
+  + components
+    + Configurator
+      - appConstants.js
+      + canvas
+        - Grid.jsx
+        - SvgCanvas.jsx
+      + common
+        - ContextMenu.jsx
+        - PropertyInput.jsx
+      - Configurator.jsx
+      - configuratorConstants.js
+      - configuratorUtils.js
+      + hooks
+        - useKeyboardShortcuts.js
+        - useModifierKeys.js
+        - useMouseInteractions.js
+        - useViewTransform.js
+      + renderers
+        - AddModuleButtonRenderer.jsx
+        - DoorRenderer.jsx
+        - ModuleRenderer.jsx
+        - WallSegmentRenderer.jsx
+        - WindowRenderer.jsx
+      + sidebar
+        - ElementPlacementPanel.jsx
+        - PropertiesPanel.jsx
+      + statusbar
+        - StatusBar.jsx
+      + toolbar
+        - ConfiguratorToolbar.jsx
+  - index.css
+  - index.js
+  - reportWebVitals.js
+- tailwind.config.js
+
+Содержимое некоторых файлов:
+
+==== .eslintrc.js ====
+/* eslint-disable no-unused-vars */
+// ========================================================================
+// FILE: .eslintrc.js
+// ========================================================================
+// Assuming a standard ESLint config for Create React App or similar.
+// No changes needed based on the prompt unless specific rules were provided.
+module.exports = {
+  env: {
+    browser: true,
+    es2021: true,
+    jest: true,
+  },
+  extends: [
+    "eslint:recommended",
+    "react-app",
+    "react-app/jest",
+  ],
+  parserOptions: {
+    ecmaFeatures: {
+      jsx: true,
+    },
+    ecmaVersion: "latest",
+    sourceType: "module",
+  },
+  rules: {
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "warn",
+    "jsx-a11y/anchor-is-valid": "warn",
+    "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    "react/no-unknown-property": "off", // specific for this project due to custom attributes
+    "react/no-unescaped-entities": "off", // for things like "don't"
+  },
+  settings: {
+    react: {
+      version: "detect",
+    },
+  },
+  overrides: [
+    {
+      files: ["**/*.test.js", "**/*.test.jsx"],
+      env: {
+        jest: true,
+      },
+    },
+  ],
+};
+
+==== package.json ====
+{
+  "name": "bird",
+  "version": "0.2.0",
+  "private": true,
+  "dependencies": {
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@heroicons/react": "^2.2.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^13.5.0",
+    "aos": "^2.3.4",
+    "axios": "^1.8.4",
+    "dotenv": "^16.4.7",
+    "framer-motion": "^12.5.0",
+    "prop-types": "^15.8.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.4.0",
+    "react-scripts": "^5.0.1",
+    "react-select": "^5.10.1",
+    "react-slick": "^0.30.3",
+    "react-toastify": "^11.0.5",
+    "slick-carousel": "^1.8.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/line-clamp": "^0.4.4",
+    "@tailwindcss/postcss": "^4.0.15",
+    "@tailwindcss/typography": "^0.5.16",
+    "autoprefixer": "^10.4.21",
+    "clsx": "^2.1.1",
+    "eslint": "^8.57.1",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "nodemon": "^3.1.9",
+    "postcss": "^8.5.3",
+    "postcss-flexbugs-fixes": "^5.0.2",
+    "postcss-preset-env": "^10.1.5",
+    "prettier": "^3.5.3",
+    "tailwindcss": "^3.4.3"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,css,md}": "prettier --write",
+    "*.{js,jsx}": "eslint --fix"
+  },
+  "resolutions": {
+    "nth-check": "2.0.1"
+  }
+}
+
+==== postcss.config.js ====
+// ========================================================================
+// FILE: postcss.config.js
+// ========================================================================
+// Adjusted for standard Tailwind v3+ installation
+module.exports = {
+  plugins: {
+    tailwindcss: {}, // Standard Tailwind plugin
+    autoprefixer: {},
+    // Removed '@tailwindcss/postcss7-compat' as using standard Tailwind now
+    // Removed '@tailwindcss/postcss' which seems redundant/incorrect here
+    // Removed 'postcss-flexbugs-fixes' and 'postcss-preset-env' as Autoprefixer handles prefixes
+  },
+};
+
+
+==== public\index.html ====
+<!-- FILE: public/index.html -->
+<!-- No changes needed based on the prompt -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!-- Consider adding fonts here if needed, e.g., Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <title>Mission Hire | HRM App</title>
+    <!-- Updated Title -->
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
+
+
+==== public\manifest.json ====
+{
+  "short_name": "Mission Hire",
+  "name": "Mission Hire - Recruitment Platform",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#007BFF",
+  "background_color": "#1A1A1A"
+}
+
+
+==== README.md ====
+# Getting Started with Create React App
+
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+
+## Available Scripts
+
+In the project directory, you can run:
+
+### `npm start`
+
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
+
+### `npm test`
+
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+
+### `npm run build`
+
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
+
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
+
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+
+### `npm run eject`
+
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+
+## Learn More
+
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+
+To learn React, check out the [React documentation](https://reactjs.org/).
+
+### Code Splitting
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+
+### Analyzing the Bundle Size
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+
+### Making a Progressive Web App
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+
+### Advanced Configuration
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+
+### Deployment
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+
+### `npm run build` fails to minify
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+
+==== src\App.js ====
+import React from "react";
+import Configurator from "./components/Configurator/Configurator";
+import "./index.css"; // Ensure Tailwind CSS is imported
+
+function App() {
+  return (
+    <div className="App h-screen flex flex-col bg-dark-bg text-gray-200">
+      <Configurator />
+    </div>
+  );
+}
+
+export default App;
+
+
+==== src\components\Configurator\appConstants.js ====
+// src/components/Configurator/appConstants.js
+// This file is intentionally left sparse or empty as per the refactoring request.
+// Add constants here if needed for future grid-only related features.
+
+export const WALL_THICKNESS_M = 0.15; // Standard wall thickness in meters, e.g., 15cm
+
+export {}; // To make it a module
+
+
+==== src\components\Configurator\canvas\Grid.jsx ====
+// src/components/Configurator/canvas/Grid.jsx
+import React from "react";
+import {
+  GRID_LINE_COLOR,
+  GRID_BOLD_LINE_COLOR,
+  GRID_CELL_SIZE_M, // Use this for main grid
+  INITIAL_PPM,
+} from "../configuratorConstants";
+
+const Grid = ({ viewTransform, svgWidth, svgHeight }) => {
+  if (svgWidth === 0 || svgHeight === 0) return null;
+
+  const { x: viewX, y: viewY, scale } = viewTransform;
+  const finalGridLines = [];
+
+  const cellSizeWorld = GRID_CELL_SIZE_M; // 1.15 meters
+  const cellSizeScaled = cellSizeWorld * scale;
+
+  // Thresholds for showing lines
+  const cellLineThreshold = 10; // Show cell lines if they are at least 10px apart
+  const boldLineDivisor = 5; // Make every 5th cell line bold
+
+  // Vertical Lines
+  if (cellSizeScaled > cellLineThreshold) {
+    const startOffsetX = viewX % cellSizeScaled;
+    let counter = Math.floor((0 - viewX) / cellSizeScaled); // To keep track for bold lines
+
+    for (let x = startOffsetX; x < svgWidth; x += cellSizeScaled) {
+      const isBold = counter % boldLineDivisor === 0;
+      finalGridLines.push(
+        <line
+          key={`grid-v-${x}`}
+          x1={x}
+          y1={0}
+          x2={x}
+          y2={svgHeight}
+          stroke={isBold ? GRID_BOLD_LINE_COLOR : GRID_LINE_COLOR}
+          strokeWidth={
+            isBold
+              ? scale > INITIAL_PPM * 0.5
+                ? 0.5
+                : 0.3
+              : scale > INITIAL_PPM * 0.5
+                ? 0.25
+                : 0.15
+          }
+        />,
+      );
+      counter++;
+    }
+  }
+
+  // Horizontal Lines
+  if (cellSizeScaled > cellLineThreshold) {
+    const startOffsetY = viewY % cellSizeScaled;
+    let counter = Math.floor((0 - viewY) / cellSizeScaled); // To keep track for bold lines
+
+    for (let y = startOffsetY; y < svgHeight; y += cellSizeScaled) {
+      const isBold = counter % boldLineDivisor === 0;
+      finalGridLines.push(
+        <line
+          key={`grid-h-${y}`}
+          x1={0}
+          y1={y}
+          x2={svgWidth}
+          y2={y}
+          stroke={isBold ? GRID_BOLD_LINE_COLOR : GRID_LINE_COLOR}
+          strokeWidth={
+            isBold
+              ? scale > INITIAL_PPM * 0.5
+                ? 0.5
+                : 0.3
+              : scale > INITIAL_PPM * 0.5
+                ? 0.25
+                : 0.15
+          }
+        />,
+      );
+      counter++;
+    }
+  }
+  return <g id="grid">{finalGridLines}</g>;
+};
+
+export default React.memo(Grid);
+
+
+==== src\components\Configurator\canvas\SvgCanvas.jsx ====
+import React, { useState, useEffect, useCallback } from "react";
+import Grid from "./Grid";
+import ModuleRenderer from "../renderers/ModuleRenderer";
+import AddModuleButtonRenderer from "../renderers/AddModuleButtonRenderer";
+import { MODES, OBJECT_TYPES } from "../configuratorConstants";
+
+const SvgCanvas = ({
+  svgRef,
+  viewTransform,
+  modifierKeys,
+  isPanningWithSpace,
+  isDraggingModule,
+  handleMouseMove,
+  handleMouseUp,
+  handleMouseLeave,
+  handleMouseDownOnCanvas,
+  onContextMenu,
+  objects,
+  activeMode,
+  selectedObjectId,
+  setSelectedObjectId,
+  scale,
+  canAddInitialModule,
+  onAddModule,
+  onToggleWallSegment,
+  primarySelectedObject,
+}) => {
+  const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const currentSvg = svgRef.current;
+    if (!currentSvg) return;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const { width, height } = entry.contentRect;
+        setSvgDimensions({ width, height });
+      }
+    });
+    resizeObserver.observe(currentSvg);
+    const rect = currentSvg.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      setSvgDimensions({ width: rect.width, height: rect.height });
+    }
+    return () => {
+      if (currentSvg) resizeObserver.unobserve(currentSvg);
+    };
+  }, [svgRef]);
+
+  const localHandleMouseMove = useCallback(
+    (e) => {
+      if ((isPanningWithSpace || isDraggingModule) && handleMouseMove) {
+        handleMouseMove(e);
+      }
+    },
+    [isPanningWithSpace, isDraggingModule, handleMouseMove],
+  );
+
+  let cursorClass = "cursor-default";
+  if (isDraggingModule)
+    cursorClass = "cursor-grabbing";
+  else if (isPanningWithSpace) cursorClass = "cursor-grabbing";
+  else if (modifierKeys?.spacebar) cursorClass = "cursor-grab";
+
+  const handleSvgContextMenu = (e) => {
+    const targetIsCanvas =
+      e.target === svgRef.current || e.target.closest("g#grid");
+
+    if (targetIsCanvas && onContextMenu) {
+      e.preventDefault();
+      const svgRect = svgRef.current.getBoundingClientRect();
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+      const worldX = (clientX - svgRect.left - viewTransform.x) / scale;
+      const worldY = (clientY - svgRect.top - viewTransform.y) / scale;
+      onContextMenu(e, null, "canvas", { worldX, worldY }); // Pass empty wallMeta for canvas
+    }
+  };
+
+  const existingModulesCount = objects.filter(
+    (obj) => obj.type === OBJECT_TYPES.MODULE,
+  ).length;
+
+  const getPortalWallSegmentMeta = (segment, segmentModule, allObjects) => {
+    if (!segment.isPortalWall || !segment.portalInterfaceKey) {
+      return { isSingleSidePortal: false };
+    }
+    let partnerExists = false;
+    for (const otherModule of allObjects) {
+      if (otherModule.type === OBJECT_TYPES.MODULE && otherModule.id !== segmentModule.id) {
+        for (const otherSegmentKey in otherModule.wallSegments) {
+          const otherSeg = otherModule.wallSegments[otherSegmentKey];
+          if (otherSeg.isPortalWall && otherSeg.portalInterfaceKey === segment.portalInterfaceKey) {
+            partnerExists = true;
+            break;
+          }
+        }
+      }
+      if (partnerExists) break;
+    }
+    return { isSingleSidePortal: !partnerExists };
+  };
+
+  return (
+    <svg
+      ref={svgRef}
+      width="100%"
+      height="100%"
+      onMouseMove={localHandleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDownOnCanvas}
+      onContextMenu={handleSvgContextMenu}
+      className={`block ${cursorClass} bg-card-bg`}
+    >
+      {svgDimensions.width > 0 && svgDimensions.height > 0 && (
+        <Grid
+          viewTransform={viewTransform}
+          svgWidth={svgDimensions.width}
+          svgHeight={svgDimensions.height}
+        />
+      )}
+      <g transform={`translate(${viewTransform.x}, ${viewTransform.y})`}>
+        {activeMode === MODES.MODULAR && canAddInitialModule && (
+          <AddModuleButtonRenderer
+            scale={scale}
+            onClick={onAddModule}
+            hasModules={existingModulesCount > 0}
+          />
+        )}
+        {objects.map((obj) => {
+          if (
+            obj.type === OBJECT_TYPES.MODULE &&
+            activeMode === MODES.MODULAR
+          ) {
+            const enrichedWallSegments = {};
+            if (obj.wallSegments) {
+                for (const key in obj.wallSegments) {
+                    const segment = obj.wallSegments[key];
+                    const meta = getPortalWallSegmentMeta(segment, obj, objects);
+                    enrichedWallSegments[key] = { ...segment, ...meta };
+                }
+            }
+            const enrichedModule = {...obj, wallSegments: enrichedWallSegments};
+            return (
+              <ModuleRenderer
+                key={obj.id}
+                module={enrichedModule}
+                scale={scale}
+                selectedObjectId={selectedObjectId}
+                setSelectedObjectId={setSelectedObjectId}
+                onToggleWallSegment={onToggleWallSegment}
+                primarySelectedObject={primarySelectedObject}
+                onContextMenu={onContextMenu}
+              />
+            );
+          }
+          return null;
+        })}
+      </g>
+    </svg>
+  );
+};
+
+export default SvgCanvas;
+
+==== src\components\Configurator\common\ContextMenu.jsx ====
+// src/components/Configurator/common/ContextMenu.jsx
+import React, { useEffect, useRef } from "react";
+
+const ContextMenu = ({ x, y, options, onClose }) => {
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+    const handleEsc = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [onClose]);
+
+  if (!options || options.length === 0) return null;
+
+  // Adjust position if menu would go off-screen
+  const menuWidth = 180; // Approximate width, adjust as needed
+  const menuHeight = options.length * 35; // Approximate height
+  const adjustedX =
+    x + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 10 : x;
+  const adjustedY =
+    y + menuHeight > window.innerHeight
+      ? window.innerHeight - menuHeight - 10
+      : y;
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed bg-card-bg border border-gray-600 shadow-2xl rounded-md py-1 z-[100] text-sm text-gray-200 min-w-[180px]"
+      style={{ top: adjustedY, left: adjustedX }}
+    >
+      {options.map((option, index) => {
+        if (option.isSeparator) {
+          return (
+            <div
+              key={`sep-${index}`}
+              className="border-t border-gray-600 my-1 h-0 p-0"
+            ></div>
+          );
+        }
+        return (
+          <div
+            key={option.label || index}
+            onClick={() => {
+              if (option.onClick && !option.disabled) {
+                option.onClick();
+              }
+              if (!option.keepOpen) {
+                // Allow some options to keep menu open if needed
+                onClose();
+              }
+            }}
+            className={`px-3 py-1.5 whitespace-nowrap ${
+              option.disabled
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:bg-gray-700 cursor-pointer"
+            }`}
+          >
+            {option.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default ContextMenu;
+
+
+==== src\components\Configurator\common\PropertyInput.jsx ====
+// src/components/Configurator/common/PropertyInput.jsx
+import React from "react";
+
+const PropertyInput = ({
+  label,
+  value,
+  onChange,
+  type = "text",
+  disabled,
+  children,
+  className,
+  inputClassName,
+  labelClassName,
+  ...props
+}) => {
+  return (
+    <div className={`mb-2 ${className || ""}`}>
+      {label && (
+        <label
+          className={`block text-xs text-gray-400 mb-0.5 ${labelClassName || ""}`}
+        >
+          {label}
+        </label>
+      )}
+      {children ? (
+        React.Children.map(children, (child) =>
+          React.isValidElement(child)
+            ? React.cloneElement(child, { disabled })
+            : child,
+        )
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 focus:ring-1 focus:ring-primary-blue focus:border-primary-blue outline-none ${disabled ? "bg-gray-800 opacity-60 cursor-not-allowed" : ""} ${inputClassName || ""}`}
+          {...props}
+        />
+      )}
+    </div>
+  );
+};
+
+export default PropertyInput;
+
+
+==== src\components\Configurator\Configurator.jsx ====
+// src/components/Configurator/Configurator.jsx
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import useViewTransform from "./hooks/useViewTransform";
+import useModifierKeys from "./hooks/useModifierKeys";
+import useMouseInteractions from "./hooks/useMouseInteractions";
+import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
+
+import ConfiguratorToolbar from "./toolbar/ConfiguratorToolbar";
+import SvgCanvas from "./canvas/SvgCanvas";
+import StatusBar from "./statusbar/StatusBar";
+import PropertiesPanel from "./sidebar/PropertiesPanel";
+import ElementPlacementPanel from "./sidebar/ElementPlacementPanel";
+import ContextMenu from "./common/ContextMenu";
+
+import {
+  MODES,
+  OBJECT_TYPES,
+  MODULE_DEFAULT_CELLS_LONG,
+  MODULE_DEFAULT_CELLS_WIDE,
+  GRID_CELL_SIZE_M,
+  defaultObjectSizes,
+  WALL_THICKNESS_M_RENDER,
+  INITIAL_PPM,
+} from "./configuratorConstants";
+
+const generateId = (prefix = "id_") =>
+  `${prefix}${Date.now().toString(36)}${Math.random().toString(36).substring(2, 7)}`;
+
+const EPSILON = 0.01;
+
+const getInterfaceKey = (id1, id2, orientationPrefix) => {
+  const sortedIds = [id1, id2].sort();
+  return `${sortedIds[0]}_${sortedIds[1]}_${orientationPrefix}`;
+};
+
+const Configurator = () => {
+  const svgRef = useRef(null);
+  const mainContainerRef = useRef(null);
+
+  const [activeMode, setActiveMode] = useState(MODES.MODULAR);
+  const [objects, setObjects] = useState([]);
+  const [selectedObjectId, setSelectedObjectId] = useState(null);
+  const [selectedWallSegmentData, setSelectedWallSegmentData] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [showElementPlacementModal, setShowElementPlacementModal] =
+    useState(false);
+  const [manuallyClosedPortals, setManuallyClosedPortals] = useState(new Set());
+
+  const modifierKeys = useModifierKeys(mainContainerRef, svgRef);
+  const { viewTransform, setViewTransform, screenToWorld } =
+    useViewTransform(svgRef);
+
+  const getObjectById = useCallback(
+    (id) => {
+      if (!id) return null;
+      const module = objects.find(
+        (obj) => obj.id === id && obj.type === OBJECT_TYPES.MODULE,
+      );
+      if (module) return module;
+
+      for (const mod of objects.filter((o) => o.type === OBJECT_TYPES.MODULE)) {
+        for (const segmentKey in mod.wallSegments) {
+          const segment = mod.wallSegments[segmentKey];
+          if (segment.id === id)
+            return {
+              ...segment,
+              type: OBJECT_TYPES.WALL_SEGMENT,
+              parentModule: mod,
+              segmentKey,
+            };
+          if (segment.elements) {
+            for (const element of segment.elements) {
+              if (element.id === id)
+                return {
+                  ...element,
+                  type: element.type,
+                  parentWallSegment: segment,
+                  parentModule: mod,
+                  segmentKey,
+                };
+            }
+          }
+        }
+      }
+      return null;
+    },
+    [objects],
+  );
+
+  const primarySelectedObject = getObjectById(selectedObjectId);
+  const canShowInitialModuleButton =
+    activeMode === MODES.MODULAR &&
+    !objects.some((obj) => obj.type === OBJECT_TYPES.MODULE);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  const managePortals = useCallback(
+    (currentObjects, currentManuallyClosedPortals) => {
+      let newObjects = JSON.parse(JSON.stringify(currentObjects));
+      const modules = newObjects.filter(
+        (obj) => obj.type === OBJECT_TYPES.MODULE,
+      );
+      const portalDoorType = OBJECT_TYPES.DOOR;
+
+      modules.forEach((module) => {
+        for (const segmentKey in module.wallSegments) {
+          const segment = module.wallSegments[segmentKey];
+          delete segment.isPortalWall;
+          delete segment.hasPortalDoor;
+          delete segment.portalInterfaceKey;
+          if (segment.elements) {
+            segment.elements = segment.elements.filter(
+              (el) => !el.isPortalDoor,
+            );
+          }
+        }
+      });
+
+      for (let i = 0; i < modules.length; i++) {
+        for (let j = i + 1; j < modules.length; j++) {
+          const m1 = modules[i];
+          const m2 = modules[j];
+
+          if (m1.rotation !== 0 || m2.rotation !== 0) continue;
+
+          // Check Vertical Interface (m1's right vs m2's left)
+          if (Math.abs(m1.x + m1.width - m2.x) < EPSILON) {
+            const verticalInterfaceKey = getInterfaceKey(m1.id, m2.id, "V_RL");
+            if (!currentManuallyClosedPortals.has(verticalInterfaceKey)) {
+              let doorAddedThisPair = false;
+              for (let c1 = 0; c1 < m1.cellsLong; c1++) {
+                const m1WallYWorld = m1.y + c1 * GRID_CELL_SIZE_M;
+                const m1SegmentKey = `${m1.cellsWide},${c1}_v`;
+                const m1Wall = m1.wallSegments[m1SegmentKey];
+                if (!m1Wall) continue;
+
+                for (let c2 = 0; c2 < m2.cellsLong; c2++) {
+                  const m2WallYWorld = m2.y + c2 * GRID_CELL_SIZE_M;
+                  if (Math.abs(m1WallYWorld - m2WallYWorld) < EPSILON) {
+                    const m2SegmentKey = `0,${c2}_v`;
+                    const m2Wall = m2.wallSegments[m2SegmentKey];
+                    if (!m2Wall) continue;
+
+                    m1Wall.isPortalWall = true;
+                    m1Wall.portalInterfaceKey = verticalInterfaceKey;
+                    m2Wall.isPortalWall = true;
+                    m2Wall.portalInterfaceKey = verticalInterfaceKey;
+
+                    if (!doorAddedThisPair) {
+                      const doorDefaults = defaultObjectSizes[portalDoorType];
+                       // Add door to the module with the lower ID
+                       if (m1.id.localeCompare(m2.id) < 0) {
+                          m1Wall.elements.push({
+                            id: generateId(`${portalDoorType}_portal_`),
+                            type: portalDoorType,
+                            positionOnSegment: 0.5,
+                            width: doorDefaults.width,
+                            isOpen: true,
+                            isPortalDoor: true,
+                            hingeSide: "left",
+                            openingDirection: "inward",
+                            portalInterfaceKey: verticalInterfaceKey,
+                          });
+                          m1Wall.hasPortalDoor = true;
+                       } else {
+                           m2Wall.elements.push({
+                            id: generateId(`${portalDoorType}_portal_`),
+                            type: portalDoorType,
+                            positionOnSegment: 0.5,
+                            width: doorDefaults.width,
+                            isOpen: true,
+                            isPortalDoor: true,
+                            hingeSide: "left",
+                            openingDirection: "inward",
+                            portalInterfaceKey: verticalInterfaceKey,
+                          });
+                           m2Wall.hasPortalDoor = true;
+                       }
+                      doorAddedThisPair = true;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+           // Check Vertical Interface (m2's right vs m1's left) - Redundant if checking both pairs, but keeps logic cleaner per pair
+            if (Math.abs(m2.x + m2.width - m1.x) < EPSILON) {
+              const verticalInterfaceKey = getInterfaceKey(m1.id, m2.id, "V_LR");
+               if (!currentManuallyClosedPortals.has(verticalInterfaceKey)) {
+                  let doorAddedThisPair = false;
+                   for (let c1 = 0; c1 < m1.cellsLong; c1++) {
+                    const m1WallYWorld = m1.y + c1 * GRID_CELL_SIZE_M;
+                    const m1SegmentKey = `0,${c1}_v`;
+                    const m1Wall = m1.wallSegments[m1SegmentKey];
+                    if (!m1Wall) continue;
+
+                    for (let c2 = 0; c2 < m2.cellsLong; c2++) {
+                      const m2WallYWorld = m2.y + c2 * GRID_CELL_SIZE_M;
+                      if (Math.abs(m1WallYWorld - m2WallYWorld) < EPSILON) {
+                        const m2SegmentKey = `${m2.cellsWide},${c2}_v`;
+                        const m2Wall = m2.wallSegments[m2SegmentKey];
+                        if (!m2Wall) continue;
+
+                        m1Wall.isPortalWall = true;
+                        m1Wall.portalInterfaceKey = verticalInterfaceKey;
+                        m2Wall.isPortalWall = true;
+                        m2Wall.portalInterfaceKey = verticalInterfaceKey;
+
+                         if (!doorAddedThisPair) {
+                          const doorDefaults = defaultObjectSizes[portalDoorType];
+                           // Add door to the module with the lower ID
+                           if (m1.id.localeCompare(m2.id) < 0) {
+                              m1Wall.elements.push({
+                                id: generateId(`${portalDoorType}_portal_`),
+                                type: portalDoorType,
+                                positionOnSegment: 0.5,
+                                width: doorDefaults.width,
+                                isOpen: true,
+                                isPortalDoor: true,
+                                hingeSide: "left",
+                                openingDirection: "inward",
+                                portalInterfaceKey: verticalInterfaceKey,
+                              });
+                              m1Wall.hasPortalDoor = true;
+                           } else {
+                               m2Wall.elements.push({
+                                id: generateId(`${portalDoorType}_portal_`),
+                                type: portalDoorType,
+                                positionOnSegment: 0.5,
+                                width: doorDefaults.width,
+                                isOpen: true,
+                                isPortalDoor: true,
+                                hingeSide: "left",
+                                openingDirection: "inward",
+                                portalInterfaceKey: verticalInterfaceKey,
+                              });
+                               m2Wall.hasPortalDoor = true;
+                           }
+                          doorAddedThisPair = true;
+                        }
+                      }
+                    }
+                  }
+               }
+            }
+
+
+          // Check Horizontal Interface (m1's bottom vs m2's top)
+          if (Math.abs(m1.y + m1.height - m2.y) < EPSILON) {
+            const horizontalInterfaceKey = getInterfaceKey(m1.id, m2.id, "H_BT");
+            if (!currentManuallyClosedPortals.has(horizontalInterfaceKey)) {
+               let doorAddedThisPair = false;
+              for (let c1 = 0; c1 < m1.cellsWide; c1++) {
+                const m1WallXWorld = m1.x + c1 * GRID_CELL_SIZE_M;
+                const m1SegmentKey = `${c1},${m1.cellsLong}_h`;
+                const m1Wall = m1.wallSegments[m1SegmentKey];
+                if (!m1Wall) continue;
+
+                for (let c2 = 0; c2 < m2.cellsWide; c2++) {
+                  const m2WallXWorld = m2.x + c2 * GRID_CELL_SIZE_M;
+                  if (Math.abs(m1WallXWorld - m2WallXWorld) < EPSILON) {
+                    const m2SegmentKey = `${c2},0_h`;
+                    const m2Wall = m2.wallSegments[m2SegmentKey];
+                    if (!m2Wall) continue;
+
+                    m1Wall.isPortalWall = true;
+                    m1Wall.portalInterfaceKey = horizontalInterfaceKey;
+                    m2Wall.isPortalWall = true;
+                    m2Wall.portalInterfaceKey = horizontalInterfaceKey;
+
+                     if (!doorAddedThisPair) {
+                      const doorDefaults = defaultObjectSizes[portalDoorType];
+                       // Add door to the module with the lower ID
+                       if (m1.id.localeCompare(m2.id) < 0) {
+                           m1Wall.elements.push({
+                            id: generateId(`${portalDoorType}_portal_`),
+                            type: portalDoorType,
+                            positionOnSegment: 0.5,
+                            width: doorDefaults.width,
+                            isOpen: true,
+                            isPortalDoor: true,
+                            hingeSide: "left",
+                            openingDirection: "inward",
+                            portalInterfaceKey: horizontalInterfaceKey,
+                          });
+                          m1Wall.hasPortalDoor = true;
+                       } else {
+                           m2Wall.elements.push({
+                            id: generateId(`${portalDoorType}_portal_`),
+                            type: portalDoorType,
+                            positionOnSegment: 0.5,
+                            width: doorDefaults.width,
+                            isOpen: true,
+                            isPortalDoor: true,
+                            hingeSide: "left",
+                            openingDirection: "inward",
+                            portalInterfaceKey: horizontalInterfaceKey,
+                          });
+                           m2Wall.hasPortalDoor = true;
+                       }
+                       doorAddedThisPair = true;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+           // Check Horizontal Interface (m2's bottom vs m1's top)
+            if (Math.abs(m2.y + m2.height - m1.y) < EPSILON) {
+               const horizontalInterfaceKey = getInterfaceKey(m1.id, m2.id, "H_TB");
+                if (!currentManuallyClosedPortals.has(horizontalInterfaceKey)) {
+                   let doorAddedThisPair = false;
+                   for (let c1 = 0; c1 < m1.cellsWide; c1++) {
+                    const m1WallXWorld = m1.x + c1 * GRID_CELL_SIZE_M;
+                    const m1SegmentKey = `${c1},0_h`;
+                    const m1Wall = m1.wallSegments[m1SegmentKey];
+                    if (!m1Wall) continue;
+
+                    for (let c2 = 0; c2 < m2.cellsWide; c2++) {
+                      const m2WallXWorld = m2.x + c2 * GRID_CELL_SIZE_M;
+                      if (Math.abs(m1WallXWorld - m2WallXWorld) < EPSILON) {
+                        const m2SegmentKey = `${c2},${m2.cellsLong}_h`;
+                        const m2Wall = m2.wallSegments[m2SegmentKey];
+                        if (!m2Wall) continue;
+
+                        m1Wall.isPortalWall = true;
+                        m1Wall.portalInterfaceKey = horizontalInterfaceKey;
+                        m2Wall.isPortalWall = true;
+                        m2Wall.portalInterfaceKey = horizontalInterfaceKey;
+
+                        if (!doorAddedThisPair) {
+                           const doorDefaults = defaultObjectSizes[portalDoorType];
+                            // Add door to the module with the lower ID
+                            if (m1.id.localeCompare(m2.id) < 0) {
+                                m1Wall.elements.push({
+                                 id: generateId(`${portalDoorType}_portal_`),
+                                 type: portalDoorType,
+                                 positionOnSegment: 0.5,
+                                 width: doorDefaults.width,
+                                 isOpen: true,
+                                 isPortalDoor: true,
+                                 hingeSide: "left",
+                                 openingDirection: "inward",
+                                 portalInterfaceKey: horizontalInterfaceKey,
+                               });
+                                m1Wall.hasPortalDoor = true;
+                            } else {
+                                m2Wall.elements.push({
+                                 id: generateId(`${portalDoorType}_portal_`),
+                                 type: portalDoorType,
+                                 positionOnSegment: 0.5,
+                                 width: doorDefaults.width,
+                                 isOpen: true,
+                                 isPortalDoor: true,
+                                 hingeSide: "left",
+                                 openingDirection: "inward",
+                                 portalInterfaceKey: horizontalInterfaceKey,
+                               });
+                                m2Wall.hasPortalDoor = true;
+                            }
+                           doorAddedThisPair = true;
+                         }
+                       }
+                     }
+                   }
+                }
+             }
+        }
+      }
+
+       // Clean up portal interface keys that no longer connect modules
+        const activePortalInterfaceKeys = new Set();
+        for (let i = 0; i < modules.length; i++) {
+             for (let j = i + 1; j < modules.length; j++) {
+                 const m1 = modules[i];
+                 const m2 = modules[j];
+                 if (m1.rotation !== 0 || m2.rotation !== 0) continue;
+
+                 if (Math.abs(m1.x + m1.width - m2.x) < EPSILON) activePortalInterfaceKeys.add(getInterfaceKey(m1.id, m2.id, "V_RL"));
+                 if (Math.abs(m2.x + m2.width - m1.x) < EPSILON) activePortalInterfaceKeys.add(getInterfaceKey(m1.id, m2.id, "V_LR"));
+                 if (Math.abs(m1.y + m1.height - m2.y) < EPSILON) activePortalInterfaceKeys.add(getInterfaceKey(m1.id, m2.id, "H_BT"));
+                 if (Math.abs(m2.y + m2.height - m1.y) < EPSILON) activePortalInterfaceKeys.add(getInterfaceKey(m1.id, m2.id, "H_TB"));
+             }
+        }
+
+       // Remove manually closed flags for interfaces that no longer exist
+       const newManuallyClosedPortals = new Set(
+           [...currentManuallyClosedPortals].filter(key => activePortalInterfaceKeys.has(key))
+       );
+       // Update the state, but *only* if it actually changed to avoid infinite loops
+        if ([...newManuallyClosedPortals].join(',') !== [...currentManuallyClosedPortals].join(',')) {
+            setManuallyClosedPortals(newManuallyClosedPortals);
+        }
+
+
+      return newObjects; // Return the updated objects list
+    },
+    [defaultObjectSizes, GRID_CELL_SIZE_M, setManuallyClosedPortals],
+  );
+
+  const createNewModule = useCallback((posX = 0, posY = 0) => {
+    const moduleId = generateId("module_");
+    const cellsWide = MODULE_DEFAULT_CELLS_WIDE;
+    const cellsLong = MODULE_DEFAULT_CELLS_LONG;
+    const wallSegments = {};
+    for (let i = 0; i < cellsWide; i++) {
+      wallSegments[`${i},0_h`] = {
+        id: generateId("wall_"),
+        elements: [],
+        thickness: WALL_THICKNESS_M_RENDER,
+      };
+      wallSegments[`${i},${cellsLong}_h`] = {
+        id: generateId("wall_"),
+        elements: [],
+        thickness: WALL_THICKNESS_M_RENDER,
+      };
+    }
+    for (let j = 0; j < cellsLong; j++) {
+      wallSegments[`0,${j}_v`] = {
+        id: generateId("wall_"),
+        elements: [],
+        thickness: WALL_THICKNESS_M_RENDER,
+      };
+      wallSegments[`${cellsWide},${j}_v`] = {
+        id: generateId("wall_"),
+        elements: [],
+        thickness: WALL_THICKNESS_M_RENDER,
+      };
+    }
+    return {
+      id: moduleId,
+      type: OBJECT_TYPES.MODULE,
+      x: posX,
+      y: posY,
+      cellsWide,
+      cellsLong,
+      width: cellsWide * GRID_CELL_SIZE_M,
+      height: cellsLong * GRID_CELL_SIZE_M,
+      rotation: 0,
+      label: `Модуль ${cellsWide}x${cellsLong}`,
+      wallSegments,
+    };
+  }, [GRID_CELL_SIZE_M, MODULE_DEFAULT_CELLS_LONG, MODULE_DEFAULT_CELLS_WIDE, WALL_THICKNESS_M_RENDER]);
+
+  const addModuleAtZeroZero = useCallback(() => {
+    if (!canShowInitialModuleButton) return;
+    const newModule = createNewModule(0, 0);
+    setObjects((prevObjects) =>
+      managePortals([...prevObjects, newModule], manuallyClosedPortals),
+    );
+    setSelectedObjectId(newModule.id);
+    closeContextMenu();
+  }, [
+    canShowInitialModuleButton,
+    closeContextMenu,
+    managePortals,
+    manuallyClosedPortals,
+    createNewModule,
+  ]);
+
+  const addModuleFromToolbar = useCallback(() => {
+    let newX = 0;
+    let newY = 0;
+    const modulesOnly = objects.filter((o) => o.type === OBJECT_TYPES.MODULE);
+    if (modulesOnly.length > 0) {
+      const rightmostModule =
+        modulesOnly
+          .filter(
+            (obj) => typeof obj.x === "number" && typeof obj.y === "number",
+          )
+          .sort((a, b) => (b.x || 0) + (b.width || 0) - ((a.x || 0) + (a.width || 0)))[0] ||
+        modulesOnly[modulesOnly.length - 1];
+      if (rightmostModule) {
+        newX =
+          (rightmostModule.x || 0) +
+          (rightmostModule.width ||
+            MODULE_DEFAULT_CELLS_WIDE * GRID_CELL_SIZE_M) +
+          GRID_CELL_SIZE_M * 2;
+        newY = rightmostModule.y || 0;
+      } else {
+        newX = (MODULE_DEFAULT_CELLS_WIDE * GRID_CELL_SIZE_M + GRID_CELL_SIZE_M * 2) * modulesOnly.length;
+      }
+    }
+    const newModule = createNewModule(newX, newY);
+    setObjects((prevObjects) =>
+      managePortals([...prevObjects, newModule], manuallyClosedPortals),
+    );
+    setSelectedObjectId(newModule.id);
+    closeContextMenu();
+  }, [objects, closeContextMenu, managePortals, manuallyClosedPortals, GRID_CELL_SIZE_M, MODULE_DEFAULT_CELLS_WIDE, createNewModule]);
+
+  const addNewModule = useCallback(
+    (worldX, worldY) => {
+      if (activeMode !== MODES.MODULAR) return;
+      const snappedX = Math.round(worldX / GRID_CELL_SIZE_M) * GRID_CELL_SIZE_M;
+      const snappedY = Math.round(worldY / GRID_CELL_SIZE_M) * GRID_CELL_SIZE_M;
+      const newModule = createNewModule(snappedX, snappedY);
+      setObjects((prevObjects) =>
+        managePortals([...prevObjects, newModule], manuallyClosedPortals),
+      );
+      setSelectedObjectId(newModule.id);
+      closeContextMenu();
+    },
+    [activeMode, closeContextMenu, managePortals, manuallyClosedPortals, GRID_CELL_SIZE_M, createNewModule],
+  );
+
+  const handleToggleWallSegment = useCallback(
+    (moduleId, cellX, cellY, orientation, segmentIdToToggle) => {
+      const segmentObject = getObjectById(segmentIdToToggle);
+      if (segmentObject && segmentObject.isPortalWall) {
+        alert(
+          "Для управления портальным проемом используйте контекстное меню на двери или на самом проеме.",
+        );
+        return;
+      }
+      setObjects((prevObjects) => {
+        const newObjects = prevObjects.map((obj) => {
+          if (obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE) {
+            const newModule = { ...obj, wallSegments: { ...obj.wallSegments } };
+            const segmentKey = `${cellX},${cellY}_${orientation}`;
+            if (newModule.wallSegments[segmentKey]?.isPortalWall) {
+              return obj;
+            }
+            let isPerimeter = false;
+            if (
+              orientation === "h" &&
+              (cellY === 0 || cellY === newModule.cellsLong)
+            )
+              isPerimeter = true;
+            if (
+              orientation === "v" &&
+              (cellX === 0 || cellX === newModule.cellsWide)
+            )
+              isPerimeter = true;
+            if (newModule.wallSegments[segmentKey]) {
+              if (isPerimeter) {
+                 alert("Периметральные стены не могут быть удалены.");
+                 return obj;
+              }
+              if (
+                newModule.wallSegments[segmentKey].elements &&
+                newModule.wallSegments[segmentKey].elements.length > 0
+              ) {
+                alert(
+                  "Нельзя удалить стену с элементами. Сначала удалите элементы.",
+                );
+                return obj;
+              }
+              const wallIdToDelete = newModule.wallSegments[segmentKey].id;
+              delete newModule.wallSegments[segmentKey];
+              if (selectedObjectId === wallIdToDelete)
+                setSelectedObjectId(null);
+            } else if (!isPerimeter) {
+              newModule.wallSegments[segmentKey] = {
+                id: generateId("wall_"),
+                elements: [],
+                thickness: WALL_THICKNESS_M_RENDER,
+              };
+            }
+            return newModule;
+          }
+          return obj;
+        });
+        return managePortals(newObjects, manuallyClosedPortals);
+      });
+      closeContextMenu();
+    },
+    [
+      selectedObjectId,
+      closeContextMenu,
+      managePortals,
+      manuallyClosedPortals,
+      getObjectById,
+      objects,
+      WALL_THICKNESS_M_RENDER,
+    ],
+  );
+
+  const deleteWallSegment = useCallback(
+    (moduleId, segmentKey) => {
+      const module = objects.find((m) => m.id === moduleId);
+      if (module && module.wallSegments[segmentKey]?.isPortalWall) {
+        alert(
+          "Для управления портальным проемом используйте контекстное меню на двери или на самом проеме.",
+        );
+        closeContextMenu();
+        return;
+      }
+      setObjects((prevObjects) => {
+        const newObjects = prevObjects.map((obj) => {
+          if (obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE) {
+            const newModule = { ...obj, wallSegments: { ...obj.wallSegments } };
+            const segment = newModule.wallSegments[segmentKey];
+            if (!segment || segment.isPortalWall) return obj;
+            const [coords, orientation] = segmentKey.split("_");
+            const cellX = parseInt(coords.split(",")[0]);
+            const cellY = parseInt(coords.split(",")[1]);
+            let isPerimeter = false;
+            if (
+              orientation === "h" &&
+              (cellY === 0 || cellY === newModule.cellsLong)
+            )
+              isPerimeter = true;
+            if (
+              orientation === "v" &&
+              (cellX === 0 || cellX === newModule.cellsWide)
+            )
+              isPerimeter = true;
+            if (isPerimeter) {
+              alert(
+                "Периметральные стены модуля не могут быть удалены этим способом.",
+              );
+              return obj;
+            }
+            if (segment.elements && segment.elements.length > 0) {
+              alert(
+                "Нельзя удалить стену с элементами. Сначала удалите элементы.",
+              );
+              return obj;
+            }
+            const wallIdToDelete = segment.id;
+            delete newModule.wallSegments[segmentKey];
+            if (selectedObjectId === wallIdToDelete) setSelectedObjectId(null);
+            return newModule;
+          }
+          return obj;
+        });
+        return managePortals(newObjects, manuallyClosedPortals);
+      });
+      closeContextMenu();
+    },
+    [
+      selectedObjectId,
+      closeContextMenu,
+      managePortals,
+      manuallyClosedPortals,
+      objects,
+    ],
+  );
+
+  useEffect(() => {
+    const objDetails = getObjectById(selectedObjectId);
+    if (objDetails && objDetails.type === OBJECT_TYPES.WALL_SEGMENT) {
+      setSelectedWallSegmentData({
+        id: objDetails.id,
+        moduleId: objDetails.parentModule.id,
+        segmentKey: objDetails.segmentKey,
+        moduleLabel: objDetails.parentModule.label,
+        elements: objDetails.elements,
+        cellsWide: objDetails.parentModule.cellsWide,
+        cellsLong: objDetails.parentModule.cellsLong,
+        isPortalWall: objDetails.isPortalWall,
+        hasPortalDoor: objDetails.hasPortalDoor,
+        portalInterfaceKey: objDetails.portalInterfaceKey,
+      });
+    } else {
+      setSelectedWallSegmentData(null);
+    }
+  }, [selectedObjectId, getObjectById, objects]);
+
+  const handlePlaceElementOnWall = useCallback(
+    (elementType, defaultWidth) => {
+      if (!selectedWallSegmentData || !selectedWallSegmentData.id) return;
+      const {
+        moduleId,
+        segmentKey,
+        elements: wallElements,
+        isPortalWall,
+      } = selectedWallSegmentData;
+      if (isPortalWall) {
+        alert(
+          "Нельзя добавлять элементы на стену, являющуюся частью межмодульного прохода.",
+        );
+        if (showElementPlacementModal) setShowElementPlacementModal(false);
+        closeContextMenu();
+        return;
+      }
+      if (wallElements && wallElements.length > 0) {
+        alert(
+          "На этом сегменте стены уже есть элемент. Удалите его, чтобы добавить новый.",
+        );
+        if (showElementPlacementModal) setShowElementPlacementModal(false);
+        closeContextMenu();
+        return;
+      }
+      setObjects((prevObjects) => {
+        const newObjects = prevObjects.map((obj) => {
+          if (obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE) {
+            const newModule = { ...obj, wallSegments: { ...obj.wallSegments } };
+            if (newModule.wallSegments[segmentKey]) {
+               if (newModule.wallSegments[segmentKey].elements && newModule.wallSegments[segmentKey].elements.length > 0) {
+                  return obj;
+               }
+              const elementDefaults = defaultObjectSizes[elementType];
+              const newElement = {
+                id: generateId(`${elementType}_`),
+                type: elementType,
+                positionOnSegment: 0.5,
+                width: elementDefaults.width,
+                ...(elementType === OBJECT_TYPES.DOOR && {
+                  isOpen: false,
+                  openingAngle: 90,
+                  hingeSide: "left",
+                  openingDirection: "inward",
+                }),
+              };
+              newModule.wallSegments[segmentKey] = {
+                ...newModule.wallSegments[segmentKey],
+                elements: [newElement],
+              };
+              setSelectedObjectId(newElement.id);
+              return newModule;
+            }
+          }
+          return obj;
+        });
+        return newObjects;
+      });
+      setShowElementPlacementModal(false);
+      closeContextMenu();
+    },
+    [
+      selectedWallSegmentData,
+      closeContextMenu,
+      showElementPlacementModal,
+      defaultObjectSizes,
+      setSelectedObjectId,
+    ],
+  );
+
+  const updateSelectedObjectProperty = useCallback(
+    (key, value) => {
+      if (!selectedObjectId || !primarySelectedObject) return;
+      const numericProps = [
+        "x",
+        "y",
+        "width",
+        "height",
+        "rotation",
+        "openingAngle",
+        "positionOnSegment",
+        "thickness",
+      ];
+      let processedValue = value;
+      if (numericProps.includes(key)) {
+        processedValue = parseFloat(value);
+        if (isNaN(processedValue)) {
+          if (
+            value === "" &&
+            (key === "x" || key === "y" || key === "rotation" || key === "thickness")
+          )
+            processedValue = 0;
+          else return;
+        }
+      } else if (
+        typeof value === "string" &&
+        (value.toLowerCase() === "true" || value.toLowerCase() === "false")
+      ) {
+        processedValue = value.toLowerCase() === "true";
+      }
+
+      let needsPortalUpdate = false;
+      setObjects((prevObjects) =>
+        prevObjects.map((obj) => {
+          if (obj.id === selectedObjectId && obj.type === OBJECT_TYPES.MODULE) {
+            if (key === "label") {
+               return { ...obj, [key]: processedValue };
+            }
+            const currentVal = obj[key] !== undefined ? parseFloat(obj[key]) : NaN;
+            const newVal = parseFloat(processedValue);
+            if (key === "rotation") {
+              processedValue = (Math.round(processedValue / 90) * 90) % 360;
+              if (processedValue < 0) processedValue += 360;
+               if (Math.abs(currentVal - processedValue) > EPSILON) {
+                   if (processedValue !== 0) {
+                     console.warn(
+                       "Вращение модуля (кроме 0 градусов) пока не поддерживается с автоматическими межмодульными дверьми. Двери могут исчезнуть или отображаться некорректно.",
+                     );
+                   }
+                   needsPortalUpdate = true;
+               }
+            } else if ((key === "x" || key === "y")) {
+                 if (Math.abs(currentVal - newVal) > EPSILON) {
+                    needsPortalUpdate = true;
+                 }
+            }
+            return { ...obj, [key]: processedValue };
+          }
+          if (
+            primarySelectedObject.parentModule?.id &&
+            obj.id === primarySelectedObject.parentModule.id &&
+            obj.type === OBJECT_TYPES.MODULE
+          ) {
+            const newModule = { ...obj, wallSegments: { ...obj.wallSegments } };
+            let changed = false;
+            if (
+              primarySelectedObject.segmentKey &&
+              newModule.wallSegments[primarySelectedObject.segmentKey]
+            ) {
+              const segment =
+                newModule.wallSegments[primarySelectedObject.segmentKey];
+              if (
+                primarySelectedObject.type === OBJECT_TYPES.WALL_SEGMENT &&
+                segment.id === selectedObjectId
+              ) {
+                 if (key === "thickness" && !segment.isPortalWall) {
+                     changed = true;
+                     newModule.wallSegments[primarySelectedObject.segmentKey] = {
+                         ...segment,
+                         [key]: processedValue,
+                     };
+                 }
+              } else {
+                const newElements = segment.elements.map((el) => {
+                  if (el.id === selectedObjectId) {
+                    if (
+                      el.isPortalDoor &&
+                      (key === "width" || key === "positionOnSegment" || key === "isOpen" || key === "openingAngle" || key === "hingeSide" || key === "openingDirection")
+                    ) {
+                      alert(
+                        "Свойства портальной двери (ширина, позиция, открыто/закрыто, угол, петли, направление) не могут быть изменены вручную. Используйте опцию 'Закрыть/Открыть проем'.",
+                      );
+                      return el;
+                    }
+                    changed = true;
+                    return { ...el, [key]: processedValue };
+                  }
+                  return el;
+                });
+                if (changed)
+                  newModule.wallSegments[primarySelectedObject.segmentKey] = {
+                    ...segment,
+                    elements: newElements,
+                  };
+              }
+            }
+            return changed ? newModule : obj;
+          }
+          return obj;
+        }),
+      );
+      if (needsPortalUpdate) {
+          setObjects((prev) => managePortals(prev, manuallyClosedPortals));
+      }
+    },
+    [
+      selectedObjectId,
+      primarySelectedObject,
+      managePortals,
+      manuallyClosedPortals,
+    ],
+  );
+
+  const updateModulePosition = useCallback((moduleId, newX, newY) => {
+    setObjects((prevObjects) =>
+      prevObjects.map((obj) =>
+        obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE
+          ? { ...obj, x: newX, y: newY }
+          : obj,
+      ),
+    );
+  }, []);
+
+  const snapAndFinalizeModulePosition = useCallback(
+    (moduleId) => {
+      setObjects((prevObjects) => {
+        let moduleToSnap = null;
+        const objectsWithSnappedModule = prevObjects.map((obj) => {
+          if (obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE) {
+             moduleToSnap = obj;
+            const snappedX =
+              GRID_CELL_SIZE_M > 0
+                ? Math.round(obj.x / GRID_CELL_SIZE_M) * GRID_CELL_SIZE_M
+                : obj.x;
+            const snappedY =
+              GRID_CELL_SIZE_M > 0
+                ? Math.round(obj.y / GRID_CELL_SIZE_M) * GRID_CELL_SIZE_M
+                : obj.y;
+             if (Math.abs(obj.x - snappedX) > EPSILON || Math.abs(obj.y - snappedY) > EPSILON) {
+                 return { ...obj, x: snappedX, y: snappedY };
+             }
+          }
+          return obj;
+        }).filter(Boolean);
+
+        const moduleAfterSnap = objectsWithSnappedModule.find(obj => obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE);
+
+        if (moduleToSnap && moduleAfterSnap && (Math.abs(moduleToSnap.x - moduleAfterSnap.x) > EPSILON || Math.abs(moduleToSnap.y - moduleAfterSnap.y) > EPSILON)) {
+             return managePortals(objectsWithSnappedModule, manuallyClosedPortals);
+        }
+
+        return prevObjects;
+      });
+    },
+    [GRID_CELL_SIZE_M, managePortals, manuallyClosedPortals],
+  );
+
+  const handleRotateModule = useCallback(
+    (moduleId) => {
+      setObjects((prevObjects) => {
+        const rotatedObjects = prevObjects.map((obj) => {
+          if (obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE) {
+             const currentRotation = obj.rotation || 0;
+             const newRotation = (currentRotation + 90) % 360;
+             if (newRotation < 0) newRotation += 360;
+             if (newRotation !== 0) {
+               console.warn(
+                 "Вращение модуля (кроме 0 градусов) пока не поддерживается с автоматическими межмодульными дверьми. Двери могут исчезнуть или отображаться некорректно.",
+               );
+            }
+            return { ...obj, rotation: newRotation };
+          }
+          return obj;
+        });
+        return managePortals(rotatedObjects, manuallyClosedPortals);
+      });
+      closeContextMenu();
+    },
+    [closeContextMenu, managePortals, manuallyClosedPortals],
+  );
+
+  const deleteSelectedObject = useCallback(() => {
+    if (!selectedObjectId || !primarySelectedObject) return;
+    if (primarySelectedObject.isPortalDoor) {
+      alert(
+        "Портальные двери не могут быть удалены вручную. Используйте опцию 'Закрыть проем'.",
+      );
+      closeContextMenu();
+      return;
+    }
+    let newObjectsList = objects;
+    let shouldUpdatePortals = false;
+
+    if (primarySelectedObject.type === OBJECT_TYPES.MODULE) {
+      newObjectsList = objects.filter((obj) => obj.id !== selectedObjectId);
+      setSelectedObjectId(null);
+      shouldUpdatePortals = true;
+    } else {
+      const { parentModule, segmentKey, type: objType } = primarySelectedObject;
+      if (parentModule) {
+        if (objType === OBJECT_TYPES.WALL_SEGMENT) {
+           alert(
+            "Для удаления сегмента стены используйте контекстное меню на стене.",
+          );
+           closeContextMenu();
+           return;
+        } else {
+          newObjectsList = objects.map((obj) => {
+            if (
+              obj.id === parentModule.id &&
+              obj.type === OBJECT_TYPES.MODULE
+            ) {
+              const newModule = {
+                ...obj,
+                wallSegments: { ...obj.wallSegments },
+              };
+              if (segmentKey && newModule.wallSegments[segmentKey]) {
+                 const segment = newModule.wallSegments[segmentKey];
+                 const elementExists = segment.elements.some(el => el.id === selectedObjectId);
+                 if (!elementExists) return obj;
+
+                newModule.wallSegments[segmentKey] = {
+                  ...segment,
+                  elements: segment.elements.filter(
+                    (el) => el.id !== selectedObjectId,
+                  ),
+                };
+                setSelectedObjectId(null);
+                return newModule;
+              }
+            }
+            return obj;
+          });
+          shouldUpdatePortals = false;
+        }
+      }
+    }
+    if (shouldUpdatePortals) {
+       setObjects(managePortals(newObjectsList, manuallyClosedPortals));
+    } else {
+       setObjects(newObjectsList);
+    }
+    closeContextMenu();
+  }, [
+    selectedObjectId,
+    primarySelectedObject,
+    objects,
+    closeContextMenu,
+    managePortals,
+    manuallyClosedPortals,
+  ]);
+
+  const handleTogglePortalState = useCallback(
+    (portalInterfaceKey, makeClosed) => {
+      setManuallyClosedPortals((prev) => {
+         const newSet = new Set(prev);
+         if (makeClosed) {
+            newSet.add(portalInterfaceKey);
+         } else {
+            newSet.delete(portalInterfaceKey);
+         }
+         return newSet;
+      });
+      closeContextMenu();
+      const currentSelected = getObjectById(selectedObjectId);
+      if (currentSelected && currentSelected.portalInterfaceKey === portalInterfaceKey) {
+          setSelectedObjectId(null);
+      }
+    },
+    [closeContextMenu, selectedObjectId, getObjectById],
+  );
+
+   useEffect(() => {
+       setObjects((prevObs) => managePortals(prevObs, manuallyClosedPortals));
+   }, [manuallyClosedPortals, managePortals]);
+
+  const handleContextMenuAction = useCallback(
+    (event, objectId, objectType, worldCoords) => {
+      event.preventDefault();
+      mainContainerRef.current?.focus();
+
+      if (objectId && objectId !== selectedObjectId) {
+          setSelectedObjectId(objectId);
+      } else if (!objectId && objectType === 'canvas') {
+           setSelectedObjectId(null);
+      }
+
+      const targetObjectForMenu = objectId
+        ? getObjectById(objectId)
+        : objectType === "canvas"
+          ? null
+          : getObjectById(selectedObjectId);
+
+      let options = [];
+
+      if (targetObjectForMenu) {
+        const obj = targetObjectForMenu;
+
+         options.push({
+            label: `Свойства (${obj.type === OBJECT_TYPES.WALL_SEGMENT ? 'стена' : obj.type === OBJECT_TYPES.DOOR ? 'дверь' : obj.type === OBJECT_TYPES.WINDOW ? 'окно' : 'модуль'})`,
+            onClick: () => setSelectedObjectId(obj.id),
+         });
+         options.push({ isSeparator: true });
+
+
+        if (obj.type === OBJECT_TYPES.WALL_SEGMENT) {
+           const segment = obj;
+           const [coords, orientation] = segment.segmentKey.split("_");
+           const cellX = parseInt(coords.split(",")[0]);
+           const cellY = parseInt(coords.split(",")[1]);
+           let isPerimeter = false;
+            if (segment.parentModule) {
+                if (orientation === "h" && (cellY === 0 || cellY === segment.parentModule.cellsLong)) isPerimeter = true;
+                if (orientation === "v" && (cellX === 0 || cellX === segment.parentModule.cellsWide)) isPerimeter = true;
+            }
+
+          if (segment.isPortalWall) {
+             options.push({ label: "Часть межмодульного проема", disabled: true });
+             const interfaceKey = segment.portalInterfaceKey;
+             const isManuallyClosed = manuallyClosedPortals.has(interfaceKey);
+
+             if (segment.hasPortalDoor) {
+                  options.push({
+                    label: isManuallyClosed ? "Проем закрыт вручную" : "Автоматическая дверь",
+                    disabled: true,
+                  });
+                   if (!isManuallyClosed) {
+                        options.push({
+                          label: "Закрыть проем (удалить дверь)",
+                          onClick: () => handleTogglePortalState(interfaceKey, true),
+                        });
+                   } else {
+                       options.push({
+                          label: "Восстановить авто-проем",
+                           onClick: () => handleTogglePortalState(interfaceKey, false),
+                       });
+                   }
+
+             } else {
+                  options.push({
+                    label: isManuallyClosed ? "Проем закрыт вручную" : "Сторона проема без двери",
+                    disabled: true,
+                  });
+                  if (isManuallyClosed) {
+                      options.push({
+                         label: "Восстановить авто-проем",
+                         onClick: () => handleTogglePortalState(interfaceKey, false),
+                      });
+                  }
+             }
+
+
+          } else {
+            options.push({
+              label: "Добавить элемент...",
+              onClick: () => {
+                if (selectedObjectId !== segment.id) setSelectedObjectId(segment.id);
+                setShowElementPlacementModal(true);
+              },
+              disabled: segment.elements && segment.elements.length > 0,
+            });
+
+             if (!isPerimeter && (!segment.elements || segment.elements.length === 0)) {
+               options.push({ isSeparator: true });
+               options.push({
+                 label: "Удалить стену",
+                 onClick: () => deleteWallSegment(segment.parentModule.id, segment.segmentKey),
+               });
+             }
+          }
+
+        } else if (
+          obj.type === OBJECT_TYPES.DOOR ||
+          obj.type === OBJECT_TYPES.WINDOW
+        ) {
+          if (obj.isPortalDoor && obj.portalInterfaceKey) {
+             options.push({ label: "Автоматическая портальная дверь", disabled: true });
+             const interfaceKey = obj.portalInterfaceKey;
+             const isManuallyClosed = manuallyClosedPortals.has(interfaceKey);
+
+             if (!isManuallyClosed) {
+                options.push({
+                  label: "Закрыть проем (удалить дверь)",
+                  onClick: () => handleTogglePortalState(interfaceKey, true),
+                });
+             } else {
+                 options.push({
+                    label: "Восстановить авто-проем",
+                    onClick: () => handleTogglePortalState(interfaceKey, false),
+                 });
+             }
+
+          } else {
+             options.push({
+               label: `Удалить (${obj.type === OBJECT_TYPES.DOOR ? "дверь" : "окно"})`,
+               onClick: () => {
+                 if (selectedObjectId !== obj.id) setSelectedObjectId(obj.id);
+                 deleteSelectedObject();
+               },
+             });
+          }
+
+        } else if (obj.type === OBJECT_TYPES.MODULE) {
+           options.push({
+             label: "Повернуть модуль на 90°",
+             onClick: () => handleRotateModule(obj.id),
+           });
+           options.push({ isSeparator: true });
+           options.push({
+             label: "Удалить модуль",
+             onClick: () => {
+               if (selectedObjectId !== obj.id) setSelectedObjectId(obj.id);
+               deleteSelectedObject();
+             },
+           });
+        }
+      } else if (objectType === "canvas" && worldCoords) {
+        let reEnableOptions = [];
+         const activePortalInterfaceKeys = new Set(
+            objects.flatMap(obj => {
+                 if (obj.type === OBJECT_TYPES.MODULE && obj.wallSegments) {
+                     return Object.values(obj.wallSegments)
+                         .filter(seg => seg.isPortalWall && seg.portalInterfaceKey)
+                         .map(seg => seg.portalInterfaceKey);
+                 }
+                 return [];
+             })
+         );
+         manuallyClosedPortals.forEach((key) => {
+            if (activePortalInterfaceKeys.has(key)) { // Only show option if the interface still exists
+              reEnableOptions.push({
+                label: `Открыть проем: ${key.substring(0, 15)}...`,
+                onClick: () => handleTogglePortalState(key, false),
+              });
+            }
+         });
+
+        if (reEnableOptions.length > 0) {
+          options.push({ label: "Восстановить проемы:", disabled: true });
+          options.push(...reEnableOptions);
+          if (activeMode === MODES.MODULAR) options.push({ isSeparator: true });
+        }
+
+        if (activeMode === MODES.MODULAR) {
+          options.push({
+            label: "Добавить модуль здесь",
+            onClick: () => addNewModule(worldCoords.worldX, worldCoords.worldY),
+          });
+        }
+      }
+      if (options.length > 0)
+        setContextMenu({ x: event.clientX, y: event.clientY, options });
+      else setContextMenu(null);
+    },
+    [
+      selectedObjectId,
+      objects,
+      getObjectById,
+      deleteSelectedObject,
+      deleteWallSegment,
+      addNewModule,
+      handleRotateModule,
+      activeMode,
+      setSelectedObjectId,
+      manuallyClosedPortals,
+      handleTogglePortalState,
+      setShowElementPlacementModal,
+    ],
+  );
+
+  useKeyboardShortcuts({
+    mainContainerRef,
+    deleteSelectedObject:
+      primarySelectedObject &&
+      !primarySelectedObject.isPortalDoor &&
+      (primarySelectedObject.type === OBJECT_TYPES.DOOR ||
+        primarySelectedObject.type === OBJECT_TYPES.WINDOW ||
+        primarySelectedObject.type === OBJECT_TYPES.MODULE)
+        ? deleteSelectedObject
+        : null,
+    deselectAll: () => {
+      setSelectedObjectId(null);
+      closeContextMenu();
+    },
+  });
+
+  useEffect(() => {
+    mainContainerRef.current?.focus();
+  }, []);
+
+  const mouseInteractions = useMouseInteractions({
+    viewTransform,
+    modifierKeys,
+    mainContainerRef,
+    svgRef,
+    setViewTransform,
+    activeMode,
+    setSelectedObjectId,
+    screenToWorld,
+    updateModulePosition,
+    snapAndFinalizeModulePosition,
+  });
+
+  return (
+    <div
+      ref={mainContainerRef}
+      className="w-full h-full flex flex-col select-none outline-none"
+      tabIndex={-1}
+    >
+      <ConfiguratorToolbar
+        activeMode={activeMode}
+        setActiveMode={setActiveMode}
+        onAddModuleFromToolbar={addModuleFromToolbar}
+      />
+      <div className="flex flex-grow overflow-hidden">
+        <div className="flex-grow flex items-center justify-center p-1 sm:p-2 md:p-4 bg-dark-bg relative">
+          <div className="relative bg-card-bg shadow-2xl w-full h-full max-w-[1920px] max-h-[1080px] aspect-[16/9] overflow-hidden rounded-md border border-gray-700">
+            <SvgCanvas
+              svgRef={svgRef}
+              viewTransform={viewTransform}
+              modifierKeys={modifierKeys}
+              isPanningWithSpace={mouseInteractions.isPanningWithSpace}
+              isDraggingModule={mouseInteractions.isDraggingModule}
+              handleMouseMove={mouseInteractions.handleMouseMove}
+              handleMouseUp={mouseInteractions.handleMouseUp}
+              handleMouseLeave={mouseInteractions.handleMouseLeave}
+              handleMouseDownOnCanvas={
+                mouseInteractions.handleMouseDownOnCanvas
+              }
+              onContextMenu={handleContextMenuAction}
+              objects={objects}
+              activeMode={activeMode}
+              selectedObjectId={selectedObjectId}
+              setSelectedObjectId={setSelectedObjectId}
+              scale={viewTransform.scale}
+              canAddInitialModule={canShowInitialModuleButton}
+              onAddModule={addModuleAtZeroZero}
+              onToggleWallSegment={(
+                moduleId,
+                cellX,
+                cellY,
+                orientation,
+                segmentId,
+              ) =>
+                handleToggleWallSegment(
+                  moduleId,
+                  cellX,
+                  cellY,
+                  orientation,
+                  segmentId,
+                )
+              }
+              primarySelectedObject={primarySelectedObject}
+            />
+          </div>
+        </div>
+        {activeMode === MODES.MODULAR &&
+          primarySelectedObject &&
+          !showElementPlacementModal && (
+            <PropertiesPanel
+              primarySelectedObject={primarySelectedObject}
+              lockedObjectIds={[]}
+              modifierKeys={modifierKeys}
+              updateSelectedObjectProperty={updateSelectedObjectProperty}
+              deleteSelectedObject={deleteSelectedObject}
+            />
+          )}
+        {activeMode === MODES.MODULAR &&
+          showElementPlacementModal &&
+          selectedWallSegmentData && (
+            <ElementPlacementPanel
+              selectedWallSegment={selectedWallSegmentData}
+              onPlaceElement={handlePlaceElementOnWall}
+              onClose={() => setShowElementPlacementModal(false)}
+              isModal
+            />
+          )}
+      </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          options={contextMenu.options}
+          onClose={closeContextMenu}
+        />
+      )}
+      <StatusBar
+        zoomLevel={viewTransform.scale / INITIAL_PPM}
+        selectedObjectName={
+          primarySelectedObject?.label ||
+          (primarySelectedObject?.isPortalDoor
+            ? "Портальная дверь"
+            : primarySelectedObject?.type) ||
+          ""
+        }
+        selectedObjectId={selectedObjectId}
+      />
+    </div>
+  );
+};
+export default Configurator;
+
+==== src\components\Configurator\configuratorConstants.js ====
+export const INITIAL_PPM = 50;
+export const GRID_CELL_SIZE_M = 1.15;
+export const GRID_LINE_COLOR = "rgba(100, 116, 139, 0.2)";
+export const GRID_BOLD_LINE_COLOR = "rgba(100, 116, 139, 0.4)";
+export const ORIGIN_POINT_COLOR = "transparent";
+export const MIN_ZOOM_SCALE = 0.1 * INITIAL_PPM;
+export const MAX_ZOOM_SCALE = 5 * INITIAL_PPM;
+export const MODES = {
+  MODULAR: "modular",
+  FRAME: "frame",
+  FRAMELESS: "frameless",
+};
+export const OBJECT_TYPES = {
+  MODULE: "module",
+  WALL_SEGMENT: "wall_segment",
+  DOOR: "door",
+  WINDOW: "window",
+  OUTLET: "outlet",
+  RADIATOR: "radiator",
+  LIGHT_LED: "light_led",
+  KITCHEN_UNIT: "kitchen_unit",
+};
+export const MODULE_DEFAULT_CELLS_WIDE = 2;
+export const MODULE_DEFAULT_CELLS_LONG = 6;
+export const MODULE_DEFAULT_WIDTH =
+  MODULE_DEFAULT_CELLS_WIDE * GRID_CELL_SIZE_M;
+export const MODULE_DEFAULT_LENGTH =
+  MODULE_DEFAULT_CELLS_LONG * GRID_CELL_SIZE_M;
+export const defaultObjectSizes = {
+  [OBJECT_TYPES.DOOR]: { width: 0.9, height: 2.1, depth: 0.15 },
+  [OBJECT_TYPES.WINDOW]: { width: 1.0, height: 1.0, depth: 0.15 },
+  [OBJECT_TYPES.OUTLET]: { width: 0.08, height: 0.08, depth: 0.05 },
+  [OBJECT_TYPES.RADIATOR]: { width: 1.0, height: 0.6, depth: 0.1 },
+  [OBJECT_TYPES.LIGHT_LED]: { width: 1.0, height: 0.05, depth: 0.05 },
+  [OBJECT_TYPES.KITCHEN_UNIT]: { width: 0.6, height: 0.85, depth: 0.6 },
+};
+export const OBJECT_TYPES_TO_ADD = [
+  { type: OBJECT_TYPES.DOOR, label: "Дверь" },
+  { type: OBJECT_TYPES.WINDOW, label: "Окно" },
+  { type: OBJECT_TYPES.OUTLET, label: "Розетка" },
+  { type: OBJECT_TYPES.LIGHT_LED, label: "Светильник (LED)" },
+  { type: OBJECT_TYPES.RADIATOR, label: "Радиатор" },
+];
+export const WALL_COLOR = "#A0A0A0";
+export const WALL_THICKNESS_M_RENDER = 0.15;
+export const SELECTED_WALL_SEGMENT_COLOR = "#007BFF";
+export const POTENTIAL_WALL_SLOT_COLOR = "rgba(0, 123, 255, 0.3)";
+export const INTERFACE_WALL_COLOR = "rgba(0, 123, 255, 0.1)"; // Color for the gap area
+export const AUTO_DOOR_COLOR = "rgba(0, 123, 255, 0.6)"; // Color for auto door
+export const DOOR_COLOR = "#AE8A6F";
+export const WINDOW_COLOR = "#87CEFA";
+export const ELEMENT_STROKE_COLOR = "#333333";
+
+==== src\components\Configurator\configuratorUtils.js ====
+// src/components/Configurator/configuratorUtils.js
+// This file is intentionally left sparse or empty as per the refactoring request.
+// All object-specific utility functions have been removed.
+// Add general utility functions here if needed for future grid-only features.
+
+export {}; // To make it a module
+
+
+==== src\components\Configurator\hooks\useKeyboardShortcuts.js ====
+// src/components/Configurator/hooks/useKeyboardShortcuts.js
+import { useEffect } from "react"; // Removed useCallback as it's not used
+
+const useKeyboardShortcuts = ({
+  mainContainerRef,
+  deleteSelectedObject, // New prop
+  deselectAll, // New prop
+}) => {
+  useEffect(() => {
+    const mainEl = mainContainerRef.current;
+    if (!mainEl) return;
+
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      const isInputFocused =
+        activeEl && ["INPUT", "TEXTAREA", "SELECT"].includes(activeEl.tagName);
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (isInputFocused && activeEl instanceof HTMLElement) {
+          activeEl.blur();
+        } else if (deselectAll) {
+          deselectAll(); // Deselect current object if escape is pressed and not in input
+        } else {
+          mainContainerRef.current?.focus();
+        }
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (!isInputFocused && deleteSelectedObject) {
+          e.preventDefault();
+          deleteSelectedObject();
+        }
+      }
+      // All other shortcuts (delete, lock, copy, paste, undo, redo for objects) are removed.
+    };
+
+    mainEl.addEventListener("keydown", handleKeyDown);
+    return () => {
+      mainEl.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mainContainerRef, deleteSelectedObject, deselectAll]); // Added dependencies
+};
+
+export default useKeyboardShortcuts;
+
+
+==== src\components\Configurator\hooks\useModifierKeys.js ====
+import { useState, useEffect, useCallback } from "react";
+
+const useModifierKeys = (mainContainerRef, svgRef) => {
+  const [modifierKeys, setModifierKeys] = useState({
+    ctrl: false,
+    alt: false,
+    meta: false,
+    shift: false,
+    spacebar: false,
+  });
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      setModifierKeys((prev) => ({
+        ...prev,
+        ctrl: e.ctrlKey,
+        alt: e.altKey,
+        meta: e.metaKey,
+        shift: e.shiftKey,
+        spacebar: e.code === "Space" ? true : prev.spacebar,
+      }));
+
+      if (
+        e.code === "Space" &&
+        mainContainerRef.current &&
+        svgRef.current &&
+        (document.activeElement === mainContainerRef.current ||
+          svgRef.current.contains(document.activeElement) ||
+          document.activeElement === document.body) // Allow space pan if body focused
+      ) {
+        e.preventDefault(); // Prevent page scroll when space is pressed for panning
+      }
+    },
+    [mainContainerRef, svgRef],
+  );
+
+  const handleKeyUp = useCallback((e) => {
+    setModifierKeys((prev) => ({
+      ...prev,
+      ctrl: e.ctrlKey,
+      alt: e.altKey,
+      meta: e.metaKey,
+      shift: e.shiftKey,
+      spacebar: e.code === "Space" ? false : prev.spacebar,
+    }));
+  }, []);
+
+  useEffect(() => {
+    const mainEl = mainContainerRef.current;
+    if (!mainEl) return;
+
+    // Attach to main container for focused interaction
+    mainEl.addEventListener("keydown", handleKeyDown);
+    mainEl.addEventListener("keyup", handleKeyUp);
+
+    // Attach to window for global modifier key detection, especially keyup
+    // This helps catch keyup events if focus is lost from mainEl during a key press
+    window.addEventListener("keydown", handleKeyDown); // To catch spacebar if focus isn't on mainEl
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      mainEl.removeEventListener("keydown", handleKeyDown);
+      mainEl.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [mainContainerRef, handleKeyDown, handleKeyUp]);
+
+  return modifierKeys;
+};
+
+export default useModifierKeys;
+
+
+==== src\components\Configurator\hooks\useMouseInteractions.js ====
+// src/components/Configurator/hooks/useMouseInteractions.js
+import { useState, useCallback, useRef } from "react";
+import { MODES, OBJECT_TYPES } from "../configuratorConstants"; // GRID_CELL_SIZE_M здесь не нужен
+
+const useMouseInteractions = ({
+  viewTransform,
+  modifierKeys,
+  mainContainerRef,
+  svgRef,
+  setViewTransform,
+  activeMode,
+  setSelectedObjectId,
+  screenToWorld,
+  updateModulePosition,
+  snapAndFinalizeModulePosition, // Новая функция для привязки
+}) => {
+  const [draggingState, setDraggingState] = useState(null);
+  const [isPanningWithSpace, setIsPanningWithSpace] = useState(false);
+  const mouseDownStartPosRef = useRef(null);
+
+  const handleMouseDownOnCanvas = useCallback(
+    (e) => {
+      mainContainerRef.current?.focus();
+      if (e.button !== 0 && e.button !== 2) return;
+
+      const worldCoords = screenToWorld(e.clientX, e.clientY);
+
+      if (modifierKeys.spacebar || e.button === 1) {
+        setIsPanningWithSpace(true);
+        setDraggingState({
+          isPanning: true,
+          startScreenX: e.clientX,
+          startScreenY: e.clientY,
+          initialViewX: viewTransform.x,
+          initialViewY: viewTransform.y,
+        });
+        mouseDownStartPosRef.current = { x: e.clientX, y: e.clientY };
+        e.preventDefault();
+        return;
+      }
+
+      if (e.button === 0 && activeMode === MODES.MODULAR) {
+        const clickedElement = e.target.closest('[data-object-type="module"]');
+        if (clickedElement) {
+          const moduleId = clickedElement.getAttribute("data-object-id");
+          const moduleInitialX = parseFloat(
+            clickedElement.getAttribute("data-module-x") || "0",
+          );
+          const moduleInitialY = parseFloat(
+            clickedElement.getAttribute("data-module-y") || "0",
+          );
+
+          if (moduleId) {
+            setSelectedObjectId(moduleId);
+            setDraggingState({
+              isDraggingModule: true,
+              moduleId: moduleId,
+              dragStartWorldX: worldCoords.x,
+              dragStartWorldY: worldCoords.y,
+              initialModuleX: moduleInitialX,
+              initialModuleY: moduleInitialY,
+            });
+            e.stopPropagation();
+            return;
+          }
+        }
+      }
+
+      if (e.button === 0) {
+        if (
+          e.target === svgRef.current ||
+          e.target.id === "grid" ||
+          e.target.closest("g#grid")
+        ) {
+          setSelectedObjectId(null);
+        }
+      }
+    },
+    [
+      modifierKeys,
+      viewTransform.x,
+      viewTransform.y,
+      mainContainerRef,
+      activeMode,
+      setSelectedObjectId,
+      screenToWorld,
+      svgRef,
+    ],
+  );
+
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (draggingState?.isPanning) {
+        if (!mouseDownStartPosRef.current) return;
+        const dxScreen = e.clientX - mouseDownStartPosRef.current.x;
+        const dyScreen = e.clientY - mouseDownStartPosRef.current.y;
+        setViewTransform((prev) => ({
+          ...prev,
+          x: draggingState.initialViewX + dxScreen,
+          y: draggingState.initialViewY + dyScreen,
+        }));
+      } else if (draggingState?.isDraggingModule) {
+        const {
+          moduleId,
+          dragStartWorldX,
+          dragStartWorldY,
+          initialModuleX,
+          initialModuleY,
+        } = draggingState;
+        const currentMouseWorld = screenToWorld(e.clientX, e.clientY);
+
+        const deltaWorldX = currentMouseWorld.x - dragStartWorldX;
+        const deltaWorldY = currentMouseWorld.y - dragStartWorldY;
+
+        const newModuleX = initialModuleX + deltaWorldX;
+        const newModuleY = initialModuleY + deltaWorldY;
+
+        updateModulePosition(moduleId, newModuleX, newModuleY); // Плавное обновление
+      }
+    },
+    [draggingState, setViewTransform, screenToWorld, updateModulePosition],
+  );
+
+  const handleMouseUp = useCallback(
+    (_e) => {
+      if (isPanningWithSpace) {
+        setIsPanningWithSpace(false);
+      }
+      if (draggingState?.isDraggingModule) {
+        // Вызываем функцию привязки и финализации из Configurator.jsx
+        snapAndFinalizeModulePosition(draggingState.moduleId);
+      }
+      setDraggingState(null);
+      mouseDownStartPosRef.current = null;
+    },
+    [isPanningWithSpace, draggingState, snapAndFinalizeModulePosition], // Добавили snapAndFinalizeModulePosition
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    if (isPanningWithSpace || draggingState?.isDraggingModule) {
+      // Также проверяем isDraggingModule
+      if (draggingState?.isDraggingModule) {
+        // Если перетаскивали модуль и мышь ушла, привязываем его
+        snapAndFinalizeModulePosition(draggingState.moduleId);
+      }
+      setIsPanningWithSpace(false);
+      setDraggingState(null);
+      mouseDownStartPosRef.current = null;
+    }
+  }, [isPanningWithSpace, draggingState, snapAndFinalizeModulePosition]); // Добавили snapAndFinalizeModulePosition
+
+  return {
+    isPanningWithSpace,
+    isDraggingModule: !!draggingState?.isDraggingModule,
+    handleMouseDownOnCanvas,
+    handleMouseMove,
+    handleMouseUp,
+    handleMouseLeave,
+  };
+};
+
+export default useMouseInteractions;
+
+
+==== src\components\Configurator\hooks\useViewTransform.js ====
+import { useState, useCallback, useEffect } from "react";
+import {
+  INITIAL_PPM,
+  MIN_ZOOM_SCALE,
+  MAX_ZOOM_SCALE,
+} from "../configuratorConstants";
+
+const useViewTransform = (svgRef) => {
+  const [viewTransform, setViewTransform] = useState({
+    x: 0, // Initialized to 0, will center on mount
+    y: 0, // Initialized to 0, will center on mount
+    scale: INITIAL_PPM * 0.6,
+  });
+  const [initialized, setInitialized] = useState(false);
+
+  // Center the view on initial load
+  useEffect(() => {
+    if (initialized || !svgRef.current) return;
+
+    const svg = svgRef.current;
+    const rect = svg.getBoundingClientRect();
+
+    if (rect.width > 0 && rect.height > 0) {
+      setViewTransform((prev) => ({
+        ...prev, // Keep current scale if already set by wheel before this effect runs
+        x: rect.width / 2,
+        y: rect.height / 2,
+      }));
+      setInitialized(true);
+    }
+  }, [svgRef, initialized]);
+
+  const screenToWorld = useCallback(
+    (screenX, screenY) => {
+      if (!svgRef.current) return { x: 0, y: 0 };
+      const svgRect = svgRef.current.getBoundingClientRect();
+      return {
+        x: (screenX - svgRect.left - viewTransform.x) / viewTransform.scale,
+        y: (screenY - svgRect.top - viewTransform.y) / viewTransform.scale,
+      };
+    },
+    [viewTransform, svgRef],
+  );
+
+  // screenToWorldRect is no longer needed as marquee selection is removed.
+  // If needed later, it can be re-added.
+
+  useEffect(() => {
+    const currentSvgElement = svgRef.current;
+    if (!currentSvgElement) return;
+
+    const wheelHandler = (e) => {
+      e.preventDefault();
+      const scaleAmount = 1.1;
+      const newScaleFactor = e.deltaY > 0 ? 1 / scaleAmount : scaleAmount;
+
+      const svgRect = currentSvgElement.getBoundingClientRect();
+      const mouseX = e.clientX - svgRect.left; // Mouse position relative to SVG top-left
+      const mouseY = e.clientY - svgRect.top;
+
+      setViewTransform((prevTransform) => {
+        // World coordinates of the mouse pointer before zoom
+        const worldBeforeZoomX =
+          (mouseX - prevTransform.x) / prevTransform.scale;
+        const worldBeforeZoomY =
+          (mouseY - prevTransform.y) / prevTransform.scale;
+
+        let newScale = prevTransform.scale * newScaleFactor;
+        newScale = Math.max(MIN_ZOOM_SCALE, Math.min(newScale, MAX_ZOOM_SCALE));
+
+        // New view (pan) coordinates to keep the world point under mouse stationary
+        const newViewX = mouseX - worldBeforeZoomX * newScale;
+        const newViewY = mouseY - worldBeforeZoomY * newScale;
+
+        return { x: newViewX, y: newViewY, scale: newScale };
+      });
+    };
+
+    currentSvgElement.addEventListener("wheel", wheelHandler, {
+      passive: false, // We call preventDefault
+    });
+    return () => {
+      currentSvgElement.removeEventListener("wheel", wheelHandler);
+    };
+  }, [svgRef]); // Only svgRef as dependency, setViewTransform is stable from useState
+
+  return {
+    viewTransform,
+    setViewTransform,
+    screenToWorld,
+    // screenToWorldRect, // Removed
+  };
+};
+
+export default useViewTransform;
+
+
+==== src\components\Configurator\renderers\AddModuleButtonRenderer.jsx ====
+// src/components/Configurator/renderers/AddModuleButtonRenderer.jsx
+import React from "react";
+import {
+  MODULE_DEFAULT_WIDTH,
+  MODULE_DEFAULT_LENGTH,
+} from "../configuratorConstants";
+
+const AddModuleButtonRenderer = ({ scale, onClick, hasModules }) => {
+  const buttonWidth = MODULE_DEFAULT_WIDTH * scale;
+  const buttonHeight = MODULE_DEFAULT_LENGTH * scale;
+  const fontSize = Math.max(12, Math.min(24, 0.3 * scale));
+  const x = -buttonWidth / 2;
+  const y = -buttonHeight / 2;
+  const formattedWidth = MODULE_DEFAULT_WIDTH.toFixed(2);
+  const formattedLength = MODULE_DEFAULT_LENGTH.toFixed(2);
+  const buttonText = hasModules
+    ? "+ Еще модуль"
+    : `+ Добавить модуль`;
+  return (
+    <g onClick={onClick} className="cursor-pointer group">
+      <rect
+        x={x}
+        y={y}
+        width={buttonWidth}
+        height={buttonHeight}
+        fill="rgba(0, 123, 255, 0.1)"
+        stroke="rgba(0, 123, 255, 0.5)"
+        strokeWidth={Math.max(1, 0.02 * scale)}
+        rx={Math.max(2, 0.05 * scale)}
+        className="group-hover:fill-rgba(0, 123, 255, 0.2)"
+      />
+      <text
+        x={0}
+        y={0}
+        fill="rgba(220, 220, 240, 0.9)"
+        fontSize={fontSize}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        pointerEvents="none"
+        className="select-none group-hover:fill-rgba(255, 255, 255, 1)"
+      >
+        {buttonText}
+      </text>
+    </g>
+  );
+};
+
+export default AddModuleButtonRenderer;
+
+==== src\components\Configurator\renderers\DoorRenderer.jsx ====
+// src/components/Configurator/renderers/DoorRenderer.jsx
+import React from "react";
+import { DOOR_COLOR, ELEMENT_STROKE_COLOR } from "../configuratorConstants";
+
+const DoorRenderer = ({
+  element,
+  scale,
+  wallThickness,
+  isSelected,
+  onSelect,
+}) => {
+  const {
+    width,
+    isOpen,
+    openingAngle = 90,
+    hingeSide = "left",
+    openingDirection = "inward",
+  } = element;
+
+  const doorWidthPx = width * scale;
+  const doorThicknessPx = Math.max(1, 0.05 * scale);
+  const wallThicknessPx = wallThickness * scale;
+
+  let doorRotation = 0;
+  const hingeXLocal = hingeSide === "left" ? 0 : doorWidthPx;
+  const doorSlabTransformOrigin = `${hingeXLocal}px ${doorThicknessPx / 2}px`;
+
+  const openDirFactor = openingDirection === "inward" ? 1 : -1;
+  const rotationDirFactor = hingeSide === "left" ? 1 : -1;
+
+  if (isOpen) {
+     doorRotation = openingAngle * openDirFactor * rotationDirFactor;
+  } else {
+      doorRotation = 0;
+  }
+
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (onSelect) {
+        onSelect(element.id);
+    }
+  };
+
+   const doorFillColor = isSelected ? "lightblue" : DOOR_COLOR;
+
+
+  return (
+    <g onClick={handleClick} className="cursor-pointer">
+      <line
+        x1={0}
+        y1={-wallThicknessPx / 2}
+        x2={0}
+        y2={wallThicknessPx / 2}
+        stroke={ELEMENT_STROKE_COLOR}
+        strokeWidth={Math.max(0.5, 0.02 * scale)}
+      />
+      <line
+        x1={doorWidthPx}
+        y1={-wallThicknessPx / 2}
+        x2={doorWidthPx}
+        y2={wallThicknessPx / 2}
+        stroke={ELEMENT_STROKE_COLOR}
+        strokeWidth={Math.max(0.5, 0.02 * scale)}
+      />
+
+      <g
+        style={{
+          transform: `rotate(${doorRotation}deg)`,
+          transformOrigin: doorSlabTransformOrigin,
+          transition: "transform 0.3s ease",
+        }}
+      >
+        <rect
+          x={0}
+          y={-doorThicknessPx / 2}
+          width={doorWidthPx}
+          height={doorThicknessPx}
+          fill={doorFillColor}
+          stroke={ELEMENT_STROKE_COLOR}
+          strokeWidth={Math.max(0.5, 0.01 * scale)}
+        />
+      </g>
+
+      {isOpen && (
+        <path
+          d={`M ${hingeXLocal} 0 A ${doorWidthPx} ${doorWidthPx} 0 0 ${
+            rotationDirFactor * openDirFactor > 0 ? 1 : 0
+          } ${
+            hingeXLocal + doorWidthPx * Math.cos((doorRotation * Math.PI) / 180)
+          } ${doorWidthPx * Math.sin((doorRotation * Math.PI) / 180)}`}
+          stroke={ELEMENT_STROKE_COLOR}
+          strokeWidth={Math.max(0.5, 0.005 * scale)}
+          fill="none"
+          strokeDasharray="2,2"
+          opacity="1"
+        />
+      )}
+    </g>
+  );
+};
+
+export default React.memo(DoorRenderer);
+
+==== src\components\Configurator\renderers\ModuleRenderer.jsx ====
+// src/components/Configurator/renderers/ModuleRenderer.jsx
+import React from "react";
+import WallSegmentRenderer from "./WallSegmentRenderer";
+import {
+  GRID_CELL_SIZE_M,
+  POTENTIAL_WALL_SLOT_COLOR,
+  OBJECT_TYPES,
+} from "../configuratorConstants";
+
+const ModuleRenderer = ({
+  module,
+  scale,
+  selectedObjectId,
+  setSelectedObjectId,
+  onToggleWallSegment,
+  primarySelectedObject,
+  onContextMenu,
+}) => {
+  const {
+    x,
+    y,
+    cellsWide,
+    cellsLong,
+    rotation,
+    wallSegments,
+    label,
+    id: moduleId,
+  } = module;
+
+  const moduleTransform = `translate(${x * scale}, ${y * scale}) rotate(${rotation || 0})`;
+  const cellSizePx = GRID_CELL_SIZE_M * scale;
+
+  const handleSlotClick = (cellX, cellY, orientation) => {
+    let isPerimeter = false;
+    if (orientation === "h" && (cellY === 0 || cellY === cellsLong)) isPerimeter = true;
+    if (orientation === "v" && (cellX === 0 || cellX === cellsWide)) isPerimeter = true;
+
+    if (!isPerimeter) {
+       // No need to check isPortalWall here anymore
+       onToggleWallSegment(moduleId, cellX, cellY, orientation);
+    }
+  };
+
+  const handleModuleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onContextMenu) {
+      onContextMenu(e, moduleId, OBJECT_TYPES.MODULE);
+    }
+  };
+
+  const potentialWallSlots = [];
+  const showSlotsThreshold = 15;
+  if (cellSizePx > showSlotsThreshold) {
+    for (let cy = 1; cy < cellsLong; cy++) {
+      for (let cx = 0; cx < cellsWide; cx++) {
+        const segmentKey = `${cx},${cy}_h`;
+        const segmentData = wallSegments[segmentKey];
+        const isExistingWall = !!segmentData;
+         const isClickableSlot = !isExistingWall; // Slot is clickable if no wall exists
+
+        potentialWallSlots.push(
+          <line
+            key={`slot-h-${cx}-${cy}`}
+            x1={cx * cellSizePx}
+            y1={cy * cellSizePx}
+            x2={(cx + 1) * cellSizePx}
+            y2={cy * cellSizePx}
+            stroke={isExistingWall ? "transparent" : POTENTIAL_WALL_SLOT_COLOR}
+            strokeWidth={Math.max(1, cellSizePx * 0.05)}
+            onClick={() => handleSlotClick(cx, cy, "h")}
+            className={isClickableSlot ? "cursor-pointer hover:stroke-blue-500" : "cursor-default"}
+            strokeDasharray={isExistingWall ? "" : "2,2"}
+             pointerEvents={isClickableSlot ? "all" : "none"}
+          />,
+        );
+      }
+    }
+    for (let cx = 1; cx < cellsWide; cx++) {
+      for (let cy = 0; cy < cellsLong; cy++) {
+        const segmentKey = `${cx},${cy}_v`;
+         const segmentData = wallSegments[segmentKey];
+        const isExistingWall = !!segmentData;
+         const isClickableSlot = !isExistingWall;
+
+        potentialWallSlots.push(
+          <line
+            key={`slot-v-${cx}-${cy}`}
+            x1={cx * cellSizePx}
+            y1={cy * cellSizePx}
+            x2={cx * cellSizePx}
+            y2={(cy + 1) * cellSizePx}
+            stroke={isExistingWall ? "transparent" : POTENTIAL_WALL_SLOT_COLOR}
+            strokeWidth={Math.max(1, cellSizePx * 0.05)}
+            onClick={() => handleSlotClick(cx, cy, "v")}
+            className={isClickableSlot ? "cursor-pointer hover:stroke-blue-500" : "cursor-default"}
+            strokeDasharray={isExistingWall ? "" : "2,2"}
+            pointerEvents={isClickableSlot ? "all" : "none"}
+          />,
+        );
+      }
+    }
+  }
+
+  return (
+    <g
+      transform={moduleTransform}
+      onContextMenu={handleModuleContextMenu}
+      data-object-id={moduleId}
+      data-object-type={OBJECT_TYPES.MODULE}
+      data-module-x={x}
+      data-module-y={y}
+      className={
+        selectedObjectId === moduleId ? "cursor-move" : "cursor-pointer"
+      }
+    >
+      <rect
+        x={0}
+        y={0}
+        width={cellsWide * cellSizePx}
+        height={cellsLong * cellSizePx}
+        fill={
+          selectedObjectId === moduleId
+            ? "rgba(0, 123, 255, 0.1)"
+            : "rgba(50,50,60,0.05)"
+        }
+        stroke={
+          selectedObjectId === moduleId
+            ? "rgba(0, 123, 255, 0.7)"
+            : "rgba(100,100,120,0.3)"
+        }
+        strokeWidth={selectedObjectId === moduleId ? 1.5 : 1}
+         pointerEvents="all"
+      />
+      {potentialWallSlots}
+      {Object.entries(wallSegments).map(([segmentKey, segmentData]) => {
+        const [coords, orientation] = segmentKey.split("_");
+        const [cxStr, cyStr] = coords.split(",");
+        const cellX = parseInt(cxStr, 10);
+        const cellY = parseInt(cyStr, 10);
+
+        let selectedElementIdOnThisWall = null;
+        if (
+          primarySelectedObject &&
+          primarySelectedObject.parentWallSegment &&
+          primarySelectedObject.parentWallSegment.id === segmentData.id
+        ) {
+           if (primarySelectedObject.type !== OBJECT_TYPES.WALL_SEGMENT) {
+               selectedElementIdOnThisWall = primarySelectedObject.id;
+           }
+        }
+
+        return (
+          <WallSegmentRenderer
+            key={segmentData.id}
+            segmentData={segmentData}
+            cellX={cellX}
+            cellY={cellY}
+            orientation={orientation}
+            scale={scale}
+            isSelected={selectedObjectId === segmentData.id}
+            selectedElementId={selectedElementIdOnThisWall}
+            onSelectWallSegment={(id) => setSelectedObjectId(id)}
+            onSelectElement={(id) => setSelectedObjectId(id)}
+            onContextMenu={onContextMenu}
+          />
+        );
+      })}
+      {label &&
+        cellSizePx * Math.min(cellsWide, cellsLong) > 40 && (
+          <text
+            x={(cellsWide * cellSizePx) / 2}
+            y={(cellsLong * cellSizePx) / 2}
+            fill="#E0E0E0"
+            fontSize={Math.max(8, Math.min(20, 0.2 * scale))}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            pointerEvents="none"
+            className="select-none"
+          >
+            {label}
+          </text>
+        )}
+    </g>
+  );
+};
+
+export default React.memo(ModuleRenderer);
+
+==== src\components\Configurator\renderers\WallSegmentRenderer.jsx ====
+import React from "react";
+import DoorRenderer from "./DoorRenderer";
+import WindowRenderer from "./WindowRenderer";
+import {
+  WALL_COLOR,
+  SELECTED_WALL_SEGMENT_COLOR,
+  GRID_CELL_SIZE_M,
+  ELEMENT_STROKE_COLOR,
+  OBJECT_TYPES,
+} from "../configuratorConstants";
+
+const WallSegmentRenderer = ({
+  segmentData,
+  cellX,
+  cellY,
+  orientation,
+  scale,
+  isSelected,
+  selectedElementId,
+  onSelectWallSegment,
+  onSelectElement,
+  onContextMenu,
+}) => {
+  const {
+    id: segmentId,
+    elements = [],
+    thickness,
+    isPortalWall,
+    isSingleSidePortal, 
+  } = segmentData;
+
+  const cellSizePx = GRID_CELL_SIZE_M * scale;
+  const originalWallThicknessPx = thickness * scale;
+  const portalRectThickness = Math.max(2, originalWallThicknessPx * 0.2); 
+  const portalRectOffsetFromCenter = Math.max(1, originalWallThicknessPx * 0.1); 
+
+  let mainBoundingRectX, mainBoundingRectY, mainBoundingRectWidth, mainBoundingRectHeight;
+  let wallRect1X, wallRect1Y, wallRect1Width, wallRect1Height;
+  let wallRect2X, wallRect2Y, wallRect2Width, wallRect2Height;
+  let elementGroupTx, elementGroupTy, elementGroupAngle;
+
+  if (orientation === "h") {
+    mainBoundingRectX = cellX * cellSizePx;
+    mainBoundingRectY = cellY * cellSizePx - originalWallThicknessPx / 2;
+    mainBoundingRectWidth = cellSizePx;
+    mainBoundingRectHeight = originalWallThicknessPx;
+
+    wallRect1X = cellX * cellSizePx;
+    wallRect1Y = cellY * cellSizePx - portalRectOffsetFromCenter - portalRectThickness;
+    wallRect1Width = cellSizePx;
+    wallRect1Height = portalRectThickness;
+
+    wallRect2X = cellX * cellSizePx;
+    wallRect2Y = cellY * cellSizePx + portalRectOffsetFromCenter;
+    wallRect2Width = cellSizePx;
+    wallRect2Height = portalRectThickness;
+    
+    elementGroupTx = cellX * cellSizePx;
+    elementGroupTy = cellY * cellSizePx;
+    elementGroupAngle = 0;
+  } else { 
+    mainBoundingRectX = cellX * cellSizePx - originalWallThicknessPx / 2;
+    mainBoundingRectY = cellY * cellSizePx;
+    mainBoundingRectWidth = originalWallThicknessPx;
+    mainBoundingRectHeight = cellSizePx;
+
+    wallRect1X = cellX * cellSizePx - portalRectOffsetFromCenter - portalRectThickness;
+    wallRect1Y = cellY * cellSizePx;
+    wallRect1Width = portalRectThickness;
+    wallRect1Height = cellSizePx;
+
+    wallRect2X = cellX * cellSizePx + portalRectOffsetFromCenter;
+    wallRect2Y = cellY * cellSizePx;
+    wallRect2Width = portalRectThickness;
+    wallRect2Height = cellSizePx;
+
+    elementGroupTx = cellX * cellSizePx;
+    elementGroupTy = cellY * cellSizePx;
+    elementGroupAngle = 90;
+  }
+
+  const defaultWallFillColor = isSelected ? SELECTED_WALL_SEGMENT_COLOR : WALL_COLOR;
+
+  const handleWallLeftClick = (e) => {
+    if (e.target === e.currentTarget || e.target.closest(`[data-segment-id="${segmentId}"]`)) {
+      e.stopPropagation();
+      onSelectWallSegment(segmentId);
+    }
+  };
+
+  const handleWallContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onContextMenu) {
+      onContextMenu(e, segmentId, OBJECT_TYPES.WALL_SEGMENT, { isSingleSidePortal });
+    }
+  };
+
+  if (isPortalWall && elements.length === 0) {
+    const portalRectFill = isSelected ? SELECTED_WALL_SEGMENT_COLOR : WALL_COLOR;
+    const portalRectStroke = isSelected ? SELECTED_WALL_SEGMENT_COLOR : ELEMENT_STROKE_COLOR; 
+    const portalRectStrokeWidth = Math.max(0.5, 0.005 * scale);
+
+    return (
+      <g
+          onClick={handleWallLeftClick}
+          onContextMenu={handleWallContextMenu}
+          data-object-id={segmentId}
+          data-object-type={OBJECT_TYPES.WALL_SEGMENT}
+          data-segment-id={segmentId}
+          className={`cursor-pointer group`}
+      >
+        <rect 
+            x={mainBoundingRectX} y={mainBoundingRectY} 
+            width={mainBoundingRectWidth} height={mainBoundingRectHeight} 
+            fill="transparent" 
+            pointerEvents="all"
+        />
+        {!isSingleSidePortal && ( <> <rect x={wallRect1X} y={wallRect1Y} width={wallRect1Width} height={wallRect1Height} fill={portalRectFill} stroke={portalRectStroke} strokeWidth={portalRectStrokeWidth} className="group-hover:opacity-80" /> <rect x={wallRect2X} y={wallRect2Y} width={wallRect2Width} height={wallRect2Height} fill={portalRectFill} stroke={portalRectStroke} strokeWidth={portalRectStrokeWidth} className="group-hover:opacity-80" /> </> )}
+        {isSingleSidePortal && ( <rect x={wallRect1X} y={wallRect1Y} width={wallRect1Width} height={wallRect1Height} fill={isSelected ? SELECTED_WALL_SEGMENT_COLOR : "rgba(160, 160, 160, 0.3)"} stroke={isSelected ? SELECTED_WALL_SEGMENT_COLOR : "rgba(51, 51, 51, 0.5)"} strokeWidth={portalRectStrokeWidth} strokeDasharray="3,3" className="group-hover:opacity-70" /> )}
+      </g>
+    );
+  }
+
+  return ( <g onContextMenu={handleWallContextMenu} data-object-id={segmentId} data-object-type={OBJECT_TYPES.WALL_SEGMENT} data-segment-id={segmentId}> <rect x={mainBoundingRectX} y={mainBoundingRectY} width={mainBoundingRectWidth} height={mainBoundingRectHeight} fill={defaultWallFillColor} stroke={ELEMENT_STROKE_COLOR} strokeWidth={Math.max(0.5, 0.005 * scale)} onClick={handleWallLeftClick} className="cursor-pointer hover:opacity-80" pointerEvents="all" /> <g transform={`translate(${elementGroupTx}, ${elementGroupTy}) rotate(${elementGroupAngle})`}> {elements.map((element) => { const elementOffsetPx = cellSizePx * element.positionOnSegment - (element.width * scale) / 2; const handleElementContextMenu = (e) => { e.preventDefault(); e.stopPropagation(); if (onContextMenu) { onContextMenu(e, element.id, element.type, {}); } }; const commonElementProps = { element, scale, wallThickness: thickness, isSelected: selectedElementId === element.id, onSelect: (elId) => onSelectElement(elId), }; return ( <g key={element.id} transform={`translate(${elementOffsetPx}, 0)`} onContextMenu={handleElementContextMenu} onClick={(e) => { e.stopPropagation(); commonElementProps.onSelect(element.id); }} className="cursor-pointer" data-object-id={element.id} data-object-type={element.type} > {element.type === OBJECT_TYPES.DOOR && <DoorRenderer {...commonElementProps} />} {element.type === OBJECT_TYPES.WINDOW && <WindowRenderer {...commonElementProps} />} </g> ); })} </g> </g>);
+};
+
+export default React.memo(WallSegmentRenderer);
+
+==== src\components\Configurator\renderers\WindowRenderer.jsx ====
+// src/components/Configurator/renderers/WindowRenderer.jsx
+import React from "react";
+import { WINDOW_COLOR, ELEMENT_STROKE_COLOR } from "../configuratorConstants";
+
+const WindowRenderer = ({
+  element,
+  scale,
+  wallThickness,
+  isSelected,
+  onSelect,
+}) => {
+  const { width } = element;
+
+  const windowWidthPx = width * scale;
+  const wallThicknessPx = wallThickness * scale;
+  const frameThicknessPx = Math.max(1, 0.02 * scale);
+  const glassOffset = wallThicknessPx * 0.15;
+  const glassLineWidth = Math.max(0.5, 0.01 * scale);
+
+  const handleClick = (e) => {
+    e.stopPropagation(); // Important to prevent wall selection
+    onSelect(element.id);
+  };
+
+  return (
+    <g onClick={handleClick} className="cursor-pointer">
+      <line
+        x1={0}
+        y1={-wallThicknessPx / 2}
+        x2={0}
+        y2={wallThicknessPx / 2}
+        stroke={ELEMENT_STROKE_COLOR}
+        strokeWidth={frameThicknessPx}
+      />
+      <line
+        x1={windowWidthPx}
+        y1={-wallThicknessPx / 2}
+        x2={windowWidthPx}
+        y2={wallThicknessPx / 2}
+        stroke={ELEMENT_STROKE_COLOR}
+        strokeWidth={frameThicknessPx}
+      />
+      <line
+        x1={0}
+        y1={-glassOffset}
+        x2={windowWidthPx}
+        y2={-glassOffset}
+        stroke={isSelected ? "lightblue" : WINDOW_COLOR}
+        strokeWidth={glassLineWidth}
+      />
+      <line
+        x1={0}
+        y1={glassOffset}
+        x2={windowWidthPx}
+        y2={glassOffset}
+        stroke={isSelected ? "lightblue" : WINDOW_COLOR}
+        strokeWidth={glassLineWidth}
+      />
+      <line
+        x1={0}
+        y1={0}
+        x2={windowWidthPx}
+        y2={0}
+        stroke={ELEMENT_STROKE_COLOR}
+        strokeWidth={Math.max(0.5, 0.005 * scale)}
+        opacity="0.4"
+      />
+    </g>
+  );
+};
+
+export default WindowRenderer;
+
+
+==== src\components\Configurator\sidebar\ElementPlacementPanel.jsx ====
+// ==== src\components\Configurator\sidebar\ElementPlacementPanel.jsx ====
+// src/components/Configurator/sidebar/ElementPlacementPanel.jsx
+import React from "react";
+import {
+  defaultObjectSizes,
+  OBJECT_TYPES_TO_ADD,
+  GRID_CELL_SIZE_M,
+} from "../configuratorConstants";
+
+const ElementPlacementPanel = ({
+  selectedWallSegment,
+  onPlaceElement,
+  onClose,
+  isModal,
+}) => {
+  if (!selectedWallSegment || !selectedWallSegment.id) {
+    return null;
+  }
+
+  const placeableTypes = OBJECT_TYPES_TO_ADD.filter(
+    (item) => defaultObjectSizes[item.type]
+  );
+
+  const wallHasElement =
+    selectedWallSegment.elements && selectedWallSegment.elements.length > 0;
+  
+  // isPortalWall is true if it's any part of a portal (empty side or with element)
+  const isPortalWallSegment = selectedWallSegment.isPortalWall; 
+  // isPortalOpeningSide is true if it's a portal wall segment *without* elements
+  const isPortalOpeningSide = isPortalWallSegment && !wallHasElement;
+
+
+  const handlePlace = (type) => {
+    // No specific restriction for isPortalWallSegment anymore here,
+    // as the panel won't allow placing if wallHasElement is true.
+    // If it's an isPortalOpeningSide, it's fine to place.
+
+    if (wallHasElement) { // This check covers all cases
+      alert(
+        "На этом сегменте стены уже есть элемент. Удалите его, чтобы добавить новый.",
+      );
+      return;
+    }
+
+    const elementDefaults = defaultObjectSizes[type];
+    if (!elementDefaults) {
+      console.error(`No default size for type ${type}`);
+      return;
+    }
+    if (elementDefaults.width > GRID_CELL_SIZE_M + 0.01) {
+      alert(
+        `Элемент (${elementDefaults.width.toFixed(2)}м) слишком широк для сегмента стены (${GRID_CELL_SIZE_M.toFixed(2)}м).`,
+      );
+      return;
+    }
+    onPlaceElement(type, elementDefaults.width, elementDefaults.height);
+  };
+
+  const panelBaseClasses =
+    "bg-card-bg border border-gray-700 p-4 shadow-xl text-gray-200 rounded-md";
+  const panelPositionClasses = isModal
+    ? "fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 max-h-[80vh] overflow-y-auto z-50"
+    : "fixed right-0 top-1/2 transform -translate-y-1/2 w-64 h-full max-h-screen overflow-y-auto z-30 rounded-l-md";
+
+  return (
+    <>
+      {isModal && (
+        <div
+          className="fixed inset-0 bg-black opacity-50 z-40"
+          onClick={onClose}
+        ></div>
+      )}
+      <div className={`${panelBaseClasses} ${panelPositionClasses}`}>
+        <div className="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
+          <h3 className="text-md font-semibold text-gray-200">Добавить на стену</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-2xl leading-none"
+            aria-label="Закрыть"
+          >
+            ×
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mb-1">
+          Модуль: <span className="font-mono">{(selectedWallSegment.moduleLabel || '').substring(0, 12)}...</span>
+        </p>
+        <p className="text-xs text-gray-400 mb-1">
+          Сегмент ID: <span className="font-mono">{(selectedWallSegment.id || '').substring(0, 12)}...</span>
+        </p>
+        <p className="text-xs text-gray-400 mb-3">
+          Ключ: <span className="font-mono">{selectedWallSegment.segmentKey}</span> (Длина: {GRID_CELL_SIZE_M.toFixed(2)}м)
+        </p>
+        
+        {isPortalWallSegment && wallHasElement && (
+             <p className="text-sm text-yellow-400 mb-3 p-2 bg-yellow-900/30 rounded-md border border-yellow-700">
+               Этот сегмент стены является частью проема и уже содержит элемент.
+             </p>
+        )}
+        {isPortalOpeningSide && (
+             <p className="text-sm text-sky-400 mb-3 p-2 bg-sky-900/30 rounded-md border border-sky-700">
+               Этот сегмент является стороной межмодульного проема. Вы можете добавить сюда дверь или окно.
+             </p>
+        )}
+        {wallHasElement && !isPortalWallSegment && ( // Normal wall with an element
+          <p className="text-sm text-yellow-400 mb-3 p-2 bg-yellow-900/30 rounded-md border border-yellow-700">
+            На этом сегменте уже есть элемент. Удалите его, чтобы разместить
+            новый.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {placeableTypes.map((item) => {
+            const elementDefaults = defaultObjectSizes[item.type];
+            const isTooWide = elementDefaults && elementDefaults.width > GRID_CELL_SIZE_M + 0.01;
+            // Item is disabled if wall already has an element OR if the new element is too wide.
+            // Being a portal side (isPortalOpeningSide) does NOT disable it.
+            const itemDisabled = wallHasElement || isTooWide;
+
+            return (
+              <button
+                key={item.type}
+                onClick={() => handlePlace(item.type)}
+                className={`w-full text-left p-2 rounded text-sm
+                  ${
+                    itemDisabled
+                      ? "opacity-50 cursor-not-allowed bg-gray-800 text-gray-500"
+                      : "bg-gray-700 hover:bg-gray-600 text-gray-200"
+                  }`}
+                disabled={itemDisabled}
+                title={
+                  wallHasElement
+                    ? "На стене уже есть элемент"
+                    : isTooWide
+                      ? `Элемент (${elementDefaults.width.toFixed(2)}м) слишком широк для сегмента (${GRID_CELL_SIZE_M.toFixed(2)}м)`
+                      : `Размер по умолчанию: ${elementDefaults?.width?.toFixed(2) || "?"}м`
+                }
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default ElementPlacementPanel;
+
+==== src\components\Configurator\sidebar\PropertiesPanel.jsx ====
+// ==== src\components\Configurator\sidebar\PropertiesPanel.jsx ====
+// src/components/Configurator/sidebar/PropertiesPanel.jsx
+import React from "react";
+import PropertyInput from "../common/PropertyInput";
+import { TrashIcon } from "@heroicons/react/24/outline";
+import { OBJECT_TYPES, GRID_CELL_SIZE_M } from "../configuratorConstants";
+
+const PropertiesPanel = ({
+  primarySelectedObject,
+  lockedObjectIds = [],
+  modifierKeys,
+  updateSelectedObjectProperty,
+  deleteSelectedObject, // This is the main delete function from Configurator
+}) => {
+  if (
+    !primarySelectedObject ||
+    typeof primarySelectedObject.id === "undefined"
+  ) {
+    return (
+      <div className="w-64 bg-card-bg border-l border-gray-700 p-4 overflow-y-auto flex-shrink-0 text-gray-400">
+        <h2 className="text-md font-semibold mb-3 border-b border-gray-700 pb-2 text-gray-200">
+          Свойства
+        </h2>
+        <p className="text-sm">Ничего не выбрано.</p>
+      </div>
+    );
+  }
+
+  const isLocked = lockedObjectIds.includes(primarySelectedObject.id);
+  const isEditingAllowed = !isLocked || (modifierKeys && modifierKeys.shift);
+
+  const objType = primarySelectedObject.type || "unknown";
+  const objectData = primarySelectedObject; // For easier access
+
+  const commonProperties = (
+    <>
+      <PropertyInput
+        label="ID:"
+        value={
+          objectData.id.substring(0, 15) +
+          (objectData.id.length > 15 ? "..." : "")
+        }
+        disabled
+      />
+      <PropertyInput label="Тип:" value={objType.replace("_", " ")} disabled />
+    </>
+  );
+
+  let typeSpecificProperties = null;
+  let showDeleteButton = true;
+  let deleteButtonText = "Удалить элемент";
+  let deleteButtonDisabled = !isEditingAllowed;
+
+  if (objType === OBJECT_TYPES.MODULE) {
+    deleteButtonText = "Удалить модуль";
+    typeSpecificProperties = (
+      <>
+        <PropertyInput
+          label="Label:"
+          value={objectData.label || ""}
+          onChange={(e) => updateSelectedObjectProperty("label", e.target.value)}
+          disabled={!isEditingAllowed}
+        />
+        <PropertyInput label="Ячеек в ширину:" value={objectData.cellsWide || 0} disabled />
+        <PropertyInput label="Ячеек в длину:" value={objectData.cellsLong || 0} disabled />
+        <PropertyInput label="Размер (м):" value={`${(objectData.width || 0).toFixed(2)} x ${(objectData.height || 0).toFixed(2)}`} disabled />
+        <PropertyInput
+          label="Позиция X (м):" type="number" step="0.01"
+          value={(objectData.x || 0).toFixed(2)}
+          onChange={(e) => updateSelectedObjectProperty("x", e.target.value)}
+          disabled={!isEditingAllowed}
+        />
+        <PropertyInput
+          label="Позиция Y (м):" type="number" step="0.01"
+          value={(objectData.y || 0).toFixed(2)}
+          onChange={(e) => updateSelectedObjectProperty("y", e.target.value)}
+          disabled={!isEditingAllowed}
+        />
+        <PropertyInput
+          label="Поворот (°):" type="number" step="1"
+          value={objectData.rotation || 0}
+          onChange={(e) => updateSelectedObjectProperty("rotation", e.target.value)}
+          disabled={!isEditingAllowed}
+        />
+      </>
+    );
+  } else if (objType === OBJECT_TYPES.WALL_SEGMENT) {
+    deleteButtonText = "Удалить стену (см. меню)"; // Or "Удалить сегмент"
+    // Deletion of wall segments is complex (perimeter, portal, etc.), better handled by context menu
+    // which calls deleteWallSegment. DEL key also calls main deleteSelectedObject which routes to deleteWallSegment.
+    // So the button here can be enabled if eligible.
+
+    const isPerimeter = (() => {
+        if (!objectData.parentModule || !objectData.segmentKey) return false;
+        const [coords, orientation] = objectData.segmentKey.split("_");
+        const cellX = parseInt(coords.split(",")[0]);
+        const cellY = parseInt(coords.split(",")[1]);
+        if (orientation === "h" && (cellY === 0 || cellY === objectData.parentModule.cellsLong)) return true;
+        if (orientation === "v" && (cellX === 0 || cellX === objectData.parentModule.cellsWide)) return true;
+        return false;
+    })();
+    const hasElements = objectData.elements && objectData.elements.length > 0;
+
+    if (isPerimeter || (hasElements && !objectData.isPortalWall) ) { // Perimeter walls or normal walls with elements cannot be deleted by this button
+        showDeleteButton = true; // Show button, but disabled with message
+        deleteButtonDisabled = true;
+        deleteButtonText = isPerimeter ? "Периметр (нельзя удалить)" : "Есть элементы (см. меню)";
+    } else if (objectData.isPortalWall && hasElements) {
+        showDeleteButton = true;
+        deleteButtonDisabled = true;
+        deleteButtonText = "Элементы в проеме (см. меню)";
+    }
+     else {
+        showDeleteButton = true; // Allow deleting empty internal walls or empty portal sides
+        deleteButtonText = objectData.isPortalWall ? "Удалить сторону проема" : "Удалить стену";
+    }
+
+
+    typeSpecificProperties = (
+      <>
+        <PropertyInput label="Ключ сегмента:" value={objectData.segmentKey} disabled />
+        {objectData.isPortalWall ? (
+          hasElements ? (
+            <PropertyInput label="Тип стены:" value="Стена в проеме" disabled />
+          ) : (
+            <PropertyInput label="Тип стены:" value="Сторона проема (пустая)" disabled />
+          )
+        ) : (
+          <PropertyInput label="Тип стены:" value="Обычная стена" disabled />
+        )}
+        {objectData.portalInterfaceKey && (
+          <PropertyInput label="Ключ проема:" value={objectData.portalInterfaceKey.substring(0, 15) + '...'} disabled />
+        )}
+        <PropertyInput
+          label="Толщина (м):" type="number"
+          value={(objectData.thickness || 0).toFixed(3)}
+          step="0.001"
+          onChange={(e) => updateSelectedObjectProperty("thickness", e.target.value)}
+          disabled={!isEditingAllowed /* || objectData.isPortalWall */} // Allow editing thickness of portal sides for now
+          title={"" /* objectData.isPortalWall ? "Толщина стен проема управляется автоматически" : "" */}
+        />
+        {objectData.parentModule && (
+          <PropertyInput label="Родительский модуль:" value={objectData.parentModule.label || objectData.parentModule.id.substring(0, 10) + "..."} disabled />
+        )}
+      </>
+    );
+  } else if (objType === OBJECT_TYPES.DOOR) {
+    deleteButtonText = "Удалить дверь";
+    const isOnPortalWall = objectData.parentWallSegment?.isPortalWall || false;
+
+    typeSpecificProperties = (
+      <>
+        {isOnPortalWall ? (
+          <PropertyInput label="Размещение:" value="В межмодульном проеме" disabled />
+        ) : (
+          <PropertyInput label="Размещение:" value="На обычной стене" disabled />
+        )}
+        {objectData.parentWallSegment?.portalInterfaceKey && (
+            <PropertyInput label="Ключ проема:" value={objectData.parentWallSegment.portalInterfaceKey.substring(0,15) + '...'} disabled />
+        )}
+        <PropertyInput
+          label="Ширина двери (м):" type="number"
+          value={(objectData.width || 0).toFixed(3)}
+          step="0.01" min="0.1" max={(GRID_CELL_SIZE_M + 0.001).toFixed(3)}
+          onChange={(e) => updateSelectedObjectProperty("width", e.target.value)}
+          disabled={!isEditingAllowed /* || isOnPortalWall */} // Allow editing props of doors in portals
+          title={"" /* isOnPortalWall ? "Свойства двери в проеме могут быть ограничены" : "" */}
+        />
+        <PropertyInput
+          label="Позиция на сегменте (0-1):" type="number"
+          value={(objectData.positionOnSegment || 0.5).toFixed(2)}
+          step="0.01" min="0" max="1"
+          onChange={(e) => updateSelectedObjectProperty("positionOnSegment", e.target.value)}
+          disabled={!isEditingAllowed /* || isOnPortalWall */}
+          title={""}
+        />
+        <PropertyInput label="Открыта:">
+          <button
+            onClick={() => updateSelectedObjectProperty("isOpen", !objectData.isOpen)}
+            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 transition-colors ${(!isEditingAllowed /* || isOnPortalWall */) ? "bg-gray-800 opacity-60 cursor-not-allowed" : "hover:bg-gray-600"}`}
+            disabled={!isEditingAllowed /* || isOnPortalWall */}
+            title={""}
+          >
+            {objectData.isOpen ? "Да (Закрыть)" : "Нет (Открыть)"}
+          </button>
+        </PropertyInput>
+        <PropertyInput
+          label="Угол откр. (°):" type="number"
+          value={objectData.openingAngle || 0}
+          step="1" min="0" max="170"
+          onChange={(e) => updateSelectedObjectProperty("openingAngle", e.target.value)}
+          disabled={!isEditingAllowed || !objectData.isOpen /* || isOnPortalWall */}
+          title={(!objectData.isOpen ? "Сначала откройте дверь" : "")}
+        />
+        <PropertyInput label="Петли:">
+          <select
+            value={objectData.hingeSide || "left"}
+            onChange={(e) => updateSelectedObjectProperty("hingeSide", e.target.value)}
+            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 ${(!isEditingAllowed /* || isOnPortalWall */) ? "bg-gray-800 cursor-not-allowed" : ""}`}
+            disabled={!isEditingAllowed /* || isOnPortalWall */}
+            title={""}
+          >
+            <option value="left">Слева</option>
+            <option value="right">Справа</option>
+          </select>
+        </PropertyInput>
+        <PropertyInput label="Направление откр.:">
+          <select
+            value={objectData.openingDirection || "inward"}
+            onChange={(e) => updateSelectedObjectProperty("openingDirection", e.target.value)}
+            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 ${(!isEditingAllowed /* || isOnPortalWall */) ? "bg-gray-800 cursor-not-allowed" : ""}`}
+            disabled={!isEditingAllowed /* || isOnPortalWall */}
+            title={""}
+          >
+            <option value="inward">Внутрь</option>
+            <option value="outward">Наружу</option>
+          </select>
+        </PropertyInput>
+      </>
+    );
+  } else if (objType === OBJECT_TYPES.WINDOW) {
+    deleteButtonText = "Удалить окно";
+    const isOnPortalWall = objectData.parentWallSegment?.isPortalWall || false;
+    typeSpecificProperties = (
+      <>
+        {isOnPortalWall ? (
+          <PropertyInput label="Размещение:" value="В межмодульном проеме" disabled />
+        ) : (
+          <PropertyInput label="Размещение:" value="На обычной стене" disabled />
+        )}
+         {objectData.parentWallSegment?.portalInterfaceKey && (
+            <PropertyInput label="Ключ проема:" value={objectData.parentWallSegment.portalInterfaceKey.substring(0,15) + '...'} disabled />
+        )}
+        <PropertyInput
+          label="Ширина окна (м):" type="number"
+          value={(objectData.width || 0).toFixed(3)}
+          step="0.01" min="0.1" max={(GRID_CELL_SIZE_M + 0.001).toFixed(3)}
+          onChange={(e) => updateSelectedObjectProperty("width", e.target.value)}
+          disabled={!isEditingAllowed}
+        />
+        <PropertyInput
+          label="Позиция на сегменте (0-1):" type="number"
+          value={(objectData.positionOnSegment || 0.5).toFixed(2)}
+          step="0.01" min="0" max="1"
+          onChange={(e) => updateSelectedObjectProperty("positionOnSegment", e.target.value)}
+          disabled={!isEditingAllowed}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className="w-64 bg-card-bg border-l border-gray-700 p-4 overflow-y-auto flex-shrink-0 text-gray-300">
+      <div className="flex justify-between items-center mb-3 border-b border-gray-700 pb-2">
+        <h2 className="text-md font-semibold text-gray-200">Свойства</h2>
+      </div>
+      <div>
+        <p className="text-sm font-medium mb-4 capitalize text-gray-200">
+          {objType.replace("_", " ")}
+          {isLocked && <span className="ml-2 text-orange-400 text-xs font-normal">(Заблокирован)</span>}
+        </p>
+        {commonProperties}
+        {typeSpecificProperties}
+        {showDeleteButton && deleteSelectedObject && (
+          <button
+            onClick={deleteSelectedObject} // Calls the main delete function
+            className={`mt-6 w-full text-white text-sm py-2 px-4 rounded flex items-center justify-center transition-colors ${deleteButtonDisabled ? "bg-red-700/50 cursor-not-allowed" : "bg-red-600 hover:bg-red-500"}`}
+            disabled={deleteButtonDisabled}
+            title={deleteButtonDisabled ? "Это действие недоступно или должно выполняться через контекстное меню" : ""}
+          >
+            <TrashIcon className="w-4 h-4 mr-2" />
+            {deleteButtonText}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default PropertiesPanel;
+
+==== src\components\Configurator\statusbar\StatusBar.jsx ====
+// src/components/Configurator/statusbar/StatusBar.jsx
+import React from "react";
+import PropTypes from "prop-types";
+
+const StatusBar = ({ zoomLevel, selectedObjectName, selectedObjectId }) => {
+  const formattedZoom = zoomLevel ? (zoomLevel * 100).toFixed(0) : "N/A";
+  return (
+    <div className="p-1.5 bg-gray-900 border-t border-gray-700 text-xs text-gray-400 flex justify-between items-center px-3 flex-shrink-0">
+      <span className="truncate max-w-[60%] min-w-[100px]">
+        {selectedObjectId
+          ? `Выбрано: ${selectedObjectName || "Элемент"} (ID: ${selectedObjectId.substring(0, 15)}...)`
+          : "Готов"}
+      </span>
+      <span className="whitespace-nowrap ml-2">
+        Масштаб: {formattedZoom}%
+      </span>
+    </div>
+  );
+};
+
+StatusBar.propTypes = {
+  zoomLevel: PropTypes.number,
+  selectedObjectName: PropTypes.string,
+  selectedObjectId: PropTypes.string,
+};
+
+export default StatusBar;
+
+==== src\components\Configurator\toolbar\ConfiguratorToolbar.jsx ====
+// src/components/Configurator/toolbar/ConfiguratorToolbar.jsx
+import React from "react";
+import { MODES } from "../configuratorConstants";
+import { PlusCircleIcon } from "@heroicons/react/24/outline";
+
+const ConfiguratorToolbar = ({
+  activeMode,
+  setActiveMode,
+  onAddModuleFromToolbar,
+}) => {
+  const modsArray = [
+    { key: MODES.MODULAR, label: "Модульный" },
+    { key: MODES.FRAME, label: "Каркасный" },
+    { key: MODES.FRAMELESS, label: "Бескаркасный" },
+  ];
+
+  return (
+    <div className="p-2 bg-gray-900 text-gray-200 border-b border-gray-700 flex justify-between items-center flex-shrink-0 shadow-md h-12 sm:h-14">
+      <div className="flex items-center min-w-[200px] sm:min-w-[250px]">
+        <h1 className="text-lg font-semibold tracking-tight mr-4">
+          Grid<span className="text-primary-blue">Viewer</span>
+        </h1>
+        <div className="flex items-center space-x-1 bg-gray-800 p-0.5 rounded-md">
+          {modsArray.map((mode) => (
+            <button
+              key={mode.key}
+              onClick={() => setActiveMode(mode.key)}
+              className={`px-2.5 py-1 text-xs sm:text-sm rounded-md transition-colors
+                ${
+                  activeMode === mode.key
+                    ? "bg-primary-blue text-white"
+                    : "text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                }`}
+              title={`Переключить в режим "${mode.label}"`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-grow flex justify-center items-center space-x-1 sm:space-x-2">
+        {activeMode === MODES.MODULAR && (
+          <button
+            onClick={onAddModuleFromToolbar}
+            className="flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs sm:text-sm rounded-md transition-colors"
+            title="Добавить новый модуль"
+          >
+            <PlusCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
+            Добавить модуль
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center space-x-3 min-w-[50px]">
+      </div>
+    </div>
+  );
+};
+
+export default ConfiguratorToolbar;
+
+==== src\index.css ====
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add any global styles below */
+body {
+  margin: 0;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Roboto",
+    "Oxygen",
+    "Ubuntu",
+    "Cantarell",
+    "Fira Sans",
+    "Droid Sans",
+    "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #121212; /* Match dark-bg from Tailwind for body */
+}
+
+code {
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+
+==== src\index.js ====
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import App from "./App";
+import reportWebVitals from "./reportWebVitals";
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+
+
+==== src\reportWebVitals.js ====
+// src/reportWebVitals.js
+const reportWebVitals = onPerfEntry => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals; 
+
+==== tailwind.config.js ====
+// ========================================================================
+// FILE: tailwind.config.js
+// ========================================================================
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./public/index.html",
+    "./src/**/*.{js,jsx,ts,tsx}", // Сканируем все JS/JSX/TS/TSX файлы в src
+  ],
+  theme: {
+    extend: {
+      // Основная палитра
+      colors: {
+        "dark-bg": "#121212", // Еще темнее фон для контраста
+        "card-bg": "#1E1E1E", // Фон карточек и элементов UI
+        "primary-blue": "#007BFF", // Основной акцентный синий
+        "gradient-blue": "#00C4FF", // Вторичный синий для градиентов
+        "hover-blue": "#0056b3", // Синий для hover эффектов
+        // Расширение стандартных цветов Tailwind
+        gray: {
+          900: "#111827", // Используется для фона, если dark-bg не задан
+          800: "#1F2937", // Темно-серый для элементов UI
+          700: "#374151", // Серый для границ, фона инпутов
+          600: "#4B5563", // Серый для текста, границ
+          500: "#6B7280", // Серый для второстепенного текста, иконок
+          400: "#9CA3AF", // Светло-серый для текста
+          300: "#D1D5DB", // Еще светлее
+          200: "#E5E7EB", // Почти белый
+          100: "#F3F4F6", // Очень светлый
+        },
+        // Можно добавить другие акцентные цвета
+        // 'accent-green': '#10B981',
+        // 'accent-red': '#EF4444',
+        // 'accent-yellow': '#F59E0B',
+      },
+      // Шрифты
+      fontFamily: {
+        sans: [
+          "Inter",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "Roboto",
+          '"Helvetica Neue"',
+          "Arial",
+          '"Noto Sans"',
+          "sans-serif",
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+          '"Segoe UI Symbol"',
+          '"Noto Color Emoji"',
+        ],
+        // Можно добавить моноширинный шрифт
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          '"Liberation Mono"',
+          '"Courier New"',
+          "monospace",
+        ],
+      },
+      // Анимации
+      animation: {
+        // spin уже есть по умолчанию в Tailwind v3+
+        "fade-in": "fadeIn 0.5s ease-out forwards",
+        "slide-up": "slideUp 0.5s ease-out forwards",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideUp: {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      // Тени
+      boxShadow: {
+        md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        "2xl": "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+        "inner-md": "inset 0 2px 4px 0 rgb(0 0 0 / 0.05)",
+        "blue-glow-sm":
+          "0 1px 3px 0 rgba(0, 123, 255, 0.1), 0 1px 2px -1px rgba(0, 123, 255, 0.1)",
+        "blue-glow-md":
+          "0 4px 6px -1px rgba(0, 123, 255, 0.1), 0 2px 4px -2px rgba(0, 123, 255, 0.1)",
+        "blue-glow-lg":
+          "0 10px 15px -3px rgba(0, 123, 255, 0.1), 0 4px 6px -4px rgba(0, 123, 255, 0.1)",
+      },
+    },
+  },
+  plugins: [
+    // Официальные плагины Tailwind
+    require("@tailwindcss/forms"), // Стили для элементов форм по умолчанию
+    require("@tailwindcss/typography"), // Стили для прозы (например, из Markdown)
+    require("@tailwindcss/aspect-ratio"), // Для соотношения сторон
+    require("@tailwindcss/line-clamp"), // Для обрезки текста по количеству строк
+  ],
+  // variants в Tailwind v3+ используются реже, предпочтительнее модификаторы (hover:, focus:, group-hover:)
+  // Но если нужны специфичные варианты:
+  variants: {
+    extend: {
+      // Пример:
+      backgroundColor: ["active"],
+      opacity: ["disabled"],
+      cursor: ["disabled"],
+    },
+  },
+};
+

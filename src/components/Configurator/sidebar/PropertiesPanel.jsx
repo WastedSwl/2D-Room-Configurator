@@ -1,8 +1,7 @@
-// src/components/Configurator/sidebar/PropertiesPanel.jsx
 import React from "react";
 import PropertyInput from "../common/PropertyInput";
 import { TrashIcon } from "@heroicons/react/24/outline";
-import { OBJECT_TYPES } from "../configuratorConstants";
+import { OBJECT_TYPES, GRID_CELL_SIZE_M } from "../configuratorConstants";
 
 const PropertiesPanel = ({
   primarySelectedObject,
@@ -26,17 +25,17 @@ const PropertiesPanel = ({
   }
 
   const isLocked = lockedObjectIds.includes(primarySelectedObject.id);
-  const isLockedAndCantEdit = isLocked && !(modifierKeys && modifierKeys.shift);
-
+  const isEditingAllowed = !isLocked || (modifierKeys && modifierKeys.shift);
   const objType = primarySelectedObject.type || "unknown";
+  const objectData = primarySelectedObject;
 
   const commonProperties = (
     <>
       <PropertyInput
         label="ID:"
         value={
-          primarySelectedObject.id.substring(0, 15) +
-          (primarySelectedObject.id.length > 15 ? "..." : "")
+          objectData.id.substring(0, 15) +
+          (objectData.id.length > 15 ? "..." : "")
         }
         disabled
       />
@@ -45,147 +44,147 @@ const PropertiesPanel = ({
   );
 
   let typeSpecificProperties = null;
+  let showDeleteButton = true;
+  let deleteButtonText = "Удалить элемент";
+  let deleteButtonDisabled = !isEditingAllowed;
 
   if (objType === OBJECT_TYPES.MODULE) {
+    deleteButtonText = "Удалить модуль";
     typeSpecificProperties = (
       <>
         <PropertyInput
           label="Label:"
-          value={primarySelectedObject.label || ""}
-          onChange={(e) =>
-            updateSelectedObjectProperty("label", e.target.value)
-          }
-          disabled={isLockedAndCantEdit}
+          value={objectData.label || ""}
+          onChange={(e) => updateSelectedObjectProperty("label", e.target.value)}
+          disabled={!isEditingAllowed}
         />
+        <PropertyInput label="Ячеек в ширину:" value={objectData.cellsWide || 0} disabled />
+        <PropertyInput label="Ячеек в длину:" value={objectData.cellsLong || 0} disabled />
+        <PropertyInput label="Размер (м):" value={`${(objectData.width || 0).toFixed(2)} x ${(objectData.height || 0).toFixed(2)}`} disabled />
         <PropertyInput
-          label="Ячеек в ширину:"
-          value={primarySelectedObject.cellsWide || 0}
-          disabled
-        />
-        <PropertyInput
-          label="Ячеек в длину:"
-          value={primarySelectedObject.cellsLong || 0}
-          disabled
-        />
-        <PropertyInput
-          label="Размер (м):"
-          value={`${(primarySelectedObject.width || 0).toFixed(2)} x ${(primarySelectedObject.height || 0).toFixed(2)}`}
-          disabled
-        />
-        <PropertyInput
-          label="Позиция X (м):"
-          type="number"
-          step="0.01"
-          value={(primarySelectedObject.x || 0).toFixed(2)}
+          label="Позиция X (м):" type="number" step="0.01"
+          value={(objectData.x || 0).toFixed(2)}
           onChange={(e) => updateSelectedObjectProperty("x", e.target.value)}
-          disabled={isLockedAndCantEdit}
+          disabled={!isEditingAllowed}
         />
         <PropertyInput
-          label="Позиция Y (м):"
-          type="number"
-          step="0.01"
-          value={(primarySelectedObject.y || 0).toFixed(2)}
+          label="Позиция Y (м):" type="number" step="0.01"
+          value={(objectData.y || 0).toFixed(2)}
           onChange={(e) => updateSelectedObjectProperty("y", e.target.value)}
-          disabled={isLockedAndCantEdit}
+          disabled={!isEditingAllowed}
         />
         <PropertyInput
-          label="Поворот (°):"
-          type="number"
-          step="1"
-          value={primarySelectedObject.rotation || 0}
-          onChange={(e) =>
-            updateSelectedObjectProperty("rotation", e.target.value)
-          }
-          disabled={isLockedAndCantEdit}
+          label="Поворот (°):" type="number" step="1"
+          value={objectData.rotation || 0}
+          onChange={(e) => updateSelectedObjectProperty("rotation", e.target.value)}
+          disabled={!isEditingAllowed}
         />
       </>
     );
   } else if (objType === OBJECT_TYPES.WALL_SEGMENT) {
+    deleteButtonText = "Удалить стену (см. меню)";
+    const isPerimeter = (() => {
+        if (!objectData.parentModule || !objectData.segmentKey) return false;
+        const [coords, orientation] = objectData.segmentKey.split("_");
+        const cellX = parseInt(coords.split(",")[0]);
+        const cellY = parseInt(coords.split(",")[1]);
+        if (orientation === "h" && (cellY === 0 || cellY === objectData.parentModule.cellsLong)) return true;
+        if (orientation === "v" && (cellX === 0 || cellX === objectData.parentModule.cellsWide)) return true;
+        return false;
+    })();
+    const hasElements = objectData.elements && objectData.elements.length > 0;
+    if (isPerimeter || (hasElements && !objectData.isPortalWall) ) {
+        showDeleteButton = true;
+        deleteButtonDisabled = true;
+        deleteButtonText = isPerimeter ? "Периметр (нельзя удалить)" : "Есть элементы (см. меню)";
+    } else if (objectData.isPortalWall && hasElements) {
+        showDeleteButton = true;
+        deleteButtonDisabled = true;
+        deleteButtonText = "Элементы в проеме (см. меню)";
+    }
+     else {
+        showDeleteButton = true;
+        deleteButtonText = objectData.isPortalWall ? "Удалить сторону проема" : "Удалить стену";
+    }
     typeSpecificProperties = (
       <>
+        <PropertyInput label="Ключ сегмента:" value={objectData.segmentKey} disabled />
+        {objectData.isPortalWall ? (
+          hasElements ? (
+            <PropertyInput label="Тип стены:" value="Стена в проеме" disabled />
+          ) : (
+            <PropertyInput label="Тип стены:" value="Сторона проема (пустая)" disabled />
+          )
+        ) : (
+          <PropertyInput label="Тип стены:" value="Обычная стена" disabled />
+        )}
+        {objectData.portalInterfaceKey && (
+          <PropertyInput label="Ключ проема:" value={objectData.portalInterfaceKey.substring(0, 15) + '...'} disabled />
+        )}
         <PropertyInput
-          label="Ключ сегмента:"
-          value={primarySelectedObject.segmentKey}
-          disabled
+          label="Толщина (м):" type="number"
+          value={(objectData.thickness || 0).toFixed(3)}
+          step="0.001"
+          onChange={(e) => updateSelectedObjectProperty("thickness", e.target.value)}
+          disabled={!isEditingAllowed || objectData.isPortalWall}
+          title={objectData.isPortalWall ? "Толщина стен проема управляется автоматически" : ""}
         />
-        <PropertyInput
-          label="Толщина (м):"
-          value={(primarySelectedObject.thickness || 0).toFixed(2)}
-          disabled
-        />
-        {primarySelectedObject.parentModule && (
-          <PropertyInput
-            label="Родительский модуль:"
-            value={
-              primarySelectedObject.parentModule.label ||
-              primarySelectedObject.parentModule.id.substring(0, 10) + "..."
-            }
-            disabled
-          />
+        {objectData.parentModule && (
+          <PropertyInput label="Родительский модуль:" value={objectData.parentModule.label || objectData.parentModule.id.substring(0, 10) + "..."} disabled />
         )}
       </>
     );
   } else if (objType === OBJECT_TYPES.DOOR) {
+    deleteButtonText = objectData.isPortalDoor ? "Закрыть проем" : "Удалить дверь";
     typeSpecificProperties = (
       <>
+        {objectData.isPortalDoor ? (
+          <PropertyInput label="Размещение:" value="В межмодульном проеме" disabled />
+        ) : (
+          <PropertyInput label="Размещение:" value="На обычной стене" disabled />
+        )}
+         {objectData.portalInterfaceKey && (
+            <PropertyInput label="Ключ проема:" value={objectData.portalInterfaceKey.substring(0,15) + '...'} disabled />
+        )}
         <PropertyInput
-          label="Ширина двери (м):"
-          type="number"
-          value={(primarySelectedObject.width || 0).toFixed(3)}
-          step="0.01"
-          min="0.1"
-          onChange={(e) =>
-            updateSelectedObjectProperty("width", e.target.value)
-          }
-          disabled={isLockedAndCantEdit}
+          label="Ширина двери (м):" type="number"
+          value={(objectData.width || 0).toFixed(3)}
+          step="0.01" min="0.1" max={(GRID_CELL_SIZE_M + 0.001).toFixed(3)}
+          onChange={(e) => updateSelectedObjectProperty("width", e.target.value)}
+          disabled={!isEditingAllowed || objectData.isPortalDoor}
+          title={objectData.isPortalDoor ? "Ширина портальной двери фиксирована" : ""}
         />
         <PropertyInput
-          label="Позиция на сегменте (0-1):"
-          type="number"
-          value={(primarySelectedObject.positionOnSegment || 0.5).toFixed(2)}
-          step="0.01"
-          min="0"
-          max="1"
-          onChange={(e) =>
-            updateSelectedObjectProperty("positionOnSegment", e.target.value)
-          }
-          disabled={isLockedAndCantEdit}
+          label="Позиция на сегменте (0-1):" type="number"
+          value={(objectData.positionOnSegment || 0.5).toFixed(2)}
+          step="0.01" min="0" max="1"
+          onChange={(e) => updateSelectedObjectProperty("positionOnSegment", e.target.value)}
+          disabled={!isEditingAllowed || objectData.isPortalDoor}
+          title={objectData.isPortalDoor ? "Позиция портальной двери фиксирована" : ""}
         />
         <PropertyInput label="Открыта:">
           <button
-            onClick={() =>
-              updateSelectedObjectProperty(
-                "isOpen",
-                !primarySelectedObject.isOpen,
-              )
-            }
-            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 hover:bg-gray-600 ${isLockedAndCantEdit ? "cursor-not-allowed opacity-50" : ""}`}
-            disabled={isLockedAndCantEdit}
+            onClick={() => updateSelectedObjectProperty("isOpen", !objectData.isOpen)}
+            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 transition-colors ${(!isEditingAllowed) ? "bg-gray-800 opacity-60 cursor-not-allowed" : "hover:bg-gray-600"}`}
+            disabled={!isEditingAllowed}
           >
-            {primarySelectedObject.isOpen ? "Да (Закрыть)" : "Нет (Открыть)"}
+            {objectData.isOpen ? "Да (Закрыть)" : "Нет (Открыть)"}
           </button>
         </PropertyInput>
         <PropertyInput
-          label="Угол откр. (°):"
-          type="number"
-          value={primarySelectedObject.openingAngle || 0}
-          step="1"
-          min="0"
-          max="170"
-          onChange={(e) =>
-            updateSelectedObjectProperty("openingAngle", e.target.value)
-          }
-          disabled={isLockedAndCantEdit || !primarySelectedObject.isOpen}
-          title={!primarySelectedObject.isOpen ? "Сначала откройте дверь" : ""}
+          label="Угол откр. (°):" type="number"
+          value={objectData.openingAngle || 0}
+          step="1" min="0" max="170"
+          onChange={(e) => updateSelectedObjectProperty("openingAngle", e.target.value)}
+          disabled={!isEditingAllowed || !objectData.isOpen}
+          title={(!objectData.isOpen ? "Сначала откройте дверь" : "")}
         />
         <PropertyInput label="Петли:">
           <select
-            value={primarySelectedObject.hingeSide || "left"}
-            onChange={(e) =>
-              updateSelectedObjectProperty("hingeSide", e.target.value)
-            }
-            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 ${isLockedAndCantEdit ? "bg-gray-800 cursor-not-allowed" : ""}`}
-            disabled={isLockedAndCantEdit}
+            value={objectData.hingeSide || "left"}
+            onChange={(e) => updateSelectedObjectProperty("hingeSide", e.target.value)}
+            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 ${(!isEditingAllowed) ? "bg-gray-800 cursor-not-allowed" : ""}`}
+            disabled={!isEditingAllowed}
           >
             <option value="left">Слева</option>
             <option value="right">Справа</option>
@@ -193,44 +192,42 @@ const PropertiesPanel = ({
         </PropertyInput>
         <PropertyInput label="Направление откр.:">
           <select
-            value={primarySelectedObject.openingDirection || "inward"}
-            onChange={(e) =>
-              updateSelectedObjectProperty("openingDirection", e.target.value)
-            }
-            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 ${isLockedAndCantEdit ? "bg-gray-800 cursor-not-allowed" : ""}`}
-            disabled={isLockedAndCantEdit}
+            value={objectData.openingDirection || "inward"}
+            onChange={(e) => updateSelectedObjectProperty("openingDirection", e.target.value)}
+            className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 ${(!isEditingAllowed) ? "bg-gray-800 cursor-not-allowed" : ""}`}
+            disabled={!isEditingAllowed}
           >
-            <option value="inward">Внутрь</option>,
+            <option value="inward">Внутрь</option>
             <option value="outward">Наружу</option>
           </select>
         </PropertyInput>
       </>
     );
   } else if (objType === OBJECT_TYPES.WINDOW) {
+    deleteButtonText = "Удалить окно";
     typeSpecificProperties = (
       <>
+        {objectData.isPortalDoor ? (
+          <PropertyInput label="Размещение:" value="В межмодульном проеме" disabled />
+        ) : (
+          <PropertyInput label="Размещение:" value="На обычной стене" disabled />
+        )}
+         {objectData.portalInterfaceKey && (
+            <PropertyInput label="Ключ проема:" value={objectData.portalInterfaceKey.substring(0,15) + '...'} disabled />
+        )}
         <PropertyInput
-          label="Ширина окна (м):"
-          type="number"
-          value={(primarySelectedObject.width || 0).toFixed(3)}
-          step="0.01"
-          min="0.1"
-          onChange={(e) =>
-            updateSelectedObjectProperty("width", e.target.value)
-          }
-          disabled={isLockedAndCantEdit}
+          label="Ширина окна (м):" type="number"
+          value={(objectData.width || 0).toFixed(3)}
+          step="0.01" min="0.1" max={(GRID_CELL_SIZE_M + 0.001).toFixed(3)}
+          onChange={(e) => updateSelectedObjectProperty("width", e.target.value)}
+          disabled={!isEditingAllowed}
         />
         <PropertyInput
-          label="Позиция на сегменте (0-1):"
-          type="number"
-          value={(primarySelectedObject.positionOnSegment || 0.5).toFixed(2)}
-          step="0.01"
-          min="0"
-          max="1"
-          onChange={(e) =>
-            updateSelectedObjectProperty("positionOnSegment", e.target.value)
-          }
-          disabled={isLockedAndCantEdit}
+          label="Позиция на сегменте (0-1):" type="number"
+          value={(objectData.positionOnSegment || 0.5).toFixed(2)}
+          step="0.01" min="0" max="1"
+          onChange={(e) => updateSelectedObjectProperty("positionOnSegment", e.target.value)}
+          disabled={!isEditingAllowed}
         />
       </>
     );
@@ -242,40 +239,26 @@ const PropertiesPanel = ({
         <h2 className="text-md font-semibold text-gray-200">Свойства</h2>
       </div>
       <div>
-        <p className="text-sm font-medium mb-1 capitalize text-gray-200">
-          {/* Тип: {objType.replace("_", " ")} */}
-          {isLocked && (
-            <span className="ml-2 text-orange-400 text-xs font-normal">
-              (Заблокирован)
-            </span>
-          )}
+        <p className="text-sm font-medium mb-4 capitalize text-gray-200">
+          {objType.replace("_", " ")}
+          {objectData.isPortalDoor && <span className="ml-1 text-xs text-sky-400">(Портальная)</span>}
+          {isLocked && <span className="ml-2 text-orange-400 text-xs font-normal">(Заблокирован)</span>}
         </p>
-
         {commonProperties}
         {typeSpecificProperties}
-
-        {deleteSelectedObject && (
+        {showDeleteButton && deleteSelectedObject && (
           <button
             onClick={deleteSelectedObject}
-            className={`mt-6 w-full text-white text-sm py-2 px-4 rounded flex items-center justify-center transition-colors ${isLockedAndCantEdit ? "bg-red-700/50 cursor-not-allowed" : "bg-red-600 hover:bg-red-500"}`}
-            disabled={isLockedAndCantEdit}
-            title={
-              objType === OBJECT_TYPES.WALL_SEGMENT
-                ? "Для удаления стены используйте контекстное меню на стене"
-                : ""
-            }
+            className={`mt-6 w-full text-white text-sm py-2 px-4 rounded flex items-center justify-center transition-colors ${deleteButtonDisabled ? "bg-red-700/50 cursor-not-allowed" : "bg-red-600 hover:bg-red-500"}`}
+            disabled={deleteButtonDisabled}
+            title={deleteButtonDisabled ? "Это действие недоступно или должно выполняться через контекстное меню" : ""}
           >
             <TrashIcon className="w-4 h-4 mr-2" />
-            {objType === OBJECT_TYPES.MODULE
-              ? "Удалить модуль"
-              : objType === OBJECT_TYPES.WALL_SEGMENT
-                ? "Удалить (см. меню)"
-                : "Удалить элемент"}
+            {deleteButtonText}
           </button>
         )}
       </div>
     </div>
   );
 };
-
 export default PropertiesPanel;

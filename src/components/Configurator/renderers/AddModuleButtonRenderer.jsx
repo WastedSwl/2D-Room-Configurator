@@ -6,23 +6,16 @@ import {
 } from "../configuratorConstants";
 
 const AddModuleButtonRenderer = ({ scale, onClick, hasModules }) => {
-  // Added hasModules prop
-  const buttonWidth = MODULE_DEFAULT_WIDTH * 0.8 * scale;
-  const buttonHeight = MODULE_DEFAULT_LENGTH * 0.8 * scale;
+  const buttonWidth = MODULE_DEFAULT_WIDTH * scale;
+  const buttonHeight = MODULE_DEFAULT_LENGTH * scale;
   const fontSize = Math.max(12, Math.min(24, 0.3 * scale));
-
   const x = -buttonWidth / 2;
   const y = -buttonHeight / 2;
-
+  const formattedWidth = MODULE_DEFAULT_WIDTH.toFixed(2);
+  const formattedLength = MODULE_DEFAULT_LENGTH.toFixed(2);
   const buttonText = hasModules
     ? "+ Еще модуль"
-    : `+ Добавить модуль (${MODULE_DEFAULT_LENGTH}x${MODULE_DEFAULT_WIDTH}м)`;
-
-  // This button is rendered at world 0,0.
-  // If other modules are also at/near 0,0, it will overlap.
-  // Configurator.jsx offsets new modules, so this should usually be fine for the *first* module.
-  // If we want this button to always be in a clear spot, its <g> in SvgCanvas would need dynamic translation.
-
+    : `+ Добавить модуль`;
   return (
     <g onClick={onClick} className="cursor-pointer group">
       <rect
@@ -44,7 +37,7 @@ const AddModuleButtonRenderer = ({ scale, onClick, hasModules }) => {
         textAnchor="middle"
         dominantBaseline="middle"
         pointerEvents="none"
-        className="group-hover:fill-rgba(255, 255, 255, 1)"
+        className="select-none group-hover:fill-rgba(255, 255, 255, 1)"
       >
         {buttonText}
       </text>

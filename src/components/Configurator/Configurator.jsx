@@ -1,17 +1,14 @@
-// ========= src/components/Configurator/Configurator.jsx =========
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import useViewTransform from "./hooks/useViewTransform";
 import useModifierKeys from "./hooks/useModifierKeys";
 import useMouseInteractions from "./hooks/useMouseInteractions";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
-
 import ConfiguratorToolbar from "./toolbar/ConfiguratorToolbar";
 import SvgCanvas from "./canvas/SvgCanvas";
 import StatusBar from "./statusbar/StatusBar";
 import PropertiesPanel from "./sidebar/PropertiesPanel";
 import ElementPlacementPanel from "./sidebar/ElementPlacementPanel";
 import ContextMenu from "./common/ContextMenu";
-
 import {
   MODES,
   OBJECT_TYPES,
@@ -29,7 +26,6 @@ const generateId = (prefix = "id_") =>
 const EPSILON = 0.01;
 
 const getInterfaceKey = (id1, id2, orientationPrefix) => {
-  // Sort IDs to ensure key is consistent regardless of m1/m2 order in loop
   const sortedIds = [id1, id2].sort();
   return `${sortedIds[0]}_${sortedIds[1]}_${orientationPrefix}`;
 };
@@ -37,7 +33,6 @@ const getInterfaceKey = (id1, id2, orientationPrefix) => {
 const Configurator = () => {
   const svgRef = useRef(null);
   const mainContainerRef = useRef(null);
-
   const [activeMode, setActiveMode] = useState(MODES.MODULAR);
   const [objects, setObjects] = useState([]);
   const [selectedObjectId, setSelectedObjectId] = useState(null);
@@ -46,7 +41,6 @@ const Configurator = () => {
   const [showElementPlacementModal, setShowElementPlacementModal] =
     useState(false);
   const [manuallyClosedPortals, setManuallyClosedPortals] = useState(new Set());
-
   const modifierKeys = useModifierKeys(mainContainerRef, svgRef);
   const { viewTransform, setViewTransform, screenToWorld } =
     useViewTransform(svgRef);
@@ -58,27 +52,47 @@ const Configurator = () => {
         (obj) => obj.id === id && obj.type === OBJECT_TYPES.MODULE,
       );
       if (module) return module;
-
       for (const mod of objects.filter((o) => o.type === OBJECT_TYPES.MODULE)) {
         for (const segmentKey in mod.wallSegments) {
           const segment = mod.wallSegments[segmentKey];
-          if (segment.id === id)
+          if (segment.id === id) {
+            let enrichedSegmentData = { ...segment };
+            if (segment.isPortalWall && segment.portalInterfaceKey) {
+              let partnerExists = false;
+              for (const otherModule of objects) {
+                if (otherModule.type === OBJECT_TYPES.MODULE && otherModule.id !== mod.id) {
+                  for (const otherSegmentKeyInPartner in otherModule.wallSegments) {
+                    const otherSeg = otherModule.wallSegments[otherSegmentKeyInPartner];
+                    if (otherSeg.isPortalWall && otherSeg.portalInterfaceKey === segment.portalInterfaceKey) {
+                      partnerExists = true;
+                      break;
+                    }
+                  }
+                }
+                if (partnerExists) break;
+              }
+              enrichedSegmentData.isSingleSidePortal = !partnerExists;
+              enrichedSegmentData.isManuallyClosed = manuallyClosedPortals.has(segment.portalInterfaceKey);
+            } else {
+              enrichedSegmentData.isSingleSidePortal = false;
+              enrichedSegmentData.isManuallyClosed = false;
+            }
             return {
-              ...segment,
+              ...enrichedSegmentData,
               type: OBJECT_TYPES.WALL_SEGMENT,
               parentModule: mod,
               segmentKey,
             };
-          // Check for elements, including portal doors
+          }
           if (segment.elements) {
             for (const element of segment.elements) {
               if (element.id === id)
                 return {
-                  ...element, // Element properties (like isOpen, isPortalDoor, portalInterfaceKey)
-                  type: element.type, // Ensure type is correctly passed
+                  ...element,
+                  type: element.type,
                   parentWallSegment: segment,
                   parentModule: mod,
-                  segmentKey, // segmentKey of the wall it's on
+                  segmentKey,
                 };
             }
           }
@@ -86,10 +100,18 @@ const Configurator = () => {
       }
       return null;
     },
-    [objects],
+    [objects, manuallyClosedPortals],
   );
 
   const primarySelectedObject = getObjectById(selectedObjectId);
+  let currentSelectedPortalInterfaceKey = null;
+  if (primarySelectedObject &&
+      primarySelectedObject.type === OBJECT_TYPES.WALL_SEGMENT &&
+      primarySelectedObject.isPortalWall &&
+      primarySelectedObject.portalInterfaceKey) {
+    currentSelectedPortalInterfaceKey = primarySelectedObject.portalInterfaceKey;
+  }
+
   const canShowInitialModuleButton =
     activeMode === MODES.MODULAR &&
     !objects.some((obj) => obj.type === OBJECT_TYPES.MODULE);
@@ -102,14 +124,12 @@ const Configurator = () => {
         (obj) => obj.type === OBJECT_TYPES.MODULE,
       );
       const portalDoorType = OBJECT_TYPES.DOOR;
-      const portalDoorPlacedOnInterface = new Set();
-
       modules.forEach((module) => {
         for (const segmentKey in module.wallSegments) {
           const segment = module.wallSegments[segmentKey];
           delete segment.isPortalWall;
           delete segment.hasPortalDoor;
-          delete segment.portalInterfaceKey; // Clear old key from segment
+          delete segment.portalInterfaceKey;
           if (segment.elements) {
             segment.elements = segment.elements.filter(
               (el) => !el.isPortalDoor,
@@ -117,131 +137,257 @@ const Configurator = () => {
           }
         }
       });
-
       for (let i = 0; i < modules.length; i++) {
         for (let j = i + 1; j < modules.length; j++) {
-          const m1 = modules[i]; // Primary module for placing door in this iteration
-          const m2 = modules[j]; // Secondary module
-
+          const m1 = modules[i];
+          const m2 = modules[j];
           if (m1.rotation !== 0 || m2.rotation !== 0) continue;
-
-          // --- Check Vertical Interface (e.g., m1's right wall vs m2's left wall) ---
-          const verticalInterfaceKey = getInterfaceKey(m1.id, m2.id, "V");
-          let doorPlacedForThisVInterface =
-            portalDoorPlacedOnInterface.has(verticalInterfaceKey);
-
-          if (!currentManuallyClosedPortals.has(verticalInterfaceKey)) {
-            // Check m1 right vs m2 left
-            if (Math.abs(m1.x + m1.width - m2.x) < EPSILON) {
+          if (Math.abs(m1.x + m1.width - m2.x) < EPSILON) {
+            const verticalInterfaceKey = getInterfaceKey(m1.id, m2.id, "V_RL");
+            if (!currentManuallyClosedPortals.has(verticalInterfaceKey)) {
+              let doorAddedThisPair = false;
               for (let c1 = 0; c1 < m1.cellsLong; c1++) {
-                // Iterate M1's wall segments
                 const m1WallYWorld = m1.y + c1 * GRID_CELL_SIZE_M;
                 const m1SegmentKey = `${m1.cellsWide},${c1}_v`;
                 const m1Wall = m1.wallSegments[m1SegmentKey];
                 if (!m1Wall) continue;
-
                 for (let c2 = 0; c2 < m2.cellsLong; c2++) {
-                  // Iterate M2's wall segments
                   const m2WallYWorld = m2.y + c2 * GRID_CELL_SIZE_M;
                   if (Math.abs(m1WallYWorld - m2WallYWorld) < EPSILON) {
-                    // Segments align
                     const m2SegmentKey = `0,${c2}_v`;
                     const m2Wall = m2.wallSegments[m2SegmentKey];
                     if (!m2Wall) continue;
-
                     m1Wall.isPortalWall = true;
                     m1Wall.portalInterfaceKey = verticalInterfaceKey;
                     m2Wall.isPortalWall = true;
                     m2Wall.portalInterfaceKey = verticalInterfaceKey;
-
-                    if (!doorPlacedForThisVInterface) {
+                    if (!doorAddedThisPair) {
                       const doorDefaults = defaultObjectSizes[portalDoorType];
-                      m1Wall.elements.push({
-                        id: generateId(`${portalDoorType}_portal_`),
-                        type: portalDoorType,
-                        positionOnSegment: 0.5,
-                        width: doorDefaults.width,
-                        isOpen: false,
-                        isPortalDoor: true,
-                        hingeSide: "left",
-                        openingDirection: "inward",
-                        portalInterfaceKey: verticalInterfaceKey,
-                      });
-                      m1Wall.hasPortalDoor = true;
-                      portalDoorPlacedOnInterface.add(verticalInterfaceKey);
-                      doorPlacedForThisVInterface = true;
+                       if (m1.id.localeCompare(m2.id) < 0) {
+                          m1Wall.elements.push({
+                            id: generateId(`${portalDoorType}_portal_`),
+                            type: portalDoorType,
+                            positionOnSegment: 0.5,
+                            width: doorDefaults.width,
+                            isOpen: true,
+                            isPortalDoor: true,
+                            hingeSide: "left",
+                            openingDirection: "inward",
+                            portalInterfaceKey: verticalInterfaceKey,
+                          });
+                          m1Wall.hasPortalDoor = true;
+                       } else {
+                           m2Wall.elements.push({
+                            id: generateId(`${portalDoorType}_portal_`),
+                            type: portalDoorType,
+                            positionOnSegment: 0.5,
+                            width: doorDefaults.width,
+                            isOpen: true,
+                            isPortalDoor: true,
+                            hingeSide: "left",
+                            openingDirection: "inward",
+                            portalInterfaceKey: verticalInterfaceKey,
+                          });
+                           m2Wall.hasPortalDoor = true;
+                       }
+                      doorAddedThisPair = true;
                     }
-                    break; // Found aligned segment on m2 for this m1 segment
                   }
                 }
               }
             }
-            // Add check for m2 right vs m1 left if you want door placement to be on the module with smaller ID always
-            // For now, door is on M1 if m1 is left of m2.
           }
-
-          // --- Check Horizontal Interface (e.g., m1's bottom wall vs m2's top wall) ---
-          const horizontalInterfaceKey = getInterfaceKey(m1.id, m2.id, "H");
-          let doorPlacedForThisHInterface = portalDoorPlacedOnInterface.has(
-            horizontalInterfaceKey,
-          );
-
-          if (!currentManuallyClosedPortals.has(horizontalInterfaceKey)) {
-            // Check m1 bottom vs m2 top
-            if (Math.abs(m1.y + m1.height - m2.y) < EPSILON) {
+            if (Math.abs(m2.x + m2.width - m1.x) < EPSILON) {
+              const verticalInterfaceKey = getInterfaceKey(m1.id, m2.id, "V_LR");
+               if (!currentManuallyClosedPortals.has(verticalInterfaceKey)) {
+                  let doorAddedThisPair = false;
+                   for (let c1 = 0; c1 < m1.cellsLong; c1++) {
+                    const m1WallYWorld = m1.y + c1 * GRID_CELL_SIZE_M;
+                    const m1SegmentKey = `0,${c1}_v`;
+                    const m1Wall = m1.wallSegments[m1SegmentKey];
+                    if (!m1Wall) continue;
+                    for (let c2 = 0; c2 < m2.cellsLong; c2++) {
+                      const m2WallYWorld = m2.y + c2 * GRID_CELL_SIZE_M;
+                      if (Math.abs(m1WallYWorld - m2WallYWorld) < EPSILON) {
+                        const m2SegmentKey = `${m2.cellsWide},${c2}_v`;
+                        const m2Wall = m2.wallSegments[m2SegmentKey];
+                        if (!m2Wall) continue;
+                        m1Wall.isPortalWall = true;
+                        m1Wall.portalInterfaceKey = verticalInterfaceKey;
+                        m2Wall.isPortalWall = true;
+                        m2Wall.portalInterfaceKey = verticalInterfaceKey;
+                         if (!doorAddedThisPair) {
+                          const doorDefaults = defaultObjectSizes[portalDoorType];
+                           if (m1.id.localeCompare(m2.id) < 0) {
+                              m1Wall.elements.push({
+                                id: generateId(`${portalDoorType}_portal_`),
+                                type: portalDoorType,
+                                positionOnSegment: 0.5,
+                                width: doorDefaults.width,
+                                isOpen: true,
+                                isPortalDoor: true,
+                                hingeSide: "left",
+                                openingDirection: "inward",
+                                portalInterfaceKey: verticalInterfaceKey,
+                              });
+                              m1Wall.hasPortalDoor = true;
+                           } else {
+                               m2Wall.elements.push({
+                                id: generateId(`${portalDoorType}_portal_`),
+                                type: portalDoorType,
+                                positionOnSegment: 0.5,
+                                width: doorDefaults.width,
+                                isOpen: true,
+                                isPortalDoor: true,
+                                hingeSide: "left",
+                                openingDirection: "inward",
+                                portalInterfaceKey: verticalInterfaceKey,
+                              });
+                               m2Wall.hasPortalDoor = true;
+                           }
+                          doorAddedThisPair = true;
+                        }
+                      }
+                    }
+                  }
+               }
+            }
+          if (Math.abs(m1.y + m1.height - m2.y) < EPSILON) {
+            const horizontalInterfaceKey = getInterfaceKey(m1.id, m2.id, "H_BT");
+            if (!currentManuallyClosedPortals.has(horizontalInterfaceKey)) {
+               let doorAddedThisPair = false;
               for (let c1 = 0; c1 < m1.cellsWide; c1++) {
-                // Iterate M1's wall segments
                 const m1WallXWorld = m1.x + c1 * GRID_CELL_SIZE_M;
                 const m1SegmentKey = `${c1},${m1.cellsLong}_h`;
                 const m1Wall = m1.wallSegments[m1SegmentKey];
                 if (!m1Wall) continue;
-
                 for (let c2 = 0; c2 < m2.cellsWide; c2++) {
-                  // Iterate M2's wall segments
                   const m2WallXWorld = m2.x + c2 * GRID_CELL_SIZE_M;
                   if (Math.abs(m1WallXWorld - m2WallXWorld) < EPSILON) {
-                    // Segments align
                     const m2SegmentKey = `${c2},0_h`;
                     const m2Wall = m2.wallSegments[m2SegmentKey];
                     if (!m2Wall) continue;
-
                     m1Wall.isPortalWall = true;
                     m1Wall.portalInterfaceKey = horizontalInterfaceKey;
                     m2Wall.isPortalWall = true;
                     m2Wall.portalInterfaceKey = horizontalInterfaceKey;
-
-                    if (!doorPlacedForThisHInterface) {
+                     if (!doorAddedThisPair) {
                       const doorDefaults = defaultObjectSizes[portalDoorType];
-                      m1Wall.elements.push({
-                        id: generateId(`${portalDoorType}_portal_`),
-                        type: portalDoorType,
-                        positionOnSegment: 0.5,
-                        width: doorDefaults.width,
-                        isOpen: false,
-                        isPortalDoor: true,
-                        hingeSide: "left",
-                        openingDirection: "inward",
-                        portalInterfaceKey: horizontalInterfaceKey,
-                      });
-                      m1Wall.hasPortalDoor = true;
-                      portalDoorPlacedOnInterface.add(horizontalInterfaceKey);
-                      doorPlacedForThisHInterface = true;
+                       if (m1.id.localeCompare(m2.id) < 0) {
+                           m1Wall.elements.push({
+                            id: generateId(`${portalDoorType}_portal_`),
+                            type: portalDoorType,
+                            positionOnSegment: 0.5,
+                            width: doorDefaults.width,
+                            isOpen: true,
+                            isPortalDoor: true,
+                            hingeSide: "left",
+                            openingDirection: "inward",
+                            portalInterfaceKey: horizontalInterfaceKey,
+                          });
+                          m1Wall.hasPortalDoor = true;
+                       } else {
+                           m2Wall.elements.push({
+                            id: generateId(`${portalDoorType}_portal_`),
+                            type: portalDoorType,
+                            positionOnSegment: 0.5,
+                            width: doorDefaults.width,
+                            isOpen: true,
+                            isPortalDoor: true,
+                            hingeSide: "left",
+                            openingDirection: "inward",
+                            portalInterfaceKey: horizontalInterfaceKey,
+                          });
+                           m2Wall.hasPortalDoor = true;
+                       }
+                       doorAddedThisPair = true;
                     }
-                    break; // Found aligned segment on m2 for this m1 segment
                   }
                 }
               }
             }
           }
+            if (Math.abs(m2.y + m2.height - m1.y) < EPSILON) {
+               const horizontalInterfaceKey = getInterfaceKey(m1.id, m2.id, "H_TB");
+                if (!currentManuallyClosedPortals.has(horizontalInterfaceKey)) {
+                   let doorAddedThisPair = false;
+                   for (let c1 = 0; c1 < m1.cellsWide; c1++) {
+                    const m1WallXWorld = m1.x + c1 * GRID_CELL_SIZE_M;
+                    const m1SegmentKey = `${c1},0_h`;
+                    const m1Wall = m1.wallSegments[m1SegmentKey];
+                    if (!m1Wall) continue;
+                    for (let c2 = 0; c2 < m2.cellsWide; c2++) {
+                      const m2WallXWorld = m2.x + c2 * GRID_CELL_SIZE_M;
+                      if (Math.abs(m1WallXWorld - m2WallXWorld) < EPSILON) {
+                        const m2SegmentKey = `${c2},${m2.cellsLong}_h`;
+                        const m2Wall = m2.wallSegments[m2SegmentKey];
+                        if (!m2Wall) continue;
+                        m1Wall.isPortalWall = true;
+                        m1Wall.portalInterfaceKey = horizontalInterfaceKey;
+                        m2Wall.isPortalWall = true;
+                        m2Wall.portalInterfaceKey = horizontalInterfaceKey;
+                        if (!doorAddedThisPair) {
+                           const doorDefaults = defaultObjectSizes[portalDoorType];
+                            if (m1.id.localeCompare(m2.id) < 0) {
+                                m1Wall.elements.push({
+                                 id: generateId(`${portalDoorType}_portal_`),
+                                 type: portalDoorType,
+                                 positionOnSegment: 0.5,
+                                 width: doorDefaults.width,
+                                 isOpen: true,
+                                 isPortalDoor: true,
+                                 hingeSide: "left",
+                                 openingDirection: "inward",
+                                 portalInterfaceKey: horizontalInterfaceKey,
+                               });
+                                m1Wall.hasPortalDoor = true;
+                            } else {
+                                m2Wall.elements.push({
+                                 id: generateId(`${portalDoorType}_portal_`),
+                                 type: portalDoorType,
+                                 positionOnSegment: 0.5,
+                                 width: doorDefaults.width,
+                                 isOpen: true,
+                                 isPortalDoor: true,
+                                 hingeSide: "left",
+                                 openingDirection: "inward",
+                                 portalInterfaceKey: horizontalInterfaceKey,
+                               });
+                                m2Wall.hasPortalDoor = true;
+                            }
+                           doorAddedThisPair = true;
+                         }
+                       }
+                     }
+                   }
+                }
+             }
         }
       }
+        const activePortalInterfaceKeys = new Set();
+        for (let i = 0; i < modules.length; i++) {
+             for (let j = i + 1; j < modules.length; j++) {
+                 const m1 = modules[i];
+                 const m2 = modules[j];
+                 if (m1.rotation !== 0 || m2.rotation !== 0) continue;
+                 if (Math.abs(m1.x + m1.width - m2.x) < EPSILON) activePortalInterfaceKeys.add(getInterfaceKey(m1.id, m2.id, "V_RL"));
+                 if (Math.abs(m2.x + m2.width - m1.x) < EPSILON) activePortalInterfaceKeys.add(getInterfaceKey(m1.id, m2.id, "V_LR"));
+                 if (Math.abs(m1.y + m1.height - m2.y) < EPSILON) activePortalInterfaceKeys.add(getInterfaceKey(m1.id, m2.id, "H_BT"));
+                 if (Math.abs(m2.y + m2.height - m1.y) < EPSILON) activePortalInterfaceKeys.add(getInterfaceKey(m1.id, m2.id, "H_TB"));
+             }
+        }
+       const newManuallyClosedPortals = new Set(
+           [...currentManuallyClosedPortals].filter(key => activePortalInterfaceKeys.has(key))
+       );
+        if ([...newManuallyClosedPortals].join(',') !== [...currentManuallyClosedPortals].join(',')) {
+            setManuallyClosedPortals(newManuallyClosedPortals);
+        }
       return newObjects;
     },
-    [defaultObjectSizes],
+    [defaultObjectSizes, GRID_CELL_SIZE_M, setManuallyClosedPortals],
   );
 
-  const createNewModule = (posX = 0, posY = 0) => {
-    /* ... (без изменений) ... */
+  const createNewModule = useCallback((posX = 0, posY = 0) => {
     const moduleId = generateId("module_");
     const cellsWide = MODULE_DEFAULT_CELLS_WIDE;
     const cellsLong = MODULE_DEFAULT_CELLS_LONG;
@@ -283,14 +429,7 @@ const Configurator = () => {
       label: `Модуль ${cellsWide}x${cellsLong}`,
       wallSegments,
     };
-  };
-
-  // All functions like addModuleAtZeroZero, addModuleFromToolbar, addNewModule,
-  // handleToggleWallSegment, deleteWallSegment, handlePlaceElementOnWall,
-  // updateSelectedObjectProperty (for module move/rotate), snapAndFinalizeModulePosition,
-  // handleRotateModule, deleteSelectedObject (for module)
-  // should now call managePortals with manuallyClosedPortals:
-  // e.g., setObjects((prev) => managePortals(prev, manuallyClosedPortals));
+  }, [GRID_CELL_SIZE_M, MODULE_DEFAULT_CELLS_LONG, MODULE_DEFAULT_CELLS_WIDE, WALL_THICKNESS_M_RENDER]);
 
   const addModuleAtZeroZero = useCallback(() => {
     if (!canShowInitialModuleButton) return;
@@ -305,6 +444,7 @@ const Configurator = () => {
     closeContextMenu,
     managePortals,
     manuallyClosedPortals,
+    createNewModule,
   ]);
 
   const addModuleFromToolbar = useCallback(() => {
@@ -312,25 +452,22 @@ const Configurator = () => {
     let newY = 0;
     const modulesOnly = objects.filter((o) => o.type === OBJECT_TYPES.MODULE);
     if (modulesOnly.length > 0) {
-      const lastModuleWithPosition =
+      const rightmostModule =
         modulesOnly
           .filter(
             (obj) => typeof obj.x === "number" && typeof obj.y === "number",
           )
-          .sort((a, b) => b.x + (b.width || 0) - (a.x + (a.width || 0)))[0] ||
+          .sort((a, b) => (b.x || 0) + (b.width || 0) - ((a.x || 0) + (a.width || 0)))[0] ||
         modulesOnly[modulesOnly.length - 1];
-      if (lastModuleWithPosition) {
+      if (rightmostModule) {
         newX =
-          (lastModuleWithPosition.x || 0) +
-          (lastModuleWithPosition.width ||
+          (rightmostModule.x || 0) +
+          (rightmostModule.width ||
             MODULE_DEFAULT_CELLS_WIDE * GRID_CELL_SIZE_M) +
           GRID_CELL_SIZE_M * 2;
-        newY = lastModuleWithPosition.y || 0;
+        newY = rightmostModule.y || 0;
       } else {
-        newX =
-          (MODULE_DEFAULT_CELLS_WIDE * GRID_CELL_SIZE_M +
-            GRID_CELL_SIZE_M * 2) *
-          modulesOnly.length;
+        newX = (MODULE_DEFAULT_CELLS_WIDE * GRID_CELL_SIZE_M + GRID_CELL_SIZE_M * 2) * modulesOnly.length;
       }
     }
     const newModule = createNewModule(newX, newY);
@@ -339,7 +476,7 @@ const Configurator = () => {
     );
     setSelectedObjectId(newModule.id);
     closeContextMenu();
-  }, [objects, closeContextMenu, managePortals, manuallyClosedPortals]);
+  }, [objects, closeContextMenu, managePortals, manuallyClosedPortals, GRID_CELL_SIZE_M, MODULE_DEFAULT_CELLS_WIDE, createNewModule]);
 
   const addNewModule = useCallback(
     (worldX, worldY) => {
@@ -353,7 +490,7 @@ const Configurator = () => {
       setSelectedObjectId(newModule.id);
       closeContextMenu();
     },
-    [activeMode, closeContextMenu, managePortals, manuallyClosedPortals],
+    [activeMode, closeContextMenu, managePortals, manuallyClosedPortals, GRID_CELL_SIZE_M, createNewModule],
   );
 
   const handleToggleWallSegment = useCallback(
@@ -385,7 +522,10 @@ const Configurator = () => {
             )
               isPerimeter = true;
             if (newModule.wallSegments[segmentKey]) {
-              if (isPerimeter) return obj;
+              if (isPerimeter) {
+                 alert("Периметральные стены не могут быть удалены.");
+                 return obj;
+              }
               if (
                 newModule.wallSegments[segmentKey].elements &&
                 newModule.wallSegments[segmentKey].elements.length > 0
@@ -420,7 +560,7 @@ const Configurator = () => {
       managePortals,
       manuallyClosedPortals,
       getObjectById,
-      objects,
+      WALL_THICKNESS_M_RENDER,
     ],
   );
 
@@ -499,7 +639,9 @@ const Configurator = () => {
         cellsLong: objDetails.parentModule.cellsLong,
         isPortalWall: objDetails.isPortalWall,
         hasPortalDoor: objDetails.hasPortalDoor,
-        portalInterfaceKey: objDetails.portalInterfaceKey, // Pass the key from segment
+        portalInterfaceKey: objDetails.portalInterfaceKey,
+        isManuallyClosed: objDetails.isManuallyClosed,
+        isSingleSidePortal: objDetails.isSingleSidePortal,
       });
     } else {
       setSelectedWallSegmentData(null);
@@ -536,11 +678,9 @@ const Configurator = () => {
           if (obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE) {
             const newModule = { ...obj, wallSegments: { ...obj.wallSegments } };
             if (newModule.wallSegments[segmentKey]) {
-              if (
-                newModule.wallSegments[segmentKey].elements &&
-                newModule.wallSegments[segmentKey].elements.length > 0
-              )
-                return obj;
+               if (newModule.wallSegments[segmentKey].elements && newModule.wallSegments[segmentKey].elements.length > 0) {
+                  return obj;
+               }
               const elementDefaults = defaultObjectSizes[elementType];
               const newElement = {
                 id: generateId(`${elementType}_`),
@@ -564,9 +704,6 @@ const Configurator = () => {
           }
           return obj;
         });
-        // No managePortals needed here, as adding a normal element should not affect portals.
-        // However, if a wall was previously a portal and now is not, managePortals SHOULD run.
-        // This is complex. For now, assume adding normal elements doesn't auto-close portals.
         return newObjects;
       });
       setShowElementPlacementModal(false);
@@ -577,6 +714,7 @@ const Configurator = () => {
       closeContextMenu,
       showElementPlacementModal,
       defaultObjectSizes,
+      setSelectedObjectId,
     ],
   );
 
@@ -591,6 +729,7 @@ const Configurator = () => {
         "rotation",
         "openingAngle",
         "positionOnSegment",
+        "thickness",
       ];
       let processedValue = value;
       if (numericProps.includes(key)) {
@@ -598,7 +737,7 @@ const Configurator = () => {
         if (isNaN(processedValue)) {
           if (
             value === "" &&
-            (key === "x" || key === "y" || key === "rotation")
+            (key === "x" || key === "y" || key === "rotation" || key === "thickness")
           )
             processedValue = 0;
           else return;
@@ -609,22 +748,33 @@ const Configurator = () => {
       ) {
         processedValue = value.toLowerCase() === "true";
       }
-
       let needsPortalUpdate = false;
       setObjects((prevObjects) =>
         prevObjects.map((obj) => {
           if (obj.id === selectedObjectId && obj.type === OBJECT_TYPES.MODULE) {
-            // If module is selected
-            if ((key === "x" || key === "y") && GRID_CELL_SIZE_M > 0)
-              needsPortalUpdate = true;
-            else if (key === "rotation") {
+            if (key === "label") {
+               return { ...obj, [key]: processedValue };
+            }
+            const currentVal = obj[key] !== undefined ? parseFloat(obj[key]) : NaN;
+            const newVal = parseFloat(processedValue);
+            if (key === "rotation") {
               processedValue = (Math.round(processedValue / 90) * 90) % 360;
               if (processedValue < 0) processedValue += 360;
-              needsPortalUpdate = true;
+               if (Math.abs(currentVal - processedValue) > EPSILON) {
+                   if (processedValue !== 0) {
+                     console.warn(
+                       "Вращение модуля (кроме 0 градусов) пока не поддерживается с автоматическими межмодульными дверьми. Двери могут исчезнуть или отображаться некорректно.",
+                     );
+                   }
+                   needsPortalUpdate = true;
+               }
+            } else if ((key === "x" || key === "y")) {
+                 if (Math.abs(currentVal - newVal) > EPSILON) {
+                    needsPortalUpdate = true;
+                 }
             }
             return { ...obj, [key]: processedValue };
           }
-          // If an element (like a door) on a wall is selected
           if (
             primarySelectedObject.parentModule?.id &&
             obj.id === primarySelectedObject.parentModule.id &&
@@ -642,22 +792,27 @@ const Configurator = () => {
                 primarySelectedObject.type === OBJECT_TYPES.WALL_SEGMENT &&
                 segment.id === selectedObjectId
               ) {
-                /* No direct edit */
+                 if (key === "thickness" && !segment.isPortalWall) {
+                     changed = true;
+                     newModule.wallSegments[primarySelectedObject.segmentKey] = {
+                         ...segment,
+                         [key]: processedValue,
+                     };
+                 }
               } else {
-                // Element is selected
                 const newElements = segment.elements.map((el) => {
                   if (el.id === selectedObjectId) {
-                    changed = true;
-                    if (
-                      el.isPortalDoor &&
-                      (key === "width" || key === "positionOnSegment")
-                    ) {
-                      alert(
-                        "Свойства портальной двери (ширина, позиция) не могут быть изменены.",
-                      );
-                      return el;
+                    if (el.isPortalDoor) {
+                      const allowedPortalDoorProps = ["isOpen", "openingAngle", "hingeSide", "openingDirection"];
+                      if (!allowedPortalDoorProps.includes(key)) {
+                        alert(
+                          `Свойство '${key}' портальной двери не может быть изменено вручную. Ширина и позиция фиксированы. Для удаления используйте "Закрыть проем".`,
+                        );
+                        return el;
+                      }
                     }
-                    return { ...el, [key]: processedValue }; // Update isOpen here
+                    changed = true;
+                    return { ...el, [key]: processedValue };
                   }
                   return el;
                 });
@@ -673,13 +828,13 @@ const Configurator = () => {
           return obj;
         }),
       );
-      if (needsPortalUpdate)
-        setObjects((prev) => managePortals(prev, manuallyClosedPortals));
+      if (needsPortalUpdate) {
+          setObjects((prev) => managePortals(prev, manuallyClosedPortals));
+      }
     },
     [
       selectedObjectId,
       primarySelectedObject,
-      GRID_CELL_SIZE_M,
       managePortals,
       manuallyClosedPortals,
     ],
@@ -698,8 +853,10 @@ const Configurator = () => {
   const snapAndFinalizeModulePosition = useCallback(
     (moduleId) => {
       setObjects((prevObjects) => {
+        let moduleToSnap = null;
         const objectsWithSnappedModule = prevObjects.map((obj) => {
           if (obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE) {
+             moduleToSnap = obj;
             const snappedX =
               GRID_CELL_SIZE_M > 0
                 ? Math.round(obj.x / GRID_CELL_SIZE_M) * GRID_CELL_SIZE_M
@@ -708,11 +865,17 @@ const Configurator = () => {
               GRID_CELL_SIZE_M > 0
                 ? Math.round(obj.y / GRID_CELL_SIZE_M) * GRID_CELL_SIZE_M
                 : obj.y;
-            return { ...obj, x: snappedX, y: snappedY };
+             if (Math.abs(obj.x - snappedX) > EPSILON || Math.abs(obj.y - snappedY) > EPSILON) {
+                 return { ...obj, x: snappedX, y: snappedY };
+             }
           }
           return obj;
-        });
-        return managePortals(objectsWithSnappedModule, manuallyClosedPortals);
+        }).filter(Boolean);
+        const moduleAfterSnap = objectsWithSnappedModule.find(obj => obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE);
+        if (moduleToSnap && moduleAfterSnap && (Math.abs(moduleToSnap.x - moduleAfterSnap.x) > EPSILON || Math.abs(moduleToSnap.y - moduleAfterSnap.y) > EPSILON)) {
+             return managePortals(objectsWithSnappedModule, manuallyClosedPortals);
+        }
+        return prevObjects;
       });
     },
     [GRID_CELL_SIZE_M, managePortals, manuallyClosedPortals],
@@ -723,12 +886,15 @@ const Configurator = () => {
       setObjects((prevObjects) => {
         const rotatedObjects = prevObjects.map((obj) => {
           if (obj.id === moduleId && obj.type === OBJECT_TYPES.MODULE) {
-            if (obj.rotation !== 0 || (obj.rotation + 90) % 360 !== 0) {
-              alert(
-                "Вращение модуля (кроме 0 градусов) пока не поддерживается с автоматическими межмодульными дверьми. Двери могут исчезнуть или отображаться некорректно.",
-              );
+             const currentRotation = obj.rotation || 0;
+             const newRotation = (currentRotation + 90) % 360;
+             if (newRotation < 0) newRotation += 360;
+             if (newRotation !== 0) {
+               console.warn(
+                 "Вращение модуля (кроме 0 градусов) пока не поддерживается с автоматическими межмодульными дверьми. Двери могут исчезнуть или отображаться некорректно.",
+               );
             }
-            return { ...obj, rotation: (obj.rotation + 90) % 360 };
+            return { ...obj, rotation: newRotation };
           }
           return obj;
         });
@@ -741,37 +907,27 @@ const Configurator = () => {
 
   const deleteSelectedObject = useCallback(() => {
     if (!selectedObjectId || !primarySelectedObject) return;
-    if (primarySelectedObject.isPortalDoor) {
-      alert(
-        "Портальные двери не могут быть удалены вручную. Используйте опцию 'Закрыть проем'.",
-      );
+    if (primarySelectedObject.isPortalDoor && primarySelectedObject.portalInterfaceKey) {
+      handleTogglePortalState(primarySelectedObject.portalInterfaceKey, true);
       closeContextMenu();
       return;
     }
     let newObjectsList = objects;
+    let shouldUpdatePortals = false;
     if (primarySelectedObject.type === OBJECT_TYPES.MODULE) {
       newObjectsList = objects.filter((obj) => obj.id !== selectedObjectId);
       setSelectedObjectId(null);
+      shouldUpdatePortals = true;
     } else {
-      // Element or Wall Segment
       const { parentModule, segmentKey, type: objType } = primarySelectedObject;
       if (parentModule) {
-        // Should always be true for elements/walls
         if (objType === OBJECT_TYPES.WALL_SEGMENT) {
-          // Deleting a wall segment (non-portal)
-          // Logic for deleting a non-portal wall segment is already in deleteWallSegment
-          // This path in deleteSelectedObject should primarily handle elements.
-          // For consistency, call deleteWallSegment if it's a wall.
-          // However, deleteWallSegment is called from context menu usually.
-          // If delete key is pressed on a wall, we might need to route it.
-          // For now, this primarily handles deleting elements.
-          alert(
+           alert(
             "Для удаления сегмента стены используйте контекстное меню на стене.",
           );
-          closeContextMenu();
-          return;
+           closeContextMenu();
+           return;
         } else {
-          // Deleting an element
           newObjectsList = objects.map((obj) => {
             if (
               obj.id === parentModule.id &&
@@ -782,7 +938,9 @@ const Configurator = () => {
                 wallSegments: { ...obj.wallSegments },
               };
               if (segmentKey && newModule.wallSegments[segmentKey]) {
-                const segment = newModule.wallSegments[segmentKey];
+                 const segment = newModule.wallSegments[segmentKey];
+                 const elementExists = segment.elements.some(el => el.id === selectedObjectId);
+                 if (!elementExists) return obj;
                 newModule.wallSegments[segmentKey] = {
                   ...segment,
                   elements: segment.elements.filter(
@@ -795,10 +953,15 @@ const Configurator = () => {
             }
             return obj;
           });
+          shouldUpdatePortals = false;
         }
       }
     }
-    setObjects(managePortals(newObjectsList, manuallyClosedPortals));
+    if (shouldUpdatePortals) {
+       setObjects(managePortals(newObjectsList, manuallyClosedPortals));
+    } else {
+       setObjects(newObjectsList);
+    }
     closeContextMenu();
   }, [
     selectedObjectId,
@@ -807,163 +970,206 @@ const Configurator = () => {
     closeContextMenu,
     managePortals,
     manuallyClosedPortals,
+    handleTogglePortalState,
   ]);
 
   const handleTogglePortalState = useCallback(
     (portalInterfaceKey, makeClosed) => {
-      const newManuallyClosedPortals = new Set(manuallyClosedPortals);
-      if (makeClosed) {
-        newManuallyClosedPortals.add(portalInterfaceKey);
-      } else {
-        newManuallyClosedPortals.delete(portalInterfaceKey);
-      }
-      setManuallyClosedPortals(newManuallyClosedPortals);
-      // No need to call managePortals here, the useEffect will pick it up.
+      setManuallyClosedPortals((prev) => {
+         const newSet = new Set(prev);
+         if (makeClosed) {
+            newSet.add(portalInterfaceKey);
+         } else {
+            newSet.delete(portalInterfaceKey);
+         }
+         return newSet;
+      });
       closeContextMenu();
+      const currentSelected = getObjectById(selectedObjectId);
+      if (currentSelected && currentSelected.portalInterfaceKey === portalInterfaceKey) {
+          setSelectedObjectId(null);
+      }
     },
-    [manuallyClosedPortals],
-  ); // Removed managePortals from deps, rely on useEffect
+    [closeContextMenu, selectedObjectId, getObjectById],
+  );
 
-  useEffect(() => {
-    setObjects((prevObs) => managePortals(prevObs, manuallyClosedPortals));
-  }, [manuallyClosedPortals, managePortals]); // managePortals itself depends on defaultObjectSizes
+   useEffect(() => {
+       setObjects((prevObs) => managePortals(prevObs, manuallyClosedPortals));
+   }, [manuallyClosedPortals, managePortals]);
 
   const handleContextMenuAction = useCallback(
-    (event, objectId, objectType, worldCoords) => {
+    (event, objectId, objectType, meta) => {
       event.preventDefault();
       mainContainerRef.current?.focus();
-      if (objectId && objectId !== selectedObjectId)
-        setSelectedObjectId(objectId);
-
+      if (objectId && objectId !== selectedObjectId) {
+          setSelectedObjectId(objectId);
+      } else if (!objectId && objectType === 'canvas') {
+           setSelectedObjectId(null);
+      }
       const targetObjectForMenu = objectId
         ? getObjectById(objectId)
         : objectType === "canvas"
           ? null
           : getObjectById(selectedObjectId);
       let options = [];
-
       if (targetObjectForMenu) {
         const obj = targetObjectForMenu;
+         options.push({
+            label: `Свойства (${obj.type === OBJECT_TYPES.WALL_SEGMENT ? 'стена' : obj.type === OBJECT_TYPES.DOOR ? 'дверь' : obj.type === OBJECT_TYPES.WINDOW ? 'окно' : 'модуль'})`,
+            onClick: () => setSelectedObjectId(obj.id),
+         });
+         options.push({ isSeparator: true });
         if (obj.type === OBJECT_TYPES.WALL_SEGMENT) {
-          if (
-            obj.isPortalWall &&
-            !obj.hasPortalDoor &&
-            obj.portalInterfaceKey
-          ) {
-            options.push({
-              label: "Сделать сплошной стеной",
-              onClick: () =>
-                handleTogglePortalState(obj.portalInterfaceKey, true),
-            });
-          } else if (obj.isPortalWall && obj.hasPortalDoor) {
-            // Wall segment with the portal door
-            options.push({
-              label: "Стена с портальной дверью",
-              disabled: true,
-            });
-          } else if (manuallyClosedPortals.has(obj.portalInterfaceKey)) {
-            // A normal wall that was part of a manually closed portal
-            options.push({
-              label: "Восстановить авто-проем",
-              onClick: () =>
-                handleTogglePortalState(obj.portalInterfaceKey, false),
-            });
+          const segment = obj;
+          const [coords, orientation] = segment.segmentKey.split("_");
+          const cellX = parseInt(coords.split(",")[0]);
+          const cellY = parseInt(coords.split(",")[1]);
+          let isPerimeter = false;
+          if (segment.parentModule) {
+              if (orientation === "h" && (cellY === 0 || cellY === segment.parentModule.cellsLong)) isPerimeter = true;
+              if (orientation === "v" && (cellX === 0 || cellX === segment.parentModule.cellsWide)) isPerimeter = true;
+          }
+          if (segment.isPortalWall && segment.portalInterfaceKey) {
+            options.push({ label: "--- Проем ---", disabled: true });
+            const interfaceKey = segment.portalInterfaceKey;
+            const isInterfaceManuallyClosed = manuallyClosedPortals.has(interfaceKey);
+            let partnerExists = false;
+            if (segment.parentModule) {
+                for (const otherModule of objects.filter(o => o.type === OBJECT_TYPES.MODULE && o.id !== segment.parentModule.id)) {
+                    if (otherModule.wallSegments) {
+                        for (const otherSegmentKey in otherModule.wallSegments) {
+                            const otherSeg = otherModule.wallSegments[otherSegmentKey];
+                            if (otherSeg.isPortalWall && otherSeg.portalInterfaceKey === interfaceKey) {
+                                partnerExists = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (partnerExists) break;
+                }
+            }
+            const isSingleSide = !partnerExists;
+            if (isSingleSide) {
+                options.push({ label: "Незавершенный проем", disabled: true });
+            } else {
+                if (segment.hasPortalDoor || (segment.elements && segment.elements.some(el => el.isPortalDoor && el.portalInterfaceKey === interfaceKey))) {
+                     options.push({
+                        label: isInterfaceManuallyClosed ? "Проем закрыт (ошибка состояния)" : "Автоматическая дверь",
+                        disabled: true,
+                     });
+                      if (!isInterfaceManuallyClosed) {
+                           options.push({
+                             label: "Закрыть проем (сплошная стена)",
+                             onClick: () => handleTogglePortalState(interfaceKey, true),
+                           });
+                      } else {
+                          options.push({
+                             label: "Восстановить авто-проем (с дверью)",
+                              onClick: () => handleTogglePortalState(interfaceKey, false),
+                          });
+                      }
+                } else if (!isInterfaceManuallyClosed) {
+                    options.push({ label: "Сторона открытого проема", disabled: true });
+                    options.push({
+                        label: "Закрыть проем (сплошная стена)",
+                        onClick: () => handleTogglePortalState(interfaceKey, true),
+                    });
+                } else {
+                    options.push({ label: "Проем закрыт вручную", disabled: true });
+                    options.push({
+                        label: "Открыть проем (восстановить дверь)",
+                        onClick: () => handleTogglePortalState(interfaceKey, false),
+                    });
+                }
+            }
           } else {
-            // Normal, non-portal wall
             options.push({
               label: "Добавить элемент...",
               onClick: () => {
-                if (selectedObjectId !== obj.id) setSelectedObjectId(obj.id);
+                if (selectedObjectId !== segment.id) setSelectedObjectId(segment.id);
                 setShowElementPlacementModal(true);
               },
-              disabled: obj.elements && obj.elements.length > 0,
+              disabled: segment.elements && segment.elements.length > 0,
             });
-          }
-          options.push({
-            label: "Свойства стены",
-            onClick: () => setSelectedObjectId(obj.id),
-          });
-          const [coords, orientation] = obj.segmentKey.split("_");
-          const cellX = parseInt(coords.split(",")[0]);
-          const cellY = parseInt(coords.split(",")[1]);
-          let isInternal = !(
-            (orientation === "h" &&
-              (cellY === 0 || cellY === obj.parentModule.cellsLong)) ||
-            (orientation === "v" &&
-              (cellX === 0 || cellX === obj.parentModule.cellsWide))
-          );
-          if (
-            isInternal &&
-            (!obj.elements || obj.elements.length === 0) &&
-            !obj.isPortalWall &&
-            !manuallyClosedPortals.has(obj.portalInterfaceKey)
-          ) {
-            options.push({ isSeparator: true });
-            options.push({
-              label: "Удалить стену",
-              onClick: () =>
-                deleteWallSegment(obj.parentModule.id, obj.segmentKey),
-            });
+             if (!isPerimeter && (!segment.elements || segment.elements.length === 0)) {
+               options.push({ isSeparator: true });
+               options.push({
+                 label: "Удалить стену",
+                 onClick: () => deleteWallSegment(segment.parentModule.id, segment.segmentKey),
+               });
+             }
           }
         } else if (
           obj.type === OBJECT_TYPES.DOOR ||
           obj.type === OBJECT_TYPES.WINDOW
         ) {
-          options.push({
-            label: `Свойства (${obj.type === OBJECT_TYPES.DOOR ? "дверь" : "окно"})`,
-            onClick: () => setSelectedObjectId(obj.id),
-          });
           if (obj.isPortalDoor && obj.portalInterfaceKey) {
-            options.push({ isSeparator: true });
-            options.push({
-              label: "Закрыть проем (удалить дверь)",
-              onClick: () =>
-                handleTogglePortalState(obj.portalInterfaceKey, true),
-            });
-          } else if (!obj.isPortalDoor) {
-            options.push({ isSeparator: true });
-            options.push({
-              label: `Удалить (${obj.type === OBJECT_TYPES.DOOR ? "дверь" : "окно"})`,
-              onClick: () => {
-                if (selectedObjectId !== obj.id) setSelectedObjectId(obj.id);
-                deleteSelectedObject();
-              },
-            });
+             options.push({ label: "--- Портальная Дверь ---", disabled: true });
+             const interfaceKey = obj.portalInterfaceKey;
+             const isInterfaceManuallyClosed = manuallyClosedPortals.has(interfaceKey);
+             if (!isInterfaceManuallyClosed) {
+                options.push({
+                  label: "Закрыть проем (сплошная стена)",
+                  onClick: () => handleTogglePortalState(interfaceKey, true),
+                });
+             } else {
+                 options.push({
+                    label: "Восстановить авто-проем (с дверью)",
+                    onClick: () => handleTogglePortalState(interfaceKey, false),
+                 });
+             }
+          } else {
+             options.push({
+               label: `Удалить (${obj.type === OBJECT_TYPES.DOOR ? "дверь" : "окно"})`,
+               onClick: () => {
+                 if (selectedObjectId !== obj.id) setSelectedObjectId(obj.id);
+                 deleteSelectedObject();
+               },
+             });
           }
         } else if (obj.type === OBJECT_TYPES.MODULE) {
-          options.push({
-            label: "Свойства модуля",
-            onClick: () => setSelectedObjectId(obj.id),
-          });
-          options.push({
-            label: "Повернуть модуль",
-            onClick: () => handleRotateModule(obj.id),
-          });
-          options.push({ isSeparator: true });
-          options.push({
-            label: "Удалить модуль",
-            onClick: () => {
-              if (selectedObjectId !== obj.id) setSelectedObjectId(obj.id);
-              deleteSelectedObject();
-            },
-          });
+           options.push({
+             label: "Повернуть модуль на 90°",
+             onClick: () => handleRotateModule(obj.id),
+           });
+           options.push({ isSeparator: true });
+           options.push({
+             label: "Удалить модуль",
+             onClick: () => {
+               if (selectedObjectId !== obj.id) setSelectedObjectId(obj.id);
+               deleteSelectedObject();
+             },
+           });
         }
-      } else if (objectType === "canvas" && worldCoords) {
+      } else if (objectType === "canvas" && meta?.worldX !== undefined) {
         let reEnableOptions = [];
-        manuallyClosedPortals.forEach((key) => {
-          reEnableOptions.push({
-            label: `Открыть проем: ${key.substring(0, 15)}...`,
-            onClick: () => handleTogglePortalState(key, false),
-          });
-        });
+         const activePortalInterfaceKeys = new Set(
+            objects.flatMap(obj => {
+                 if (obj.type === OBJECT_TYPES.MODULE && obj.wallSegments) {
+                     return Object.values(obj.wallSegments)
+                         .filter(seg => seg.isPortalWall && seg.portalInterfaceKey)
+                         .map(seg => seg.portalInterfaceKey);
+                 }
+                 return [];
+             })
+         );
+         manuallyClosedPortals.forEach((key) => {
+            if (activePortalInterfaceKeys.has(key)) {
+              reEnableOptions.push({
+                label: `Открыть проем: ${key.substring(0, 15)}...`,
+                onClick: () => handleTogglePortalState(key, false),
+              });
+            }
+         });
         if (reEnableOptions.length > 0) {
+          options.push({ label: "Восстановить проемы:", disabled: true });
           options.push(...reEnableOptions);
           if (activeMode === MODES.MODULAR) options.push({ isSeparator: true });
         }
         if (activeMode === MODES.MODULAR) {
           options.push({
             label: "Добавить модуль здесь",
-            onClick: () => addNewModule(worldCoords.worldX, worldCoords.worldY),
+            onClick: () => addNewModule(meta.worldX, meta.worldY),
           });
         }
       }
@@ -983,6 +1189,7 @@ const Configurator = () => {
       setSelectedObjectId,
       manuallyClosedPortals,
       handleTogglePortalState,
+      setShowElementPlacementModal,
     ],
   );
 
@@ -990,12 +1197,13 @@ const Configurator = () => {
     mainContainerRef,
     deleteSelectedObject:
       primarySelectedObject &&
-      !primarySelectedObject.isPortalDoor &&
-      (primarySelectedObject.type === OBJECT_TYPES.DOOR ||
-        primarySelectedObject.type === OBJECT_TYPES.WINDOW ||
-        primarySelectedObject.type === OBJECT_TYPES.MODULE)
+      ( primarySelectedObject.type === OBJECT_TYPES.MODULE ||
+        ( (primarySelectedObject.type === OBJECT_TYPES.DOOR || primarySelectedObject.type === OBJECT_TYPES.WINDOW) && !primarySelectedObject.isPortalDoor)
+      )
         ? deleteSelectedObject
-        : null,
+        : (primarySelectedObject && primarySelectedObject.isPortalDoor && primarySelectedObject.portalInterfaceKey) // Allow Del/Backspace for portal doors to close portal
+          ? () => handleTogglePortalState(primarySelectedObject.portalInterfaceKey, true)
+          : null,
     deselectAll: () => {
       setSelectedObjectId(null);
       closeContextMenu();
@@ -1053,7 +1261,6 @@ const Configurator = () => {
               scale={viewTransform.scale}
               canAddInitialModule={canShowInitialModuleButton}
               onAddModule={addModuleAtZeroZero}
-              // Pass segmentId to onToggleWallSegment, which needs to come from renderer
               onToggleWallSegment={(
                 moduleId,
                 cellX,
@@ -1069,7 +1276,9 @@ const Configurator = () => {
                   segmentId,
                 )
               }
+              manuallyClosedPortals={manuallyClosedPortals}
               primarySelectedObject={primarySelectedObject}
+              selectedPortalInterfaceKey={currentSelectedPortalInterfaceKey}
             />
           </div>
         </div>
