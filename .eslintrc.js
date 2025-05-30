@@ -1,9 +1,5 @@
 /* eslint-disable no-unused-vars */
-// ========================================================================
-// FILE: .eslintrc.js
-// ========================================================================
-// Assuming a standard ESLint config for Create React App or similar.
-// No changes needed based on the prompt unless specific rules were provided.
+
 module.exports = {
   env: {
     browser: true,

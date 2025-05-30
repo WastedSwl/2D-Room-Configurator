@@ -1,6 +1,6 @@
 // src/components/Configurator/hooks/useMouseInteractions.js
 import { useState, useCallback, useRef } from "react";
-import { MODES, OBJECT_TYPES } from "../configuratorConstants"; // GRID_CELL_SIZE_M здесь не нужен
+import { MODES, OBJECT_TYPES } from "../configuratorConstants";
 
 const useMouseInteractions = ({
   viewTransform,
@@ -12,7 +12,10 @@ const useMouseInteractions = ({
   setSelectedObjectId,
   screenToWorld,
   updateModulePosition,
-  snapAndFinalizeModulePosition, // Новая функция для привязки
+  snapAndFinalizeModulePosition,
+  isDraggingElement, 
+  onWallSegmentClick, 
+  elementTypeToPlace, 
 }) => {
   const [draggingState, setDraggingState] = useState(null);
   const [isPanningWithSpace, setIsPanningWithSpace] = useState(false);
@@ -22,10 +25,19 @@ const useMouseInteractions = ({
     (e) => {
       mainContainerRef.current?.focus();
       if (e.button !== 0 && e.button !== 2) return;
-
       const worldCoords = screenToWorld(e.clientX, e.clientY);
-
-      if (modifierKeys.spacebar || e.button === 1) {
+      if (elementTypeToPlace && e.button === 0) {
+        const clickedSegmentElement = e.target.closest('[data-object-type="wall_segment"]');
+        if (clickedSegmentElement) {
+          const segmentId = clickedSegmentElement.getAttribute("data-object-id");
+          if (segmentId && onWallSegmentClick) {
+            e.stopPropagation(); 
+            onWallSegmentClick(segmentId);
+            return; 
+          }
+        }
+      }
+      if (modifierKeys.spacebar || e.button === 1) { 
         setIsPanningWithSpace(true);
         setDraggingState({
           isPanning: true,
@@ -38,20 +50,21 @@ const useMouseInteractions = ({
         e.preventDefault();
         return;
       }
-
-      if (e.button === 0 && activeMode === MODES.MODULAR) {
-        const clickedElement = e.target.closest('[data-object-type="module"]');
-        if (clickedElement) {
-          const moduleId = clickedElement.getAttribute("data-object-id");
+      if (e.button === 0 && activeMode === MODES.MODULAR && !elementTypeToPlace) {
+        const clickedModuleElement = e.target.closest('[data-object-type="module"]');
+        if (clickedModuleElement) {
+          const moduleId = clickedModuleElement.getAttribute("data-object-id");
           const moduleInitialX = parseFloat(
-            clickedElement.getAttribute("data-module-x") || "0",
+            clickedModuleElement.getAttribute("data-module-x") || "0",
           );
           const moduleInitialY = parseFloat(
-            clickedElement.getAttribute("data-module-y") || "0",
+            clickedModuleElement.getAttribute("data-module-y") || "0",
           );
-
+          const moduleInitialRotation = parseFloat(
+            clickedModuleElement.getAttribute("data-module-rotation") || "0" 
+          );
           if (moduleId) {
-            setSelectedObjectId(moduleId);
+            setSelectedObjectId(moduleId); 
             setDraggingState({
               isDraggingModule: true,
               moduleId: moduleId,
@@ -59,14 +72,24 @@ const useMouseInteractions = ({
               dragStartWorldY: worldCoords.y,
               initialModuleX: moduleInitialX,
               initialModuleY: moduleInitialY,
+              initialModuleRotation: moduleInitialRotation,
             });
             e.stopPropagation();
             return;
           }
         }
+        const clickedObjectElement = e.target.closest('[data-object-id]');
+        if (clickedObjectElement && !clickedModuleElement) { 
+            const objectId = clickedObjectElement.getAttribute('data-object-id');
+            const objectType = clickedObjectElement.getAttribute('data-object-type');
+            if (objectId && objectType !== OBJECT_TYPES.MODULE && setSelectedObjectId) {
+                setSelectedObjectId(objectId);
+                e.stopPropagation();
+                return;
+            }
+        }
       }
-
-      if (e.button === 0) {
+      if (e.button === 0 && !elementTypeToPlace) {
         if (
           e.target === svgRef.current ||
           e.target.id === "grid" ||
@@ -85,6 +108,8 @@ const useMouseInteractions = ({
       setSelectedObjectId,
       screenToWorld,
       svgRef,
+      elementTypeToPlace, 
+      onWallSegmentClick, 
     ],
   );
 
@@ -108,14 +133,11 @@ const useMouseInteractions = ({
           initialModuleY,
         } = draggingState;
         const currentMouseWorld = screenToWorld(e.clientX, e.clientY);
-
         const deltaWorldX = currentMouseWorld.x - dragStartWorldX;
         const deltaWorldY = currentMouseWorld.y - dragStartWorldY;
-
         const newModuleX = initialModuleX + deltaWorldX;
         const newModuleY = initialModuleY + deltaWorldY;
-
-        updateModulePosition(moduleId, newModuleX, newModuleY); // Плавное обновление
+        updateModulePosition(moduleId, newModuleX, newModuleY);
       }
     },
     [draggingState, setViewTransform, screenToWorld, updateModulePosition],
@@ -127,27 +149,34 @@ const useMouseInteractions = ({
         setIsPanningWithSpace(false);
       }
       if (draggingState?.isDraggingModule) {
-        // Вызываем функцию привязки и финализации из Configurator.jsx
-        snapAndFinalizeModulePosition(draggingState.moduleId);
+        snapAndFinalizeModulePosition(
+          draggingState.moduleId,
+          draggingState.initialModuleX, 
+          draggingState.initialModuleY,
+          draggingState.initialModuleRotation
+        );
       }
       setDraggingState(null);
       mouseDownStartPosRef.current = null;
     },
-    [isPanningWithSpace, draggingState, snapAndFinalizeModulePosition], // Добавили snapAndFinalizeModulePosition
+    [isPanningWithSpace, draggingState, snapAndFinalizeModulePosition], 
   );
 
   const handleMouseLeave = useCallback(() => {
     if (isPanningWithSpace || draggingState?.isDraggingModule) {
-      // Также проверяем isDraggingModule
       if (draggingState?.isDraggingModule) {
-        // Если перетаскивали модуль и мышь ушла, привязываем его
-        snapAndFinalizeModulePosition(draggingState.moduleId);
+        snapAndFinalizeModulePosition(
+          draggingState.moduleId,
+          draggingState.initialModuleX,
+          draggingState.initialModuleY,
+          draggingState.initialModuleRotation
+        );
       }
       setIsPanningWithSpace(false);
       setDraggingState(null);
       mouseDownStartPosRef.current = null;
     }
-  }, [isPanningWithSpace, draggingState, snapAndFinalizeModulePosition]); // Добавили snapAndFinalizeModulePosition
+  }, [isPanningWithSpace, draggingState, snapAndFinalizeModulePosition]); 
 
   return {
     isPanningWithSpace,

@@ -1,4 +1,3 @@
-// src/components/Configurator/common/PropertyInput.jsx
 import React from "react";
 
 const PropertyInput = ({
@@ -34,7 +33,7 @@ const PropertyInput = ({
           value={value}
           onChange={onChange}
           disabled={disabled}
-          className={`w-full p-1.5 border border-gray-600 rounded text-sm bg-gray-700 text-gray-200 focus:ring-1 focus:ring-primary-blue focus:border-primary-blue outline-none ${disabled ? "bg-gray-800 opacity-60 cursor-not-allowed" : ""} ${inputClassName || ""}`}
+          className={`w-full px-3 py-2 border border-gray-600 rounded-md text-sm bg-gray-700/50 text-gray-100 focus:ring-2 focus:ring-primary-blue focus:border-primary-blue outline-none transition-colors duration-150 placeholder-gray-500 ${disabled ? "bg-gray-800 opacity-70 cursor-not-allowed" : "hover:border-gray-500"} ${inputClassName || ""}`}
           {...props}
         />
       )}

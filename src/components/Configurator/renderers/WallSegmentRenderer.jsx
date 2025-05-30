@@ -1,12 +1,25 @@
+// src/components/Configurator/renderers/WallSegmentRenderer.jsx
 import React from "react";
 import DoorRenderer from "./DoorRenderer";
 import WindowRenderer from "./WindowRenderer";
+import PanoramicWindowRenderer from "./PanoramicWindowRenderer";
+import OutletRenderer from "./OutletRenderer";
+import WallMountedLightRenderer from "./WallMountedLightRenderer";
+import RadiatorRenderer from "./RadiatorRenderer"; // Оставляем для совместимости
+import KitchenElementRenderer from "./KitchenElementRenderer"; // Оставляем для совместимости
+import SwitchRenderer from "./SwitchRenderer"; // Новый
+import SwitchDoubleRenderer from "./SwitchDoubleRenderer"; // Новый
 import {
-  WALL_COLOR,
-  SELECTED_WALL_SEGMENT_COLOR,
-  GRID_CELL_SIZE_M,
-  ELEMENT_STROKE_COLOR,
   OBJECT_TYPES,
+  GRID_CELL_SIZE_M,
+  SELECTED_ELEMENT_COLOR,
+  PLACEMENT_HIGHLIGHT_FILL_COLOR,
+  PLACEMENT_NOT_ALLOWED_FILL_COLOR,
+  INITIAL_PPM,
+  WALL_THICKNESS_M_RENDER,
+  DOCKED_SPLIT_WALL_THICKNESS_M, // Убедимся, что этот импорт есть
+  EPSILON,
+  defaultObjectSizes
 } from "../configuratorConstants";
 
 const WallSegmentRenderer = ({
@@ -20,259 +33,190 @@ const WallSegmentRenderer = ({
   onSelectWallSegment,
   onSelectElement,
   onContextMenu,
-  selectedPortalInterfaceKey,
+  highlightForPlacement,
+  isInPlacementMode,
 }) => {
   const {
     id: segmentId,
-    elements = [],
-    thickness,
-    isPortalWall,
-    isSingleSidePortal,
-    isManuallyClosed,
-    portalInterfaceKey,
+    elements,
+    thickness = WALL_THICKNESS_M_RENDER,
+    renderOffset = 0,
+    isFullyOpenPassage,
+    isDocked,
+    isPassageWithPartner
   } = segmentData;
 
+  const currentElements = Array.isArray(elements) ? elements : [];
   const cellSizePx = GRID_CELL_SIZE_M * scale;
-  const originalWallThicknessPx = thickness * scale;
-  const portalRectThickness = Math.max(2, originalWallThicknessPx * 0.2);
-  const portalRectOffsetFromCenter = Math.max(1, originalWallThicknessPx * 0.1);
+  const visualThicknessPx = isFullyOpenPassage ? Math.max(1, 0.005 * scale) : thickness * scale;
 
-  let mainBoundingRectX, mainBoundingRectY, mainBoundingRectWidth, mainBoundingRectHeight;
-  let wallRect1X, wallRect1Y, wallRect1Width, wallRect1Height;
-  let wallRect2X, wallRect2Y, wallRect2Width, wallRect2Height;
-  let elementGroupTx, elementGroupTy, elementGroupAngle;
+  const baseStrokeWidth = 0.5 / (scale > INITIAL_PPM ? Math.sqrt(scale / INITIAL_PPM) : 1);
+  const offsetPx = renderOffset * scale; // Смещение визуальной части стены в пикселях
+
+  // Определяем, является ли этот сегмент частью "сэндвич" стены (не объединенной и не полностью открытой)
+  const isSandwichPart = isDocked && !isPassageWithPartner && !isFullyOpenPassage;
+
+  // Определяем толщину стены, которую нужно передать элементам (дверям, окнам)
+  // для расчета их глубины/положения относительно грани.
+  // Для "сэндвич" частей это будет их собственная тонкая толщина.
+  // Для обычных или объединенных стен - полная толщина.
+  const actualWallThicknessForElementDepth = isSandwichPart
+    ? DOCKED_SPLIT_WALL_THICKNESS_M
+    : WALL_THICKNESS_M_RENDER;
+
+  let rectX, rectY, rectWidth, rectHeight;
+  let elementsContainerTransform;
+
+  // Смещение для контейнера элементов, если это "сэндвич" стена.
+  // Контейнер элементов должен быть отцентрирован относительно *визуальной* части "сэндвич" стены.
+  const elementContainerOffsetPx = isSandwichPart ? offsetPx : 0;
 
   if (orientation === "h") {
-    mainBoundingRectX = cellX * cellSizePx;
-    mainBoundingRectY = cellY * cellSizePx - originalWallThicknessPx / 2;
-    mainBoundingRectWidth = cellSizePx;
-    mainBoundingRectHeight = originalWallThicknessPx;
-    wallRect1X = cellX * cellSizePx;
-    wallRect1Y = cellY * cellSizePx - portalRectOffsetFromCenter - portalRectThickness;
-    wallRect1Width = cellSizePx;
-    wallRect1Height = portalRectThickness;
-    wallRect2X = cellX * cellSizePx;
-    wallRect2Y = cellY * cellSizePx + portalRectOffsetFromCenter;
-    wallRect2Width = cellSizePx;
-    wallRect2Height = portalRectThickness;
-    elementGroupTx = cellX * cellSizePx;
-    elementGroupTy = cellY * cellSizePx;
-    elementGroupAngle = 0;
-  } else {
-    mainBoundingRectX = cellX * cellSizePx - originalWallThicknessPx / 2;
-    mainBoundingRectY = cellY * cellSizePx;
-    mainBoundingRectWidth = originalWallThicknessPx;
-    mainBoundingRectHeight = cellSizePx;
-    wallRect1X = cellX * cellSizePx - portalRectOffsetFromCenter - portalRectThickness;
-    wallRect1Y = cellY * cellSizePx;
-    wallRect1Width = portalRectThickness;
-    wallRect1Height = cellSizePx;
-    wallRect2X = cellX * cellSizePx + portalRectOffsetFromCenter;
-    wallRect2Y = cellY * cellSizePx;
-    wallRect2Width = portalRectThickness;
-    wallRect2Height = cellSizePx;
-    elementGroupTx = cellX * cellSizePx;
-    elementGroupTy = cellY * cellSizePx;
-    elementGroupAngle = 90;
+    // Позиция визуального прямоугольника стены (с учетом offsetPx)
+    rectX = cellX * cellSizePx;
+    rectY = (cellY * cellSizePx + offsetPx) - visualThicknessPx / 2;
+    rectWidth = cellSizePx;
+    rectHeight = visualThicknessPx;
+
+    // Трансформация для контейнера элементов:
+    // Он должен быть на той же Y-координате, что и центр визуальной "сэндвич" стены
+    elementsContainerTransform = `translate(${cellX * cellSizePx}, ${cellY * cellSizePx + elementContainerOffsetPx})`;
+  } else { // orientation === "v"
+    // Позиция визуального прямоугольника стены (с учетом offsetPx)
+    rectX = (cellX * cellSizePx + offsetPx) - visualThicknessPx / 2;
+    rectY = cellY * cellSizePx;
+    rectWidth = visualThicknessPx;
+    rectHeight = cellSizePx;
+
+    // Трансформация для контейнера элементов:
+    // Он должен быть на той же X-координате, что и центр визуальной "сэндвич" стены, затем повернут
+    const translateXForElements = cellX * cellSizePx + elementContainerOffsetPx;
+    const translateYForElements = cellY * cellSizePx;
+    elementsContainerTransform = `translate(${translateXForElements}, ${translateYForElements}) rotate(90)`;
   }
 
-  const isVisuallySelected = isSelected ||
-                           (isPortalWall &&
-                            portalInterfaceKey &&
-                            portalInterfaceKey === selectedPortalInterfaceKey &&
-                            selectedPortalInterfaceKey !== null);
+  let currentWallFill = "rgba(75, 85, 99, 0.3)";
+  let currentWallStroke = "rgba(156, 163, 175, 0.7)";
+  let currentFinalStrokeWidth = baseStrokeWidth;
 
-  const defaultWallFillColor = isVisuallySelected ? SELECTED_WALL_SEGMENT_COLOR : WALL_COLOR;
-  const portalJambFillColor = isVisuallySelected ? SELECTED_WALL_SEGMENT_COLOR : WALL_COLOR;
-  const portalJambStrokeColor = isVisuallySelected ? SELECTED_WALL_SEGMENT_COLOR : ELEMENT_STROKE_COLOR;
-  const portalJambStrokeWidth = Math.max(0.5, 0.005 * scale);
-  const singleSidePortalFillColor = isVisuallySelected ? SELECTED_WALL_SEGMENT_COLOR : "rgba(160, 160, 160, 0.3)";
-  const singleSidePortalStrokeColor = isVisuallySelected ? SELECTED_WALL_SEGMENT_COLOR : "rgba(51, 51, 51, 0.5)";
-
-
-  const handleWallLeftClick = (e) => {
-    if (e.target === e.currentTarget || e.target.closest(`[data-segment-id="${segmentId}"]`)) {
-      e.stopPropagation();
-      onSelectWallSegment(segmentId);
+  if (isInPlacementMode) {
+    if (highlightForPlacement) {
+      currentWallFill = PLACEMENT_HIGHLIGHT_FILL_COLOR;
+      currentWallStroke = "rgba(52, 211, 153, 0.9)";
+      currentFinalStrokeWidth = baseStrokeWidth * 1.5;
+    } else if (!isFullyOpenPassage) {
+      currentWallFill = PLACEMENT_NOT_ALLOWED_FILL_COLOR;
+      currentWallStroke = "rgba(239, 68, 68, 0.7)";
+      currentFinalStrokeWidth = baseStrokeWidth * 1.3;
+    } else {
+      currentWallFill = "rgba(100, 116, 139, 0.05)";
+      currentWallStroke = "rgba(100, 116, 139, 0.15)";
+      currentFinalStrokeWidth = Math.max(0.3, baseStrokeWidth * 0.5);
     }
-  };
+  } else {
+    if (isFullyOpenPassage) {
+      currentWallFill = "rgba(59, 130, 246, 0.05)";
+      currentWallStroke = "rgba(59, 130, 246, 0.2)";
+      currentFinalStrokeWidth = Math.max(0.3, baseStrokeWidth * 0.5);
+      if (isSelected) {
+          currentWallFill = "rgba(59, 130, 246, 0.15)";
+          currentWallStroke = SELECTED_ELEMENT_COLOR;
+      }
+    } else if (isSelected) {
+      currentWallFill = "rgba(59, 130, 246, 0.3)";
+      currentWallStroke = SELECTED_ELEMENT_COLOR;
+      currentFinalStrokeWidth = baseStrokeWidth * 2;
+    }
+  }
 
   const handleWallContextMenu = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (onContextMenu) {
-      onContextMenu(e, segmentId, OBJECT_TYPES.WALL_SEGMENT, { isSingleSidePortal, isManuallyClosed });
+      onContextMenu(e, segmentId, OBJECT_TYPES.WALL_SEGMENT, {});
     }
   };
 
-  const wallHasPortalDoorElement = elements.some(el => el.isPortalDoor);
-
-  if (isPortalWall) {
-    if (wallHasPortalDoorElement) {
-      return (
-        <g
-          onContextMenu={handleWallContextMenu}
-          data-object-id={segmentId}
-          data-object-type={OBJECT_TYPES.WALL_SEGMENT}
-          data-segment-id={segmentId}
-        >
-          <rect
-            x={mainBoundingRectX} y={mainBoundingRectY}
-            width={mainBoundingRectWidth} height={mainBoundingRectHeight}
-            fill="transparent"
-            onClick={handleWallLeftClick}
-            pointerEvents="all"
-            className="cursor-pointer"
-          />
-          {!isSingleSidePortal && (
-             <>
-              <rect x={wallRect1X} y={wallRect1Y} width={wallRect1Width} height={wallRect1Height} fill={portalJambFillColor} stroke={portalJambStrokeColor} strokeWidth={portalJambStrokeWidth} className="group-hover:opacity-80" pointerEvents="none" />
-              <rect x={wallRect2X} y={wallRect2Y} width={wallRect2Width} height={wallRect2Height} fill={portalJambFillColor} stroke={portalJambStrokeColor} strokeWidth={portalJambStrokeWidth} className="group-hover:opacity-80" pointerEvents="none" />
-            </>
-          )}
-          <g transform={`translate(${elementGroupTx}, ${elementGroupTy}) rotate(${elementGroupAngle})`}>
-            {elements.map((element) => {
-              const elementOffsetPx = cellSizePx * element.positionOnSegment - (element.width * scale) / 2;
-              const handleElementContextMenu = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (onContextMenu) {
-                  onContextMenu(e, element.id, element.type, {});
-                }
-              };
-              const commonElementProps = {
-                element,
-                scale,
-                wallThickness: thickness,
-                isSelected: selectedElementId === element.id,
-                onSelect: (elId) => onSelectElement(elId),
-              };
-              return (
-                <g
-                  key={element.id}
-                  transform={`translate(${elementOffsetPx}, 0)`}
-                  onContextMenu={handleElementContextMenu}
-                  onClick={(e) => { e.stopPropagation(); commonElementProps.onSelect(element.id); }}
-                  className="cursor-pointer"
-                  data-object-id={element.id}
-                  data-object-type={element.type}
-                >
-                  {element.type === OBJECT_TYPES.DOOR && <DoorRenderer {...commonElementProps} />}
-                  {element.type === OBJECT_TYPES.WINDOW && <WindowRenderer {...commonElementProps} />}
-                </g>
-              );
-            })}
-          </g>
-        </g>
-      );
-    }
-    else {
-      if (isManuallyClosed && !isSingleSidePortal) {
-        return (
-          <g
-            onClick={handleWallLeftClick}
-            onContextMenu={handleWallContextMenu}
-            data-object-id={segmentId}
-            data-object-type={OBJECT_TYPES.WALL_SEGMENT}
-            data-segment-id={segmentId}
-            className={`cursor-pointer group`}
-          >
-            <rect
-              x={mainBoundingRectX} y={mainBoundingRectY}
-              width={mainBoundingRectWidth} height={mainBoundingRectHeight}
-              fill={defaultWallFillColor}
-              stroke={ELEMENT_STROKE_COLOR}
-              strokeWidth={Math.max(0.5, 0.005 * scale)}
-              className="group-hover:opacity-80"
-              pointerEvents="all"
-            />
-          </g>
-        );
-      } else if (!isManuallyClosed && !isSingleSidePortal) {
-        return (
-          <g
-            onClick={handleWallLeftClick}
-            onContextMenu={handleWallContextMenu}
-            data-object-id={segmentId}
-            data-object-type={OBJECT_TYPES.WALL_SEGMENT}
-            data-segment-id={segmentId}
-            className={`cursor-pointer group`}
-          >
-            <rect x={mainBoundingRectX} y={mainBoundingRectY} width={mainBoundingRectWidth} height={mainBoundingRectHeight} fill="transparent" pointerEvents="all" />
-            <rect x={wallRect1X} y={wallRect1Y} width={wallRect1Width} height={wallRect1Height} fill={portalJambFillColor} stroke={portalJambStrokeColor} strokeWidth={portalJambStrokeWidth} className="group-hover:opacity-80" />
-            <rect x={wallRect2X} y={wallRect2Y} width={wallRect2Width} height={wallRect2Height} fill={portalJambFillColor} stroke={portalJambStrokeColor} strokeWidth={portalJambStrokeWidth} className="group-hover:opacity-80" />
-          </g>
-        );
-      } else {
-        return (
-          <g
-            onClick={handleWallLeftClick}
-            onContextMenu={handleWallContextMenu}
-            data-object-id={segmentId}
-            data-object-type={OBJECT_TYPES.WALL_SEGMENT}
-            data-segment-id={segmentId}
-            className={`cursor-pointer group`}
-          >
-            <rect x={mainBoundingRectX} y={mainBoundingRectY} width={mainBoundingRectWidth} height={mainBoundingRectHeight} fill="transparent" pointerEvents="all" />
-            <rect x={wallRect1X} y={wallRect1Y} width={wallRect1Width} height={wallRect1Height} fill={singleSidePortalFillColor} stroke={singleSidePortalStrokeColor} strokeWidth={portalJambStrokeWidth} strokeDasharray="3,3" className="group-hover:opacity-70" />
-          </g>
-        );
-      }
-    }
-  }
-  else {
+  const renderElements = () => {
+    if (!currentElements || currentElements.length === 0) return null;
     return (
-      <g
-        onContextMenu={handleWallContextMenu}
-        data-object-id={segmentId}
-        data-object-type={OBJECT_TYPES.WALL_SEGMENT}
-        data-segment-id={segmentId}
-      >
-        <rect
-          x={mainBoundingRectX} y={mainBoundingRectY}
-          width={mainBoundingRectWidth} height={mainBoundingRectHeight}
-          fill={defaultWallFillColor}
-          stroke={ELEMENT_STROKE_COLOR}
-          strokeWidth={Math.max(0.5, 0.005 * scale)}
-          onClick={handleWallLeftClick}
-          className="cursor-pointer hover:opacity-80"
-          pointerEvents="all"
-        />
-        <g transform={`translate(${elementGroupTx}, ${elementGroupTy}) rotate(${elementGroupAngle})`}>
-          {elements.map((element) => {
-            const elementOffsetPx = cellSizePx * element.positionOnSegment - (element.width * scale) / 2;
-            const handleElementContextMenu = (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (onContextMenu) {
-                onContextMenu(e, element.id, element.type, {});
-              }
-            };
-            const commonElementProps = {
-              element,
-              scale,
-              wallThickness: thickness,
-              isSelected: selectedElementId === element.id,
-              onSelect: (elId) => onSelectElement(elId),
+      <>
+        <g transform={elementsContainerTransform}>
+          {currentElements.map((element) => {
+            if(!element || !element.type) return null;
+            let elementRenderWidthM = element.width || GRID_CELL_SIZE_M;
+            let currentPositionOnSegment = element.positionOnSegment || 0.5;
+
+            if (element.type === OBJECT_TYPES.DOOR || element.type === OBJECT_TYPES.WINDOW) {
+              elementRenderWidthM = GRID_CELL_SIZE_M;
+              currentPositionOnSegment = 0.5;
+            } else {
+                 const defaultSize = defaultObjectSizes[element.type];
+                 elementRenderWidthM = element.width || (defaultSize ? defaultSize.width : GRID_CELL_SIZE_M) ;
+            }
+
+            const elementRenderWidthPx = elementRenderWidthM * scale;
+            const elementOffsetXPx = cellSizePx * currentPositionOnSegment - (elementRenderWidthPx / 2);
+
+            const handleElementContextMenu = (eInner) => {
+              eInner.preventDefault(); eInner.stopPropagation();
+              if (onContextMenu) onContextMenu(eInner, element.id, element.type, {});
             };
             return (
               <g
                 key={element.id}
-                transform={`translate(${elementOffsetPx}, 0)`}
+                transform={`translate(${elementOffsetXPx}, 0)`}
                 onContextMenu={handleElementContextMenu}
-                onClick={(e) => { e.stopPropagation(); commonElementProps.onSelect(element.id); }}
+                onClick={(eInner) => { eInner.stopPropagation(); onSelectElement(element.id); }}
                 className="cursor-pointer"
                 data-object-id={element.id}
                 data-object-type={element.type}
               >
-                {element.type === OBJECT_TYPES.DOOR && <DoorRenderer {...commonElementProps} />}
-                {element.type === OBJECT_TYPES.WINDOW && <WindowRenderer {...commonElementProps} />}
+                {/* Передаем actualWallThicknessForElementDepth во все элементы, которые зависят от толщины стены */}
+                {element.type === OBJECT_TYPES.DOOR && <DoorRenderer element={{...element, width: elementRenderWidthM}} scale={scale} wallThickness={actualWallThicknessForElementDepth} isSelected={selectedElementId === element.id} />}
+                {element.type === OBJECT_TYPES.WINDOW && <WindowRenderer element={{...element, width: elementRenderWidthM}} scale={scale} wallThickness={actualWallThicknessForElementDepth} isSelected={selectedElementId === element.id} />}
+                {element.type === OBJECT_TYPES.PANORAMIC_WINDOW && <PanoramicWindowRenderer element={{...element, width: elementRenderWidthM}} scale={scale} wallThickness={actualWallThicknessForElementDepth} isSelected={selectedElementId === element.id} />}
+                
+                {/* Для элементов, которые просто "накладываются" на стену, толщина может быть менее критична, но для консистентности можно передавать */}
+                {element.type === OBJECT_TYPES.OUTLET && <OutletRenderer element={{...element, width: elementRenderWidthM}} scale={scale} isSelected={selectedElementId === element.id} wallThickness={actualWallThicknessForElementDepth}/>}
+                {element.type === OBJECT_TYPES.LIGHT_WALL && <WallMountedLightRenderer element={{...element, width: elementRenderWidthM}} scale={scale} isSelected={selectedElementId === element.id} wallThickness={actualWallThicknessForElementDepth}/>}
+                {element.type === OBJECT_TYPES.SWITCH && <SwitchRenderer element={{...element, width: elementRenderWidthM}} scale={scale} isSelected={selectedElementId === element.id} wallThickness={actualWallThicknessForElementDepth}/>}
+                {element.type === OBJECT_TYPES.SWITCH_DOUBLE && <SwitchDoubleRenderer element={{...element, width: elementRenderWidthM}} scale={scale} isSelected={selectedElementId === element.id} wallThickness={actualWallThicknessForElementDepth}/>}
+                {element.type === OBJECT_TYPES.RADIATOR && <RadiatorRenderer element={{...element, width: elementRenderWidthM}} scale={scale} isSelected={selectedElementId === element.id} wallThickness={actualWallThicknessForElementDepth}/>}
+                {element.type === OBJECT_TYPES.KITCHEN_ELEMENT && <KitchenElementRenderer element={{...element, width: elementRenderWidthM}} scale={scale} isSelected={selectedElementId === element.id} wallThickness={actualWallThicknessForElementDepth}/>}
               </g>
             );
           })}
         </g>
-      </g>
+      </>
     );
-  }
+  };
+
+  const shouldRenderElements = !(isFullyOpenPassage);
+
+  return (
+    <g onContextMenu={handleWallContextMenu} data-segment-id={segmentId}>
+      <rect
+        x={rectX}
+        y={rectY}
+        width={rectWidth}
+        height={rectHeight}
+        fill={currentWallFill}
+        stroke={currentWallStroke}
+        strokeWidth={currentFinalStrokeWidth}
+        onClick={(e) => { e.stopPropagation(); onSelectWallSegment(segmentId); }}
+        style={{
+          cursor: isInPlacementMode && !isFullyOpenPassage
+              ? (highlightForPlacement ? 'copy' : 'not-allowed')
+              : (isSelected && !isInPlacementMode ? 'move' : 'pointer')
+        }}
+        data-object-id={segmentId}
+        data-object-type={OBJECT_TYPES.WALL_SEGMENT}
+        pointerEvents="all"
+      />
+      {shouldRenderElements && renderElements()}
+    </g>
+  );
 };
+
 export default React.memo(WallSegmentRenderer);

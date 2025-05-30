@@ -23,9 +23,10 @@ const SvgCanvas = ({
   canAddInitialModule,
   onAddModule,
   onToggleWallSegment,
-  manuallyClosedPortals,
   primarySelectedObject,
-  selectedPortalInterfaceKey,
+  elementTypeToPlace,
+  onWallSegmentClick,
+  suitableWallSegmentIds, // Added
 }) => {
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
 
@@ -48,7 +49,7 @@ const SvgCanvas = ({
     };
   }, [svgRef]);
 
-  const localHandleMouseMove = useCallback(
+  const localHandleMouseMoveForCanvas = useCallback(
     (e) => {
       if ((isPanningWithSpace || isDraggingModule) && handleMouseMove) {
         handleMouseMove(e);
@@ -62,18 +63,14 @@ const SvgCanvas = ({
     cursorClass = "cursor-grabbing";
   else if (isPanningWithSpace) cursorClass = "cursor-grabbing";
   else if (modifierKeys?.spacebar) cursorClass = "cursor-grab";
+  else if (elementTypeToPlace) cursorClass = "cursor-crosshair";
 
   const handleSvgContextMenu = (e) => {
     const targetIsCanvas =
       e.target === svgRef.current || e.target.closest("g#grid");
     if (targetIsCanvas && onContextMenu) {
       e.preventDefault();
-      const svgRect = svgRef.current.getBoundingClientRect();
-      const clientX = e.clientX;
-      const clientY = e.clientY;
-      const worldX = (clientX - svgRect.left - viewTransform.x) / scale;
-      const worldY = (clientY - svgRect.top - viewTransform.y) / scale;
-      onContextMenu(e, null, "canvas", { worldX, worldY });
+      onContextMenu(e, null, "canvas", {});
     }
   };
 
@@ -81,33 +78,13 @@ const SvgCanvas = ({
     (obj) => obj.type === OBJECT_TYPES.MODULE,
   ).length;
 
-  const getPortalWallSegmentMeta = (segment, segmentModule, allObjects, currentManuallyClosedPortals) => {
-    if (!segment.isPortalWall || !segment.portalInterfaceKey) {
-      return { isSingleSidePortal: false, isManuallyClosed: false };
-    }
-    let partnerExists = false;
-    for (const otherModule of allObjects) {
-      if (otherModule.type === OBJECT_TYPES.MODULE && otherModule.id !== segmentModule.id) {
-        for (const otherSegmentKey in otherModule.wallSegments) {
-          const otherSeg = otherModule.wallSegments[otherSegmentKey];
-          if (otherSeg.isPortalWall && otherSeg.portalInterfaceKey === segment.portalInterfaceKey) {
-            partnerExists = true;
-            break;
-          }
-        }
-      }
-      if (partnerExists) break;
-    }
-    const isManuallyClosed = currentManuallyClosedPortals.has(segment.portalInterfaceKey);
-    return { isSingleSidePortal: !partnerExists, isManuallyClosed, portalInterfaceKey: segment.portalInterfaceKey };
-  };
 
   return (
     <svg
       ref={svgRef}
       width="100%"
       height="100%"
-      onMouseMove={localHandleMouseMove}
+      onMouseMove={localHandleMouseMoveForCanvas}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onMouseDown={handleMouseDownOnCanvas}
@@ -134,26 +111,19 @@ const SvgCanvas = ({
             obj.type === OBJECT_TYPES.MODULE &&
             activeMode === MODES.MODULAR
           ) {
-            const enrichedWallSegments = {};
-            if (obj.wallSegments) {
-                for (const key in obj.wallSegments) {
-                    const segment = obj.wallSegments[key];
-                    const meta = getPortalWallSegmentMeta(segment, obj, objects, manuallyClosedPortals);
-                    enrichedWallSegments[key] = { ...segment, ...meta };
-                }
-            }
-            const enrichedModule = {...obj, wallSegments: enrichedWallSegments};
             return (
               <ModuleRenderer
                 key={obj.id}
-                module={enrichedModule}
+                module={obj}
                 scale={scale}
                 selectedObjectId={selectedObjectId}
                 setSelectedObjectId={setSelectedObjectId}
                 onToggleWallSegment={onToggleWallSegment}
                 primarySelectedObject={primarySelectedObject}
                 onContextMenu={onContextMenu}
-                selectedPortalInterfaceKey={selectedPortalInterfaceKey}
+                elementTypeToPlace={elementTypeToPlace}
+                onWallSegmentClick={onWallSegmentClick}
+                suitableWallSegmentIds={suitableWallSegmentIds} // Pass down
               />
             );
           }
@@ -163,4 +133,4 @@ const SvgCanvas = ({
     </svg>
   );
 };
-export default SvgCanvas; 
+export default SvgCanvas;

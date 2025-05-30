@@ -1,72 +1,52 @@
-
 import React from "react";
-import { WINDOW_COLOR, ELEMENT_STROKE_COLOR } from "../configuratorConstants";
+import { SELECTED_ELEMENT_COLOR } from "../configuratorConstants";
+import { ReactComponent as WindowSvg } from '../../Assets/window.svg';
+// FrameSvg может не понадобиться, если window.svg уже включает раму.
+// import { ReactComponent as FrameSvg } from '../../Assets/frame.svg';
 
 const WindowRenderer = ({
   element,
   scale,
   wallThickness,
   isSelected,
-  onSelect,
 }) => {
-  const { width } = element;
+  const { width: windowElementWidthM } = element;
 
-  const windowWidthPx = width * scale;
-  const wallThicknessPx = wallThickness * scale;
-  const frameThicknessPx = Math.max(1, 0.02 * scale);
-  const glassOffset = wallThicknessPx * 0.15;
-  const glassLineWidth = Math.max(0.5, 0.01 * scale);
+  const windowElementWidthPx = windowElementWidthM * scale;
+  const wallThicknessPx = wallThickness * scale; // Глубина стены, в которой окно
 
-  const handleClick = (e) => {
-    e.stopPropagation(); 
-    onSelect(element.id);
+  // Предполагаем, что window.svg уже содержит раму и стекло.
+  // viewBox window.svg нужен для корректного масштабирования.
+  // Пример: если window.svg имеет viewBox="0 0 120 80"
+  const SVG_VIEWBOX_WIDTH = 120; // Замените на актуальную ширину viewBox вашего window.svg
+  const SVG_VIEWBOX_HEIGHT = 80;  // Замените на актуальную высоту viewBox вашего window.svg
+
+  // Масштабируем "глубину" SVG (его высоту в данном контексте) пропорционально толщине стены.
+  // Ширина SVG будет равна windowElementWidthPx.
+  // Это простой подход; возможно, понадобится более сложная логика для идеального вида.
+  // Либо, window.svg должен быть спроектирован так, чтобы его высота (в SVG координатах) соответствовала "глубине".
+  // Здесь мы растянем SVG по глубине стены.
+  const svgRenderHeightPx = wallThicknessPx;
+
+  // Стиль для SVG
+  const svgStyle = {
+    fill: isSelected ? "rgba(0, 123, 255, 0.2)" : "rgba(173, 216, 230, 0.5)", // Голубоватая полупрозрачная заливка для стекла
+    stroke: isSelected ? SELECTED_ELEMENT_COLOR : "rgba(100, 100, 100, 0.7)", // Темная обводка для рамы
+    strokeWidth: isSelected ? 1.5 / (scale / 50) : 1 / (scale / 50),
+    transition: "fill 0.15s ease-in-out, stroke 0.15s ease-in-out",
   };
 
   return (
-    <g onClick={handleClick} className="cursor-pointer">
-      <line
-        x1={0}
-        y1={-wallThicknessPx / 2}
-        x2={0}
-        y2={wallThicknessPx / 2}
-        stroke={ELEMENT_STROKE_COLOR}
-        strokeWidth={frameThicknessPx}
-      />
-      <line
-        x1={windowWidthPx}
-        y1={-wallThicknessPx / 2}
-        x2={windowWidthPx}
-        y2={wallThicknessPx / 2}
-        stroke={ELEMENT_STROKE_COLOR}
-        strokeWidth={frameThicknessPx}
-      />
-      <line
-        x1={0}
-        y1={-glassOffset}
-        x2={windowWidthPx}
-        y2={-glassOffset}
-        stroke={isSelected ? "lightblue" : WINDOW_COLOR}
-        strokeWidth={glassLineWidth}
-      />
-      <line
-        x1={0}
-        y1={glassOffset}
-        x2={windowWidthPx}
-        y2={glassOffset}
-        stroke={isSelected ? "lightblue" : WINDOW_COLOR}
-        strokeWidth={glassLineWidth}
-      />
-      <line
-        x1={0}
-        y1={0}
-        x2={windowWidthPx}
-        y2={0}
-        stroke={ELEMENT_STROKE_COLOR}
-        strokeWidth={Math.max(0.5, 0.005 * scale)}
-        opacity="0.4"
+    <g transform={`translate(0, ${-svgRenderHeightPx / 2})`}>
+      <WindowSvg
+        width={windowElementWidthPx}
+        height={svgRenderHeightPx} // Окно занимает всю "глубину" стены
+        preserveAspectRatio="none" // Позволяет растягивать, если нужно
+        // preserveAspectRatio="xMidYMid meet" // Если SVG должен сохранять пропорции
+        style={svgStyle}
       />
     </g>
   );
 };
 
-export default WindowRenderer;
+export default React.memo(WindowRenderer);

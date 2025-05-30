@@ -1,0 +1,29 @@
+{
+  "development": {
+    "username": "customer_458701_for_test",
+    "password": ".bi84VNCCXU5s9E74ppQ!XgT",
+    "database": "customer_458701_for_test",
+    "host": "uk01-sql.pebblehost.com",
+    "port": 3306,
+    "dialect": "mysql",
+    "logging": false
+  },
+  "test": {
+    "username": "your_test_user",
+    "password": "your_test_password",
+    "database": "your_test_database",
+    "host": "uk01-sql.pebblehost.com",
+    "port": 3306,
+    "dialect": "mysql",
+    "logging": false
+  },
+  "production": {
+    "username": "your_prod_user",
+    "password": "your_prod_password",
+    "database": "your_prod_database",
+    "host": "uk01-sql.pebblehost.com",
+    "port": 3306,
+    "dialect": "mysql",
+    "logging": false
+  }
+}

@@ -1,10 +1,10 @@
-// src/components/Configurator/hooks/useKeyboardShortcuts.js
-import { useEffect } from "react"; // Removed useCallback as it's not used
+// ==== src\components\Configurator\hooks\useKeyboardShortcuts.js ====
+import { useEffect } from "react";
 
 const useKeyboardShortcuts = ({
   mainContainerRef,
-  deleteSelectedObject, // New prop
-  deselectAll, // New prop
+  deleteSelectedObject,
+  deselectAll,
 }) => {
   useEffect(() => {
     const mainEl = mainContainerRef.current;
@@ -20,7 +20,7 @@ const useKeyboardShortcuts = ({
         if (isInputFocused && activeEl instanceof HTMLElement) {
           activeEl.blur();
         } else if (deselectAll) {
-          deselectAll(); // Deselect current object if escape is pressed and not in input
+          deselectAll();
         } else {
           mainContainerRef.current?.focus();
         }
@@ -32,14 +32,13 @@ const useKeyboardShortcuts = ({
           deleteSelectedObject();
         }
       }
-      // All other shortcuts (delete, lock, copy, paste, undo, redo for objects) are removed.
     };
 
     mainEl.addEventListener("keydown", handleKeyDown);
     return () => {
       mainEl.removeEventListener("keydown", handleKeyDown);
     };
-  }, [mainContainerRef, deleteSelectedObject, deselectAll]); // Added dependencies
+  }, [mainContainerRef, deleteSelectedObject, deselectAll]);
 };
 
 export default useKeyboardShortcuts;
